@@ -6,15 +6,33 @@ PythonAnywhere bepul tarifiga mos (SQLite, WhiteNoise'siz oddiy static).
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ============ ISHGA TUSHIRISH REJIMI ============
-# Serverga joylashda quyidagi 3 qatorni o'zgartiring (yoki muhit o'zgaruvchisi bering).
-SECRET_KEY = os.environ.get(
-    'LOMBARD_SECRET_KEY',
-    'django-insecure-2#au_qtg67qki81l+gzl#ao$uf-r&hm1x)qfjufzc9x@i(wkzf')
-
 DEBUG = os.environ.get('LOMBARD_DEBUG', '1') == '1'
+
+# Maxfiy kalit kodda saqlanmaydi — muhit o'zgaruvchisidan olinadi.
+# Serverda (PythonAnywhere WSGI faylida) shunday beriladi:
+#     os.environ['LOMBARD_SECRET_KEY'] = '<tasodifiy kalit>'
+# Lokal ishlashda o'zgaruvchi berilmasa, kalit `.secret_key` faylida
+# yasaladi va saqlanadi (bu fayl git'ga tushmaydi).
+SECRET_KEY = os.environ.get('LOMBARD_SECRET_KEY', '').strip()
+
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "LOMBARD_SECRET_KEY muhit o'zgaruvchisi berilmagan. "
+            "Ishlab chiqarish rejimida (LOMBARD_DEBUG=0) maxfiy kalit majburiy — "
+            "WSGI faylida os.environ['LOMBARD_SECRET_KEY'] = '...' deb bering.")
+    _kalit_fayl = BASE_DIR / '.secret_key'
+    if _kalit_fayl.exists():
+        SECRET_KEY = _kalit_fayl.read_text(encoding='utf-8').strip()
+    else:
+        from django.core.management.utils import get_random_secret_key
+        SECRET_KEY = get_random_secret_key()
+        _kalit_fayl.write_text(SECRET_KEY, encoding='utf-8')
 
 # Masalan: ['foydalanuvchi.pythonanywhere.com']
 ALLOWED_HOSTS = os.environ.get('LOMBARD_HOSTS', '*').split(',')

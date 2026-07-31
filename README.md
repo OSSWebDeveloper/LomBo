@@ -226,10 +226,20 @@ harflari lotinga o'giriladi, chunki asl shartnomalarda ular aralash yozilgan
    os.environ['LOMBARD_SECRET_KEY'] = '<yangi tasodifiy kalit>'
    ```
    `LOMBARD_DEBUG=0` bo'lganda HTTPS-cookie va boshqa himoya sozlamalari
-   avtomatik yoqiladi. Yangi kalit yaratish:
+   avtomatik yoqiladi. Yangi kalitni **serverning o'zida** yasang (shunda kalit
+   biror joyda nusxalanib qolmaydi):
    ```bash
    python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
    ```
+
+   **Maxfiy kalit kodda saqlanmaydi.** `LOMBARD_DEBUG=0` bo'lib
+   `LOMBARD_SECRET_KEY` berilmasa, sayt ataylab ishga tushmaydi va
+   `ImproperlyConfigured` xatosi chiqadi — ya'ni serverda tasodifan zaif kalit
+   bilan ishlab ketish mumkin emas. Lokal ishlashda (`LOMBARD_DEBUG=1`)
+   o'zgaruvchi shart emas: kalit birinchi ishga tushirishda `.secret_key`
+   faylida yasalib saqlanadi, bu fayl `.gitignore` da — git'ga tushmaydi.
+   Kalitni almashtirish kerak bo'lsa, `.secret_key` ni o'chirsangiz yangisi
+   yasaladi (mavjud sessiyalar bekor bo'ladi, qaytadan kirish talab qilinadi).
 
 8. **Baza va admin**:
    ```bash

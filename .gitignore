@@ -5,6 +5,9 @@ __pycache__/
 venv/
 env/
 
+# Maxfiy kalit (lokal ishlash uchun avtomatik yasaladi)
+.secret_key
+
 # Django
 db.sqlite3
 db.sqlite3.zaxira-*
