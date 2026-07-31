@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Topilmadi{% endblock %}
+{% block content %}
+<div class="card" style="max-width:640px;margin:6vh auto;text-align:center">
+  <div style="font-size:44px">🔎</div>
+  <h1>Sahifa topilmadi</h1>
+  <p class="muted">Siz izlagan sahifa yoki yozuv mavjud emas.</p>
+  <a class="btn btn-primary" href="{% url 'dashboard' %}">Bosh sahifaga qaytish</a>
+</div>
+{% endblock %}

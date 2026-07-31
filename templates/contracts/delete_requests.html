@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}O‘chirish so‘rovlari{% endblock %}
+{% block content %}
+
+<h1>O‘chirish so‘rovlari
+  {% if pending_count %}<span class="pill pill-pending">{{ pending_count }} ta kutilmoqda</span>{% endif %}
+</h1>
+
+<div class="card">
+{% if requests %}
+<table>
+  <tr><th>Shartnoma</th><th>So‘ragan ishchi</th><th>Sabab</th>
+      <th>Yuborilgan</th><th>Holat</th><th></th></tr>
+  {% for r in requests %}
+  <tr>
+    <td>
+      <b>№{{ r.contract_number }}</b>
+      <div class="muted">{{ r.contract_info }}</div>
+      {% if r.contract %}
+        <a class="muted" href="{% url 'contract_detail' r.contract.pk %}">ko‘rish →</a>
+      {% endif %}
+    </td>
+    <td>{{ r.requested_by }}</td>
+    <td class="muted">{{ r.reason|default:'—' }}</td>
+    <td class="muted">{{ r.created_at|date:'d.m.Y H:i' }}</td>
+    <td><span class="pill pill-{{ r.status }}">{{ r.get_status_display }}</span>
+      {% if r.decided_at %}<div class="muted">{{ r.decided_at|date:'d.m.Y H:i' }}</div>{% endif %}
+    </td>
+    <td class="right">
+      {% if r.status == 'pending' %}
+      <div class="actions">
+        <form method="post" action="{% url 'delete_request_decide' r.pk 'approve' %}"
+              onsubmit="return confirm('Shartnoma butunlay o‘chiriladi. Tasdiqlaysizmi?')">
+          {% csrf_token %}
+          <button class="btn btn-danger btn-sm" type="submit">Tasdiqlash</button>
+        </form>
+        <form method="post" action="{% url 'delete_request_decide' r.pk 'reject' %}">
+          {% csrf_token %}
+          <button class="btn btn-secondary btn-sm" type="submit">Rad etish</button>
+        </form>
+      </div>
+      {% else %}<span class="muted">—</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+  <div class="empty"><span class="icon">✅</span>Hozircha so‘rovlar yo‘q.</div>
+{% endif %}
+</div>
+
+{% endblock %}

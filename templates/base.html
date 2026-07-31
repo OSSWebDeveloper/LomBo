@@ -1,0 +1,156 @@
+{% load statik_versiya %}<!doctype html>
+<html lang="uz" data-style="klassik" data-mode="kun">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Lombard{% endblock %}</title>
+<script>
+/* Sahifa chizilishidan oldin saqlangan stil/rejimni qo'llash (miltillashning oldini oladi) */
+(function(){
+  try{
+    var s = localStorage.getItem('lombard-style') || 'klassik';
+    var m = localStorage.getItem('lombard-mode')  || 'kun';
+    document.documentElement.setAttribute('data-style', s);
+    document.documentElement.setAttribute('data-mode', m);
+  }catch(e){}
+})();
+</script>
+<link rel="stylesheet" href="{% statik 'css/app.css' %}">
+</head>
+<body>
+
+{% comment %}«with-nav» — yon panel bo'lgandagina ikki ustunli tartib qo'llanadi{% endcomment %}
+{% comment %}Bildirishnomalar — o'ng yuqori burchakda{% endcomment %}
+<div class="toasts" id="toasts" role="status" aria-live="polite">
+  {% for m in messages %}
+    <div class="toast toast-{{ m.tags }}" data-turi="{{ m.tags }}">
+      <span class="toast-belgi" aria-hidden="true"></span>
+      <span class="toast-matn">{{ m }}</span>
+      <button type="button" class="toast-yopish" aria-label="Yopish">&times;</button>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="shell{% if user.is_authenticated %} with-nav{% endif %}">
+{% if user.is_authenticated %}
+<nav class="nav">
+  <a class="brand" href="{% url 'dashboard' %}"><span class="dot"></span>Lombard</a>
+
+  <div class="nav-links">
+    <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="on"{% endif %}>Bosh sahifa</a>
+    <a href="{% url 'contract_list' %}" {% if request.resolver_match.url_name == 'contract_list' %}class="on"{% endif %}>Shartnomalar</a>
+    <a href="{% url 'contract_create' %}" {% if request.resolver_match.url_name == 'contract_create' %}class="on"{% endif %}>+ Yangi</a>
+    {% if user.is_boshliq %}
+      <a href="{% url 'worker_list' %}" {% if request.resolver_match.url_name == 'worker_list' %}class="on"{% endif %}>Ishchilar</a>
+      <a href="{% url 'delete_requests' %}" {% if request.resolver_match.url_name == 'delete_requests' %}class="on"{% endif %}>So‘rovlar</a>
+      <a href="{% url 'monitoring' %}" {% if request.resolver_match.url_name == 'monitoring' %}class="on"{% endif %}>Monitoring</a>
+      <a href="{% url 'amallar' %}" {% if request.resolver_match.url_name == 'amallar' %}class="on"{% endif %}>Tarix</a>
+      {% if user.shablon_vakolati %}
+        <a href="{% url 'shablon_list' %}" {% if request.resolver_match.url_name == 'shablon_list' %}class="on"{% endif %}>Shablonlar</a>
+      {% endif %}
+    {% endif %}
+    {% if user.is_superuser %}<a href="/admin/">Admin</a>{% endif %}
+  </div>
+
+  <div class="nav-tools">
+    <div class="switcher">
+      <select class="style-select" id="style-select" title="Sayt uslubi" aria-label="Sayt uslubi">
+        <option value="klassik">Klassik</option>
+        <option value="zamonaviy">Zamonaviy</option>
+        <option value="ixcham">Ixcham</option>
+      </select>
+      <button type="button" class="mode-btn" id="mode-btn"
+              title="Kunduzgi / tungi rejim" aria-label="Rejimni almashtirish">☀️</button>
+    </div>
+    <div class="who">
+      <b>{{ user.get_full_name|default:user.username }}</b>
+      <span class="badge {% if user.is_boshliq %}badge-boss{% else %}badge-worker{% endif %}">
+        {% if user.is_boshliq %}Boshliq{% else %}Ishchi{% endif %}</span>
+    </div>
+    <form method="post" action="{% url 'logout' %}" class="inline">
+      {% csrf_token %}<button class="btn-link" type="submit">Chiqish</button>
+    </form>
+  </div>
+</nav>
+{% endif %}
+
+<main class="main">
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+</div>
+
+<script>
+(function(){
+  var root = document.documentElement;
+
+  function applyMode(m){
+    root.setAttribute('data-mode', m);
+    document.querySelectorAll('.mode-btn').forEach(function(b){
+      b.textContent = (m === 'tun') ? '🌙' : '☀️';
+    });
+    try{ localStorage.setItem('lombard-mode', m); }catch(e){}
+  }
+  function applyStyle(s){
+    root.setAttribute('data-style', s);
+    document.querySelectorAll('.style-select').forEach(function(sel){ sel.value = s; });
+    try{ localStorage.setItem('lombard-style', s); }catch(e){}
+  }
+
+  // Saqlangan holatni tugmalarga moslash
+  applyMode(root.getAttribute('data-mode') || 'kun');
+  applyStyle(root.getAttribute('data-style') || 'klassik');
+
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.mode-btn');
+    if (!btn) return;
+    applyMode(root.getAttribute('data-mode') === 'tun' ? 'kun' : 'tun');
+  });
+  document.addEventListener('change', function(e){
+    if (e.target.classList.contains('style-select')) applyStyle(e.target.value);
+  });
+
+  // Jadvallarni tor ekranda gorizontal siljitiladigan qilish
+  document.querySelectorAll('.card > table').forEach(function(t){
+    var wrap = document.createElement('div');
+    wrap.className = 'table-wrap';
+    t.parentNode.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
+
+  // ---- Bildirishnomalar ----
+  function toastYop(el){
+    el.classList.add('ketmoqda');
+    setTimeout(function(){ el.remove(); }, 220);
+  }
+  document.querySelectorAll('#toasts .toast').forEach(function(el){
+    el.querySelector('.toast-yopish').addEventListener('click', function(){ toastYop(el); });
+    // Xato xabari o'zi yo'qolmaydi — foydalanuvchi o'qib yopadi
+    if (el.dataset.turi !== 'error'){
+      setTimeout(function(){ if (el.isConnected) toastYop(el); }, 5000);
+    }
+  });
+
+  // Boshqa joydan ham chaqirish uchun
+  window.bildirishnoma = function(matn, turi){
+    var idish = document.getElementById('toasts');
+    if (!idish) return;
+    var el = document.createElement('div');
+    el.className = 'toast toast-' + (turi || 'info');
+    el.dataset.turi = turi || 'info';
+    el.innerHTML = '<span class="toast-belgi" aria-hidden="true"></span>' +
+                   '<span class="toast-matn"></span>' +
+                   '<button type="button" class="toast-yopish" aria-label="Yopish">&times;</button>';
+    el.querySelector('.toast-matn').textContent = matn;
+    el.querySelector('.toast-yopish').addEventListener('click', function(){ toastYop(el); });
+    idish.appendChild(el);
+    if (turi !== 'error'){
+      setTimeout(function(){ if (el.isConnected) toastYop(el); }, 5000);
+    }
+  };
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

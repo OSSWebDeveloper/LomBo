@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Amallar tarixi{% endblock %}
+{% block content %}
+
+<h1>Amallar tarixi <span class="muted">({{ jami }} ta yozuv)</span></h1>
+
+<div class="card">
+  <form method="get">
+    <div class="grid">
+      <div class="field">
+        <label for="kim">Kim</label>
+        <select name="kim" id="kim" class="form-select">
+          <option value="">— Barchasi —</option>
+          {% for u in foydalanuvchilar %}
+            <option value="{{ u.pk }}" {% if tanlangan.kim == u.pk|stringformat:'s' %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="amal">Amal turi</label>
+        <select name="amal" id="amal" class="form-select">
+          <option value="">— Barchasi —</option>
+          {% for kod, nom in amal_turlari %}
+            <option value="{{ kod }}" {% if tanlangan.amal == kod %}selected{% endif %}>{{ nom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="sanadan">Sanadan</label>
+        <input type="date" name="sanadan" id="sanadan" class="form-control"
+               value="{{ tanlangan.sanadan }}">
+      </div>
+      <div class="field">
+        <label for="sanagacha">Sanagacha</label>
+        <input type="date" name="sanagacha" id="sanagacha" class="form-control"
+               value="{{ tanlangan.sanagacha }}">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" type="submit">Filtrlash</button>
+      <a class="btn btn-secondary btn-sm" href="{% url 'amallar' %}">Tozalash</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+{% if amallar %}
+<table>
+  <tr><th>Vaqt</th><th>Kim</th><th>Amal</th><th>Nimaga</th><th>Izoh</th></tr>
+  {% for a in amallar %}
+  <tr>
+    <td class="muted" style="white-space:nowrap">{{ a.vaqt|date:'d.m.Y H:i' }}</td>
+    <td>
+      {{ a.kim_nomi }}
+      {% if a.kim_roli %}
+        <span class="badge {% if a.kim_roli == 'boshliq' %}badge-boss{% else %}badge-worker{% endif %}">
+          {{ a.kim_roli }}</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if a.amal == 'shartnoma_yaratdi' %}<span class="pill pill-active">{{ a.get_amal_display }}</span>
+      {% elif a.amal == 'shartnoma_ochirdi' or a.amal == 'ishchi_ochirdi' or a.amal == 'sorov_tasdiqladi' %}<span class="pill pill-rejected">{{ a.get_amal_display }}</span>
+      {% elif a.amal == 'sorov_yubordi' %}<span class="pill pill-pending">{{ a.get_amal_display }}</span>
+      {% else %}<span class="pill pill-approved">{{ a.get_amal_display }}</span>{% endif %}
+    </td>
+    <td>{{ a.obyekt|default:'—' }}</td>
+    <td class="muted">{{ a.izoh|default:'' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% if jami > 300 %}
+  <p class="muted">Oxirgi 300 ta yozuv ko‘rsatildi. Aniqroq natija uchun filtrdan foydalaning.</p>
+{% endif %}
+{% else %}
+  <div class="empty"><span class="icon">🕘</span>Yozuv topilmadi.</div>
+{% endif %}
+</div>
+
+{% endblock %}

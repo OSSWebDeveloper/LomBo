@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Word shablonlari{% endblock %}
+{% block content %}
+
+<div class="section-title">
+  <h1 style="margin:0">Word shablonlari</h1>
+  <div class="actions">
+    <label for="usul" style="margin:0;white-space:nowrap">Usul:</label>
+    <select id="usul" class="form-select" style="max-width:270px">
+      <option value="ochish">Ochish (onlayn tahrirlash)</option>
+      <option value="fayl">Word fayl orqali (yuklab olish / almashtirish)</option>
+    </select>
+  </div>
+</div>
+
+<div class="alert alert-warning">
+  <b>Ehtiyot bo‘ling.</b> Shablon — barcha yangi shartnomalar shundan yasaladigan
+  asos. Yuqoridagi <b>Usul</b> ro‘yxatidan o‘zingizga qulayini tanlang:
+  <br>
+  <b>Ochish</b> — matnni to‘g‘ridan-to‘g‘ri brauzerda tahrirlash.
+  <b>Word fayl orqali</b> — shablonni yuklab olib, Word’da tahrirlab, qaytarib yuklash.
+  <br>
+  <code>{% verbatim %}{{ fio }}{% endverbatim %}</code> kabi belgilarga tegmang —
+  mijoz ma’lumotlari aynan o‘sha joylarga yoziladi. Har ikki usulda ham
+  saqlashdan oldin tizim shablonni tekshiradi, xato bo‘lsa qabul qilmaydi.
+  Eski nusxa har safar zaxiraga saqlanadi.
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Shartnoma turi</th><th>Fayl</th><th class="num">Hajmi</th>
+        <th>Oxirgi o‘zgarish</th><th></th></tr>
+    {% for s in shablonlar %}
+    <tr>
+      <td><b>{{ s.nom }}</b></td>
+      <td class="muted">{{ s.fayl }}</td>
+      <td class="num">{% if s.mavjud %}{{ s.hajmi }} KB{% else %}—{% endif %}</td>
+      <td class="muted">
+        {% if s.ozgartirilgan %}{{ s.ozgartirilgan|date:'d.m.Y H:i' }}
+        {% else %}<span class="pill pill-rejected">fayl yo‘q</span>{% endif %}
+      </td>
+      <td class="right">
+        {% if s.mavjud %}
+        <div class="actions" style="justify-content:flex-end">
+          <a class="btn btn-primary btn-sm usul-ochish"
+             href="{% url 'shablon_edit' s.turi %}">Ochish</a>
+          <a class="btn btn-secondary btn-sm usul-yuklab hidden"
+             href="{% url 'shablon_download' s.turi %}">⬇ Yuklab olish</a>
+          <form method="post" action="{% url 'shablon_upload' s.turi %}"
+                enctype="multipart/form-data" class="actions usul-fayl hidden"
+                onsubmit="return confirm('«{{ s.nom }}» shabloni almashtiriladi. Davom etasizmi?')">
+            {% csrf_token %}
+            <input type="file" name="shablon" accept=".docx" required
+                   class="form-control" style="max-width:190px">
+            <button class="btn btn-primary btn-sm" type="submit">Almashtirish</button>
+          </form>
+        </div>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% if zaxiralar %}
+<div class="card">
+  <h2 style="margin-top:0">Zaxira nusxalar</h2>
+  <p class="muted">Har bir almashtirishdan oldin eski shablon shu papkaga
+    saqlanadi: <code>contracts/shablonlar/zaxira/</code></p>
+  <table>
+    <tr><th>Fayl</th><th>Saqlangan vaqt</th></tr>
+    {% for z in zaxiralar %}
+    <tr><td class="muted">{{ z.nom }}</td>
+        <td class="muted">{{ z.vaqt|date:'d.m.Y H:i' }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<script>
+// Bitta umumiy ro'yxat — barcha qatorlarga birdan ta'sir qiladi.
+// «Fayl» rejimida yuklab olish va almashtirish birga ko'rinadi.
+(function(){
+  var tanla = document.getElementById('usul');
+  var korinish = {
+    'ochish': ['.usul-ochish'],
+    'fayl':   ['.usul-yuklab', '.usul-fayl']
+  };
+  var barchasi = ['.usul-ochish', '.usul-yuklab', '.usul-fayl'];
+
+  function yangila(){
+    var koriniadigan = korinish[tanla.value] || [];
+    barchasi.forEach(function(sinf){
+      var yashirin = koriniadigan.indexOf(sinf) === -1;
+      document.querySelectorAll(sinf).forEach(function(el){
+        el.classList.toggle('hidden', yashirin);
+      });
+    });
+    try{ localStorage.setItem('lombard-shablon-usul', tanla.value); }catch(e){}
+  }
+
+  try{
+    var saqlangan = localStorage.getItem('lombard-shablon-usul');
+    if (saqlangan && korinish[saqlangan]) tanla.value = saqlangan;
+  }catch(e){}
+
+  tanla.addEventListener('change', yangila);
+  yangila();
+})();
+</script>
+
+{% endblock %}

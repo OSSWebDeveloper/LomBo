@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Faqat admin panel{% endblock %}
+{% block content %}
+<div class="card" style="max-width:620px;margin:6vh auto;text-align:center">
+  <div style="font-size:44px">⚙️</div>
+  <h1>Bu hisob faqat admin panel uchun</h1>
+  <p class="muted">
+    <b>{{ user.username }}</b> hisobi tizim administratori hisobi — u bilan
+    saytdan foydalanilmaydi. Saytga kirish uchun boshliq yoki ishchi hisobidan
+    foydalaning.
+  </p>
+  <div class="actions" style="justify-content:center;margin-top:18px">
+    <a class="btn btn-primary" href="/admin/">Admin panelga o‘tish</a>
+    <form method="post" action="{% url 'logout' %}" class="inline">
+      {% csrf_token %}
+      <button class="btn btn-secondary" type="submit">Chiqib, boshqa hisob bilan kirish</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

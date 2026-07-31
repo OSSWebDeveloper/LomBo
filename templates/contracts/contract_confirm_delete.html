@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Shartnomani o‘chirish{% endblock %}
+{% block content %}
+
+<h1>Shartnoma №{{ contract.number }} — {% if direct %}o‘chirish{% else %}o‘chirishni so‘rash{% endif %}</h1>
+
+<div class="card">
+  <table>
+    <tr><th style="width:35%">Mijoz</th><td>{{ contract.borrower_fio }}</td></tr>
+    <tr><th>Sana</th><td>{{ contract.date|date:'d.m.Y' }}</td></tr>
+    <tr><th>Summa</th><td>{{ contract.amount|floatformat:0 }} so‘m</td></tr>
+    <tr><th>Ta’minot</th><td>{{ contract.get_collateral_type_display }}</td></tr>
+  </table>
+</div>
+
+{% if direct %}
+  <div class="alert alert-error">
+    ⚠️ Diqqat: shartnoma butunlay o‘chiriladi va uni qaytarib bo‘lmaydi.
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="actions">
+      <button class="btn btn-danger" type="submit">Ha, o‘chirilsin</button>
+      <a class="btn btn-secondary" href="{% url 'contract_detail' contract.pk %}">Bekor qilish</a>
+    </div>
+  </form>
+{% else %}
+  <div class="alert alert-info">
+    Siz ishchi sifatida shartnomani o‘zingiz o‘chira olmaysiz.
+    So‘rov boshlig‘ingizga (<b>{{ boss }}</b>) yuboriladi — u tasdiqlagach shartnoma o‘chiriladi.
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="card">
+      <div class="field">
+        <label for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+        {{ form.reason }}
+        <div class="help">Sababni yozsangiz boshliq tezroq qaror qabul qiladi.</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">So‘rov yuborish</button>
+      <a class="btn btn-secondary" href="{% url 'contract_detail' contract.pk %}">Bekor qilish</a>
+    </div>
+  </form>
+{% endif %}
+
+{% endblock %}

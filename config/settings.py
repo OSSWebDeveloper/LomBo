@@ -1,0 +1,131 @@
+"""
+Django settings — Lombard shartnoma tizimi.
+PythonAnywhere bepul tarifiga mos (SQLite, WhiteNoise'siz oddiy static).
+"""
+
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ============ ISHGA TUSHIRISH REJIMI ============
+# Serverga joylashda quyidagi 3 qatorni o'zgartiring (yoki muhit o'zgaruvchisi bering).
+SECRET_KEY = os.environ.get(
+    'LOMBARD_SECRET_KEY',
+    'django-insecure-2#au_qtg67qki81l+gzl#ao$uf-r&hm1x)qfjufzc9x@i(wkzf')
+
+DEBUG = os.environ.get('LOMBARD_DEBUG', '1') == '1'
+
+# Masalan: ['foydalanuvchi.pythonanywhere.com']
+ALLOWED_HOSTS = os.environ.get('LOMBARD_HOSTS', '*').split(',')
+
+if not DEBUG:
+    # Ishlab chiqarish rejimida himoya avtomatik yoqiladi
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h != '*']
+
+# ============ LOMBARD SOZLAMALARI ============
+# Shartnoma avtomatik raqamlash shu raqamdan boshlanadi.
+# Bazada bundan katta raqam bo'lsa, eng kattasidan davom etadi.
+CONTRACT_START_NUMBER = 200
+
+# Garov shartnomasi o'z alohida raqamlanishiga ega — shu raqamdan boshlanadi.
+# Faqat zargarlik va transport garovida beriladi (kafillikda garov shartnomasi yo'q).
+GAROV_START_NUMBER = 1
+
+# To'lov jadvali («1-илова») Word hujjatga qo'shilsinmi?
+# Asl shartnoma fayllarida bu ilova yo'q edi — shuning uchun hozircha o'chirilgan.
+# Kerak bo'lsa True qiling, kodning qolgan qismi o'zgarmaydi.
+# Eslatma: shartnoma matnida ilovaga havola bor («1-иловасидаги ... Жадвали»да).
+TOLOV_JADVALI_QOSHILSIN = False
+
+# Tashkilot rekvizitlari — Word hujjatlarga shu yerdan qo'yiladi.
+LOMBARD_ORG = {
+    'name': '“Asia Invest Mikromoliya tashkiloti” МЧЖ',
+    'name_short': '“Asia Invest Mikromoliya tashkiloti” МЧЖ',
+    'director_full': 'Самиев Бахриддин Баходирович',
+    'director_short': 'Б.Б.Самиев',
+    'employee_short': 'Б.Т.Хўжаев',
+    'stir': '309268086',
+    'oked': '65220',
+    'account': '20216000005489627001',
+    'bank': '«ASIA ALLIANCE BANK» Бухоро филиали',
+    'bank_name_full': '“Asia Alliance Bank” банкининг Бухоро вилоят филиали',
+    'bank_code': '01095',
+    'address': 'Бухоро шахар Б.Накшбанд кўчаси 153-уй',
+    'phone': '(99891) 415-00-87',
+    'city': 'Бухоро шаҳри',
+}
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'accounts',
+    'contracts',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'accounts.middleware.SaytKirishNazorati',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'config.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'config.wsgi.application'
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+AUTH_USER_MODEL = 'accounts.User'
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 4}},
+]
+
+LANGUAGE_CODE = 'uz'
+TIME_ZONE = 'Asia/Tashkent'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_REDIRECT_URL = 'login'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

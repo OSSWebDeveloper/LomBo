@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+
+<h1>{{ title }}</h1>
+
+<form method="post" id="contract-form">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert-error">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="card">
+    <h2 style="margin-top:0">1. Shartnoma ma'lumotlari</h2>
+    <div class="grid">
+      {% include 'contracts/_field.html' with field=form.number %}
+      {% include 'contracts/_field.html' with field=form.date %}
+      {% include 'contracts/_field.html' with field=form.collateral_type %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">2. Qarz oluvchi</h2>
+    <div class="grid">
+      {% include 'contracts/_field.html' with field=form.borrower_fio %}
+      {% include 'contracts/_field.html' with field=form.passport_region %}
+      {% include 'contracts/_field.html' with field=form.passport_org %}
+      {% include 'contracts/_field.html' with field=form.passport_date %}
+      {% include 'contracts/_field.html' with field=form.passport_number %}
+      {% include 'contracts/_field.html' with field=form.borrower_address %}
+    </div>
+    <div class="help">Barcha matnlar hujjatga qanday yozilishi kerak bo‘lsa — kirill alifbosida
+      kiriting (masalan: Джураева Майсара Ахмедовна).</div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">3. Kredit shartlari</h2>
+    <div class="grid">
+      {% include 'contracts/_field.html' with field=form.amount %}
+      {% include 'contracts/_field.html' with field=form.term_months %}
+      {% include 'contracts/_field.html' with field=form.interest_rate %}
+      {% include 'contracts/_field.html' with field=form.end_date %}
+    </div>
+    <div class="help">Tugash sanasini bo‘sh qoldirsangiz avtomatik hisoblanadi.</div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">4. Ta'minot (garov)</h2>
+    <div class="grid">
+      {% include 'contracts/_field.html' with field=form.garov_number extra_class='garov-field' %}
+      {% include 'contracts/_field.html' with field=form.garov_value extra_class='garov-field' %}
+    </div>
+
+    <!-- ZARGARLIK -->
+    <div id="block-zargarlik" class="collateral-block hidden">
+      <h3>Zargarlik buyumlari jadvali</h3>
+      {{ jewelry.management_form }}
+      <table id="jewelry-table">
+        <tr><th>Nomi (kirillda)</th><th>Soni</th><th>Og‘irligi (gr)</th>
+            <th>Probasi</th><th>Summasi (so‘m)</th><th></th></tr>
+        {% for f in jewelry %}
+        <tr class="jewelry-row">
+          {{ f.id }}
+          <td>{{ f.name }}{% if f.name.errors %}<div class="errors">{{ f.name.errors|striptags }}</div>{% endif %}</td>
+          <td>{{ f.quantity }}</td>
+          <td>{{ f.weight }}</td>
+          <td>{{ f.proba }}</td>
+          <td>{{ f.value }}</td>
+          <td class="right">{% if f.instance.pk %}{{ f.DELETE }}<span class="muted">o‘chirish</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <div class="actions" style="margin-top:10px">
+        <button type="button" class="btn btn-secondary btn-sm" id="add-jewelry">+ Qator qo‘shish</button>
+        <span class="muted">Jami summa garov bahosiga yoziladi.</span>
+      </div>
+    </div>
+
+    <!-- TRANSPORT -->
+    <div id="block-transport" class="collateral-block hidden">
+      <h3>Transport vositasi</h3>
+      <div class="grid">
+        {% for f in vehicle %}
+        <div class="field">
+          <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {% if f.help_text %}<div class="help">{{ f.help_text }}</div>{% endif %}
+          {% if f.errors %}<div class="errors">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- KAFILLIK -->
+    <div id="block-kafillik" class="collateral-block hidden">
+      <h3>Ish haqi kafilligi</h3>
+      <div class="grid">
+        {% for f in guarantor %}
+        <div class="field">
+          <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {% if f.errors %}<div class="errors">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="help">Kafillikda garov shartnomasi va baholash dalolatnomasi chiqmaydi —
+        faqat shartnoma va to‘lov jadvali.</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">Saqlash</button>
+    <a class="btn btn-secondary" href="{% if is_edit %}{% url 'contract_detail' contract.pk %}{% else %}{% url 'dashboard' %}{% endif %}">Bekor qilish</a>
+  </div>
+</form>
+
+<script>
+(function(){
+  var sel = document.getElementById('id_collateral_type');
+  var blocks = {
+    'zargarlik': document.getElementById('block-zargarlik'),
+    'transport': document.getElementById('block-transport'),
+    'kafillik':  document.getElementById('block-kafillik')
+  };
+  var garovFields = document.querySelectorAll('.garov-field');
+
+  // Yashirilgan blokdagi maydonlar o'chiriladi. Aks holda ular «required» bo'lib
+  // qolib, brauzer formani jimgina bloklaydi (ko'rinmaydigan maydonga xato
+  // xabarini chiqara olmaydi). Yashirin xizmat maydonlariga tegilmaydi —
+  // ular formset boshqaruvi uchun kerak.
+  function blokMaydonlari(blok, ochirilsin){
+    blok.querySelectorAll('input, select, textarea').forEach(function(inp){
+      if (inp.type === 'hidden') return;
+      inp.disabled = ochirilsin;
+    });
+  }
+
+  function toggle(){
+    var v = sel.value;
+    for (var k in blocks){
+      var yashirin = (k !== v);
+      blocks[k].classList.toggle('hidden', yashirin);
+      blokMaydonlari(blocks[k], yashirin);
+    }
+    // Kafillikda garov raqami/bahosi kerak emas
+    garovFields.forEach(function(el){ el.classList.toggle('hidden', v === 'kafillik'); });
+  }
+  sel.addEventListener('change', toggle);
+  toggle();
+
+  // Zargarlik: yangi qator qo'shish
+  var addBtn = document.getElementById('add-jewelry');
+  if (addBtn){
+    addBtn.addEventListener('click', function(){
+      var total = document.getElementById('id_jewelry-TOTAL_FORMS');
+      var table = document.getElementById('jewelry-table');
+      var rows = table.querySelectorAll('.jewelry-row');
+      var last = rows[rows.length - 1];
+      var clone = last.cloneNode(true);
+      var idx = parseInt(total.value, 10);
+      clone.querySelectorAll('input, select').forEach(function(inp){
+        if (inp.name) inp.name = inp.name.replace(/-\d+-/, '-' + idx + '-');
+        if (inp.id)   inp.id   = inp.id.replace(/-\d+-/, '-' + idx + '-');
+        if (inp.type === 'checkbox') inp.checked = false;
+        else if (inp.name && inp.name.indexOf('proba') === -1) inp.value = '';
+      });
+      table.appendChild(clone);
+      total.value = idx + 1;
+    });
+  }
+
+  // ---- Garov bahosi: zargarlikda jadvaldan avtomatik yig'iladi ----
+  var garovValue = document.getElementById('id_garov_value');
+
+  function sumJewelry(){
+    if (!garovValue || sel.value !== 'zargarlik') return;
+    var total = 0;
+    document.querySelectorAll('#jewelry-table input[name$="-value"]').forEach(function(i){
+      var v = parseFloat(i.value); if (!isNaN(v)) total += v;
+    });
+    garovValue.value = total > 0 ? total : '';
+  }
+
+  function garovBahoHolati(){
+    if (!garovValue) return;
+    var avto = sel.value === 'zargarlik';
+    garovValue.readOnly = avto;          // zargarlikda qo'lda yozib bo'lmaydi
+    garovValue.classList.toggle('avto-maydon', avto);
+    if (avto) sumJewelry();
+  }
+
+  document.addEventListener('input', function(e){
+    if (e.target.name && e.target.name.indexOf('-value') > -1) sumJewelry();
+  });
+  sel.addEventListener('change', garovBahoHolati);
+  garovBahoHolati();
+
+  // ---- Tugash sanasi: sana + muddatdan hisoblanadi (maydon qulflangan) ----
+  var dateF = document.getElementById('id_date'),
+      termF = document.getElementById('id_term_months'),
+      endF  = document.getElementById('id_end_date');
+  function calcEnd(){
+    if (!dateF || !termF || !endF || !dateF.value || !termF.value) return;
+    var oy = parseInt(termF.value, 10);
+    if (isNaN(oy) || oy < 1) return;
+    var d = new Date(dateF.value);
+    var kun = d.getDate();
+    d.setMonth(d.getMonth() + oy);
+    if (d.getDate() !== kun) d.setDate(0);   // oy oxiridan oshib ketmasin
+    d.setDate(d.getDate() - 1);
+    endF.value = d.getFullYear() + '-' +
+                 String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                 String(d.getDate()).padStart(2, '0');
+  }
+  if (dateF && termF && endF){
+    dateF.addEventListener('change', calcEnd);
+    termF.addEventListener('change', calcEnd);
+    termF.addEventListener('input', calcEnd);
+    calcEnd();
+  }
+
+  // ---- Zargarlikda birinchi qator to'ldirilishi shart ----
+  function birinchiQatorMajburiy(){
+    var majburiy = ['name', 'quantity', 'weight', 'value'];
+    majburiy.forEach(function(maydon){
+      var el = document.querySelector('[name="jewelry-0-' + maydon + '"]');
+      if (el) el.required = (sel.value === 'zargarlik');
+    });
+  }
+  sel.addEventListener('change', birinchiQatorMajburiy);
+  birinchiQatorMajburiy();
+
+  // ---- Enter formani yubormasin, keyingi maydonga o'tsin ----
+  var forma = document.getElementById('contract-form');
+  forma.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter') return;
+    var t = e.target;
+    if (t.tagName === 'TEXTAREA' || t.type === 'submit' || t.type === 'button') return;
+    e.preventDefault();
+    var maydonlar = Array.prototype.filter.call(
+      forma.querySelectorAll('input, select, textarea'),
+      function(el){ return !el.disabled && el.type !== 'hidden' && el.offsetParent !== null; });
+    var i = maydonlar.indexOf(t);
+    if (i > -1 && i + 1 < maydonlar.length) maydonlar[i + 1].focus();
+  });
+
+  // ---- Saqlashda: to'ldirilmagan maydonga fokus va qizil ramka ----
+  forma.addEventListener('submit', function(e){
+    forma.classList.add('tekshirildi');
+    if (forma.checkValidity()) return;
+    e.preventDefault();
+    var xato = forma.querySelector(':invalid');
+    if (!xato) return;
+    // Yashiringan blokda bo'lsa — avval o'sha blokni ochamiz
+    var blok = xato.closest('.collateral-block');
+    if (blok && blok.classList.contains('hidden')) {
+      sel.focus();
+      return;
+    }
+    xato.scrollIntoView({block: 'center', behavior: 'smooth'});
+    try { xato.focus({preventScroll: true}); } catch (err) { xato.focus(); }
+    xato.classList.add('xato-chaqnash');
+    setTimeout(function(){ xato.classList.remove('xato-chaqnash'); }, 1500);
+  });
+
+  // Foydalanuvchi to'ldira boshlagach qizil ramka darrov yo'qolsin
+  forma.addEventListener('input', function(e){
+    if (e.target.checkValidity && e.target.checkValidity()) {
+      e.target.classList.remove('xato-chaqnash');
+    }
+  });
+
+  // ---- Hujjat seriya-raqami: «ae5862145» -> «AE№5862145» ----
+  var KIRILL = {'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H',
+                'О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X'};
+  function hujjatFormatla(qiymat){
+    var s = qiymat.replace(/[\s\-–—_№]+/g, '').toUpperCase()
+                  .replace(/[АВЕКМНОРСТУХ]/g, function(c){ return KIRILL[c]; });
+    var m = s.match(/^([A-Z]{1,3})(\d{0,9})$/);
+    if (!m) return qiymat;
+    return m[2] ? m[1] + '№' + m[2] : m[1];
+  }
+  // ---- IIV bo'lim raqami: faqat son ----
+  var iivF = document.getElementById('id_passport_org');
+  if (iivF){
+    iivF.addEventListener('input', function(){
+      var faqatSon = iivF.value.replace(/\D/g, '');
+      if (faqatSon !== iivF.value){
+        var joy = iivF.selectionStart - (iivF.value.length - faqatSon.length);
+        iivF.value = faqatSon;
+        iivF.setSelectionRange(Math.max(0, joy), Math.max(0, joy));
+      }
+    });
+  }
+
+  var hujjatF = document.getElementById('id_passport_number');
+  if (hujjatF){
+    hujjatF.addEventListener('input', function(){
+      // Kursor oxirida bo'lgandagina formatlaymiz — o'rtasini tahrirlashga xalaqit qilmaslik uchun
+      if (hujjatF.selectionStart !== hujjatF.value.length) return;
+      var yangi = hujjatFormatla(hujjatF.value);
+      if (yangi !== hujjatF.value){
+        hujjatF.value = yangi;
+        hujjatF.setSelectionRange(yangi.length, yangi.length);
+      }
+    });
+    hujjatF.addEventListener('blur', function(){
+      hujjatF.value = hujjatFormatla(hujjatF.value);
+    });
+  }
+})();
+</script>
+{% endblock %}

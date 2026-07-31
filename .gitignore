@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Django
+db.sqlite3
+db.sqlite3.zaxira-*
+staticfiles/
+media/
+*.log
+
+# Shablon zaxiralari (saytdan tahrirlashda avtomatik yasaladi)
+contracts/shablonlar/zaxira/
+
+# Lokal vositalar
+ngrok.exe
+.claude/
+
+# Muharrir / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+~$*.doc*

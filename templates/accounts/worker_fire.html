@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Ishchini bo‘shatish{% endblock %}
+{% block content %}
+
+<h1>{{ worker }} — bo‘shatish</h1>
+
+<div class="card">
+  <p>Bu ishchi <b>{{ worker.contracts_added }}</b> ta shartnoma qo‘shgan,
+     hozirda <b>{{ contracts_count }}</b> tasi bazada mavjud.</p>
+
+  <div class="alert alert-info">
+    <b>Bo‘shatish</b> — tavsiya etiladi: hisob bloklanadi, ishchi tizimga kira olmaydi,
+    lekin uning shartnomalari va statistikasi saqlanib qoladi.<br>
+    <b>Butunlay o‘chirish</b> — hisob bazadan yo‘q qilinadi. Shartnomalar saqlanadi,
+    lekin ularda «kim kiritgan» maydoni bo‘sh qoladi.
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="actions">
+      <button class="btn btn-danger" type="submit" name="mode" value="fire">
+        Bo‘shatish (bloklash)</button>
+      <button class="btn btn-secondary" type="submit" name="mode" value="delete"
+              onclick="return confirm('Hisob butunlay o‘chiriladi. Davom etasizmi?')">
+        Butunlay o‘chirish</button>
+      <a class="btn btn-secondary" href="{% url 'worker_list' %}">Bekor qilish</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

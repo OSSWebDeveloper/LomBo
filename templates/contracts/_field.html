@@ -1,0 +1,7 @@
+{% comment %}Bitta forma maydoni. Ishlatish: {% include 'contracts/_field.html' with field=form.amount %}{% endcomment %}
+<div class="field{% if extra_class %} {{ extra_class }}{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {{ field }}
+  {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+  {% if field.errors %}<div class="errors">{{ field.errors|striptags }}</div>{% endif %}
+</div>

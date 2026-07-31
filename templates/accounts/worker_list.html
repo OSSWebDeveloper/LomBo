@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Ishchilar{% endblock %}
+{% block content %}
+
+<div class="section-title">
+  <h1 style="margin:0">Ishchilar</h1>
+  <a class="btn btn-primary" href="{% url 'worker_create' %}">+ Ishchi qo‘shish</a>
+</div>
+
+<div class="card">
+{% if workers %}
+<table>
+  <tr><th>Ishchi</th><th>Login</th><th class="num">Jami qo‘shgan</th>
+      <th class="num">Hozirgi</th><th class="num">Summa</th><th>Holat</th><th></th></tr>
+  {% for w in workers %}
+  <tr>
+    <td><a href="{% url 'worker_detail' w.pk %}">{{ w.get_full_name|default:w.username }}</a></td>
+    <td class="muted">{{ w.username }}</td>
+    <td class="num"><b>{{ w.contracts_added }}</b></td>
+    <td class="num">{{ w.live_count }}</td>
+    <td class="num">{{ w.live_amount|default:0|floatformat:0 }}</td>
+    <td>{% if w.is_active %}<span class="pill pill-active">faol</span>
+        {% else %}<span class="pill pill-rejected">bo‘shatilgan</span>{% endif %}</td>
+    <td class="right actions">
+      <a class="btn btn-secondary btn-sm" href="{% url 'worker_edit' w.pk %}">Tahrir</a>
+      <a class="btn btn-secondary btn-sm" href="{% url 'worker_password' w.pk %}">Parol</a>
+      <a class="btn btn-danger btn-sm" href="{% url 'worker_fire' w.pk %}">Bo‘shatish</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+  <div class="empty"><span class="icon">👥</span>Hali ishchi qo‘shmagansiz.
+    <a href="{% url 'worker_create' %}">Birinchisini qo‘shing</a></div>
+{% endif %}
+</div>
+
+<div class="muted">
+  Eslatma: bo‘shatilgan ishchi tizimga kira olmaydi, lekin uning shartnomalari va
+  statistikasi saqlanib qoladi.
+</div>
+
+{% endblock %}

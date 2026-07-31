@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Bosh sahifa — Lombard{% endblock %}
+{% block content %}
+
+<h1>Salom, {{ user.get_full_name|default:user.username }}!</h1>
+
+{% if is_boss %}
+  <div class="stats">
+    <div class="stat accent">
+      <div class="label">Jami shartnomalar</div>
+      <div class="value">{{ contracts_count }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Ishchilar</div>
+      <div class="value">{{ workers_count }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Umumiy summa</div>
+      <div class="value sm">{{ total_amount|floatformat:0 }} so‘m</div>
+    </div>
+    <div class="stat {% if pending_count %}warn{% endif %}">
+      <div class="label">Kutilayotgan so‘rovlar</div>
+      <div class="value">{{ pending_count }}</div>
+    </div>
+  </div>
+
+  {% if pending_requests %}
+  <div class="card">
+    <div class="section-title">
+      <h2 style="margin:0">⏳ O‘chirish so‘rovlari</h2>
+      <a class="btn btn-secondary btn-sm" href="{% url 'delete_requests' %}">Hammasi</a>
+    </div>
+    <table>
+      <tr><th>Shartnoma</th><th>So‘ragan</th><th>Sabab</th><th>Vaqt</th><th></th></tr>
+      {% for r in pending_requests %}
+      <tr>
+        <td>№{{ r.contract_number }}</td>
+        <td>{{ r.requested_by }}</td>
+        <td class="muted">{{ r.reason|default:'—' }}</td>
+        <td class="muted">{{ r.created_at|date:'d.m.Y H:i' }}</td>
+        <td class="right"><a class="btn btn-primary btn-sm"
+             href="{% url 'delete_requests' %}">Ko‘rish</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="section-title">
+      <h2 style="margin:0">Eng faol ishchilar</h2>
+      <a class="btn btn-secondary btn-sm" href="{% url 'monitoring' %}">Monitoring</a>
+    </div>
+    {% if top_workers %}
+    <table>
+      <tr><th>Ishchi</th><th class="num">Jami qo‘shgan</th><th class="num">Hozirgi</th></tr>
+      {% for w in top_workers %}
+      <tr>
+        <td><a href="{% url 'worker_detail' w.pk %}">{{ w }}</a>
+          {% if not w.is_active %}<span class="pill pill-rejected">bo‘shatilgan</span>{% endif %}</td>
+        <td class="num">{{ w.contracts_added }}</td>
+        <td class="num">{{ w.live }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+      <div class="empty"><span class="icon">👥</span>Hali ishchi qo‘shilmagan.
+        <a href="{% url 'worker_create' %}">Ishchi qo‘shish</a></div>
+    {% endif %}
+  </div>
+
+{% else %}
+  <div class="stats">
+    <div class="stat accent">
+      <div class="label">Jami qo‘shgan shartnomalarim</div>
+      <div class="value">{{ total_added }}</div>
+      <div class="muted">o‘chirilgani bilan birga</div>
+    </div>
+    <div class="stat">
+      <div class="label">Hozirda mavjud</div>
+      <div class="value">{{ my_count }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Umumiy summa</div>
+      <div class="value sm">{{ my_amount|floatformat:0 }} so‘m</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <a class="btn btn-primary" href="{% url 'contract_create' %}">+ Yangi shartnoma qo‘shish</a>
+  </div>
+
+  {% if my_requests %}
+  <div class="card">
+    <h2 style="margin-top:0">Mening o‘chirish so‘rovlarim</h2>
+    <table>
+      <tr><th>Shartnoma</th><th>Holat</th><th>Yuborilgan</th></tr>
+      {% for r in my_requests %}
+      <tr>
+        <td>№{{ r.contract_number }} — {{ r.contract_info }}</td>
+        <td><span class="pill pill-{{ r.status }}">{{ r.get_status_display }}</span></td>
+        <td class="muted">{{ r.created_at|date:'d.m.Y H:i' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+{% endif %}
+
+<div class="card">
+  <div class="section-title">
+    <h2 style="margin:0">Oxirgi shartnomalar</h2>
+    <a class="btn btn-secondary btn-sm" href="{% url 'contract_list' %}">Hammasi</a>
+  </div>
+  {% if recent %}
+  <table>
+    <tr><th>№</th><th>Sana</th><th>Mijoz</th><th>Ta’minot</th>
+      <th class="num">Summa</th>{% if is_boss %}<th>Kim kiritgan</th>{% endif %}<th></th></tr>
+    {% for c in recent %}
+    <tr>
+      <td><b>{{ c.number }}</b></td>
+      <td>{{ c.date|date:'d.m.Y' }}</td>
+      <td>{{ c.borrower_fio }}</td>
+      <td class="muted">{{ c.get_collateral_type_display }}</td>
+      <td class="num">{{ c.amount|floatformat:0 }}</td>
+      {% if is_boss %}<td class="muted">{{ c.created_by|default:'—' }}</td>{% endif %}
+      <td class="right"><a class="btn btn-secondary btn-sm"
+           href="{% url 'contract_detail' c.pk %}">Ochish</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <div class="empty"><span class="icon">📄</span>Hali shartnoma yo‘q.
+      <a href="{% url 'contract_create' %}">Birinchisini qo‘shing</a></div>
+  {% endif %}
+</div>
+
+{% endblock %}

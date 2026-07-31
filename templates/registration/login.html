@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Kirish — Lombard{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-title">🏦 Lombard</div>
+    <div class="login-sub">Shartnomalar tizimiga kirish</div>
+
+    {% if form.errors %}
+      <div class="alert alert-error">
+        {% for xato in form.non_field_errors %}{{ xato }}{% empty %}
+          Login yoki parol noto‘g‘ri.
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_username">Login</label>
+        <input type="text" name="username" id="id_username" class="form-control" autofocus required>
+      </div>
+      <div class="field">
+        <label for="id_password">Parol</label>
+        <input type="password" name="password" id="id_password" class="form-control" required>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" type="submit">Kirish</button>
+    </form>
+  </div>
+
+  <div class="login-tools">
+    <select class="style-select" title="Sayt uslubi" aria-label="Sayt uslubi">
+      <option value="klassik">Klassik</option>
+      <option value="zamonaviy">Zamonaviy</option>
+      <option value="ixcham">Ixcham</option>
+    </select>
+    <button type="button" class="mode-btn" title="Kunduzgi / tungi rejim"
+            aria-label="Rejimni almashtirish">☀️</button>
+  </div>
+</div>
+{% endblock %}

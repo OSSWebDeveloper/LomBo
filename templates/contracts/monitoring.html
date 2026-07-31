@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Monitoring{% endblock %}
+{% block content %}
+
+<h1>Monitoring</h1>
+
+<div class="stats">
+  <div class="stat accent">
+    <div class="label">Jami shartnomalar</div>
+    <div class="value">{{ total_count }}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Umumiy summa</div>
+    <div class="value sm">{{ total_amount|floatformat:0 }} so‘m</div>
+  </div>
+  <div class="stat {% if pending_deletes %}warn{% endif %}">
+    <div class="label">Kutilayotgan o‘chirish so‘rovlari</div>
+    <div class="value">{{ pending_deletes }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Ishchilar kesimida</h2>
+  {% if workers %}
+  <table>
+    <tr><th>Ishchi</th><th class="num">Jami qo‘shgan</th><th class="num">Hozirgi</th>
+        <th class="num">Summa</th><th>Holat</th><th></th></tr>
+    {% for w in workers %}
+    <tr>
+      <td>{{ w }}</td>
+      <td class="num"><b>{{ w.contracts_added }}</b></td>
+      <td class="num">{{ w.live_count }}</td>
+      <td class="num">{{ w.live_amount|default:0|floatformat:0 }}</td>
+      <td>{% if w.is_active %}<span class="pill pill-active">faol</span>
+          {% else %}<span class="pill pill-rejected">bo‘shatilgan</span>{% endif %}</td>
+      <td class="right"><a class="btn btn-secondary btn-sm"
+           href="{% url 'worker_detail' w.pk %}">Batafsil</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<div class="empty">Ishchilar yo‘q.</div>{% endif %}
+</div>
+
+<div class="row">
+  <div class="card">
+    <h2 style="margin-top:0">Ta’minot turlari bo‘yicha</h2>
+    <table>
+      <tr><th>Turi</th><th class="num">Soni</th><th class="num">Summa</th></tr>
+      {% for t in by_type %}
+      <tr>
+        <td>{{ t.label }}</td>
+        <td class="num">{{ t.count }}</td>
+        <td class="num">{{ t.sum|floatformat:0 }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="3" class="muted">Ma’lumot yo‘q.</td></tr>{% endfor %}
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Oylar bo‘yicha (oxirgi 12 oy)</h2>
+    <table>
+      <tr><th>Oy</th><th class="num">Soni</th><th class="num">Summa</th></tr>
+      {% for m in by_month %}
+      <tr>
+        <td>{{ m.date__month }}.{{ m.date__year }}</td>
+        <td class="num">{{ m.c }}</td>
+        <td class="num">{{ m.s|floatformat:0 }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="3" class="muted">Ma’lumot yo‘q.</td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+
+{% endblock %}

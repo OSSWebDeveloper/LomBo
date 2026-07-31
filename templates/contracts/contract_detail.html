@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}Shartnoma №{{ contract.number }}{% endblock %}
+{% block content %}
+
+<div class="section-title">
+  <h1 style="margin:0">Shartnoma №{{ contract.number }}
+    {% if contract.status == 'pending_delete' %}
+      <span class="pill pill-pending">o‘chirish so‘ralgan</span>
+    {% endif %}
+  </h1>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Hujjatlar</h2>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'contract_download' contract.pk %}">📄 Word</a>
+    {% if pdf_bor %}
+      <a class="btn btn-secondary" href="{% url 'contract_download_pdf' contract.pk %}">📕 PDF</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if pending_request %}
+<div class="alert alert-warning">
+  ⏳ Bu shartnoma uchun o‘chirish so‘rovi yuborilgan
+  ({{ pending_request.requested_by }} → {{ pending_request.assigned_to }}),
+  javob kutilmoqda.
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="card">
+    <h2 style="margin-top:0">Qarz oluvchi</h2>
+    <table>
+      <tr><th style="width:40%">F.I.Sh.</th><td>{{ contract.borrower_fio }}</td></tr>
+      <tr><th>Hujjat</th><td>{{ contract.passport_number }}</td></tr>
+      <tr><th>Berilgan</th><td>{{ contract.passport_org }} ИИВ,
+        {{ contract.passport_date|date:'d.m.Y' }}</td></tr>
+      <tr><th>Manzil</th><td>{{ contract.borrower_address }}</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Kredit</h2>
+    <table>
+      <tr><th style="width:40%">Summa</th><td><b>{{ contract.amount|floatformat:0 }}</b> so‘m</td></tr>
+      <tr><th>Muddat</th><td>{{ contract.term_months }} oy</td></tr>
+      <tr><th>Yillik foiz</th><td>{{ contract.interest_rate }}%</td></tr>
+      <tr><th>Sanalar</th><td>{{ contract.date|date:'d.m.Y' }} —
+        {{ contract.end_date|date:'d.m.Y' }}</td></tr>
+      <tr><th>Kim kiritgan</th><td>{{ contract.created_by|default:'—' }}
+        <span class="muted">({{ contract.created_at|date:'d.m.Y H:i' }})</span></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Ta’minot — {{ contract.get_collateral_type_display }}</h2>
+
+  {% if contract.collateral_type == 'zargarlik' %}
+    <table>
+      <tr><th>№</th><th>Nomi</th><th class="num">Soni</th><th class="num">Og‘irligi</th>
+          <th class="num">Probasi</th><th class="num">Summasi</th></tr>
+      {% for i in contract.jewelry_items.all %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ i.name }}</td>
+        <td class="num">{{ i.quantity }} та</td>
+        <td class="num">{{ i.weight }} гр</td>
+        <td class="num">{{ i.proba }}</td>
+        <td class="num">{{ i.value|floatformat:0 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">Buyumlar kiritilmagan.</td></tr>
+      {% endfor %}
+    </table>
+    <p><b>Garov bahosi:</b> {{ contract.garov_value|floatformat:0 }} so‘m</p>
+
+  {% elif contract.collateral_type == 'transport' %}
+    <table>
+      <tr><th style="width:40%">Egasi</th><td>{{ contract.vehicle.owner }}</td></tr>
+      {% if contract.vehicle.owner_head %}
+      <tr><th>Rahbari</th><td>{{ contract.vehicle.owner_head }}</td></tr>{% endif %}
+      <tr><th>Davlat raqami</th><td>{{ contract.vehicle.state_number }}</td></tr>
+      <tr><th>Rusumi</th><td>{{ contract.vehicle.model }}</td></tr>
+      <tr><th>Rangi</th><td>{{ contract.vehicle.color }}</td></tr>
+      <tr><th>Kuzov / Shassi</th><td>{{ contract.vehicle.body_number }} /
+        {{ contract.vehicle.chassis_number }}</td></tr>
+      <tr><th>Ishlab chiqarilgan</th><td>{{ contract.vehicle.year }}</td></tr>
+      <tr><th>Texpasport</th><td>{{ contract.vehicle.techpassport }}</td></tr>
+      <tr><th>Garov bahosi</th><td><b>{{ contract.garov_value|floatformat:0 }}</b> so‘m</td></tr>
+    </table>
+
+  {% else %}
+    <table>
+      <tr><th style="width:40%">Kafil</th><td>{{ contract.guarantor.fio }}</td></tr>
+      <tr><th>Kafillik summasi</th><td>{{ contract.guarantor.amount|floatformat:0 }} so‘m</td></tr>
+    </table>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">To‘lov jadvali (1-ilova)</h2>
+  <table>
+    <tr><th>№</th><th>Sana</th><th class="num">Asosiy qarz</th><th class="num">Foiz</th>
+        <th class="num">Jami to‘lov</th><th class="num">Qoldiq</th></tr>
+    {% for n, d, principal, interest, total, remaining in schedule %}
+    <tr>
+      <td>{{ n }}</td>
+      <td>{{ d|date:'d.m.Y' }}</td>
+      <td class="num">{{ principal|floatformat:0 }}</td>
+      <td class="num">{{ interest|floatformat:0 }}</td>
+      <td class="num"><b>{{ total|floatformat:0 }}</b></td>
+      <td class="num">{{ remaining|floatformat:0 }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

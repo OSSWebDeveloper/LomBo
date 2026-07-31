@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}{{ nom }} — shablon{% endblock %}
+{% block content %}
+
+<div class="section-title">
+  <h1 style="margin:0">{{ nom }}</h1>
+  <a class="btn btn-secondary" href="{% url 'shablon_list' %}">← Shablonlar ro‘yxati</a>
+</div>
+
+<div class="alert alert-info">
+  <b>Qanday tahrirlanadi.</b> Oq fonli matnni bosib to‘g‘ridan-to‘g‘ri o‘zgartirasiz.
+  <span class="belgi namuna">{% verbatim %}{{ fio }}{% endverbatim %}</span> kabi rangli belgilar — mijoz
+  ma’lumotlari tushadigan joylar; ular <b>qulflangan</b>, tahrirlab bo‘lmaydi.
+  Kerak bo‘lmasa butunlay o‘chirishingiz mumkin (belgini bir marta bosib,
+  so‘ng Delete). Saqlashdan oldin tizim shablonni tekshiradi.
+</div>
+
+<form method="post" id="shablon-form">
+  {% csrf_token %}
+  <input type="hidden" name="ozgarishlar" id="ozgarishlar" value="{}">
+
+  <div class="card tahrir-idish">
+    {% for x in xatboshilar %}
+    <div class="tahrir-qator">
+      <div class="tahrir-raqam">{{ forloop.counter }}</div>
+      <div class="tahrir" contenteditable="true" spellcheck="false"
+           data-i="{{ x.i }}" data-asl="{{ x.matn }}">{% for b in x.bolaklar %}{% if b.belgi %}<span class="belgi" contenteditable="false">{{ b.matn }}</span>{% else %}{{ b.matn }}{% endif %}{% endfor %}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="tahrir-panel">
+    <span class="muted" id="hisob">O‘zgarish yo‘q</span>
+    <div class="actions">
+      <button class="btn btn-secondary" type="button" id="qaytar">Bekor qilish</button>
+      <button class="btn btn-primary" type="submit" id="saqla" disabled>Saqlash</button>
+    </div>
+  </div>
+</form>
+
+<script>
+(function(){
+  var maydonlar = Array.prototype.slice.call(document.querySelectorAll('.tahrir'));
+  var hisob = document.getElementById('hisob');
+  var saqla = document.getElementById('saqla');
+  var yashirin = document.getElementById('ozgarishlar');
+
+  function matni(el){
+    // Belgilar contenteditable=false span ichida — textContent ularni ham qaytaradi
+    return el.textContent.replace(/ /g, ' ');
+  }
+
+  function hisobla(){
+    var ozgargan = {};
+    maydonlar.forEach(function(el){
+      var yangi = matni(el);
+      if (yangi !== el.dataset.asl){
+        ozgargan[el.dataset.i] = yangi;
+        el.classList.add('ozgargan');
+      } else {
+        el.classList.remove('ozgargan');
+      }
+    });
+    var n = Object.keys(ozgargan).length;
+    yashirin.value = JSON.stringify(ozgargan);
+    saqla.disabled = n === 0;
+    hisob.textContent = n === 0 ? 'O‘zgarish yo‘q'
+                                : n + ' ta qism o‘zgartirildi';
+    hisob.classList.toggle('bor', n > 0);
+  }
+
+  maydonlar.forEach(function(el){
+    el.addEventListener('input', hisobla);
+    // Yopishtirishda formatlash kelmasin — faqat matn
+    el.addEventListener('paste', function(e){
+      e.preventDefault();
+      var matn = (e.clipboardData || window.clipboardData).getData('text');
+      document.execCommand('insertText', false, matn.replace(/\r?\n/g, ' '));
+    });
+    // Enter yangi xatboshi yasamasin
+    el.addEventListener('keydown', function(e){
+      if (e.key === 'Enter') e.preventDefault();
+    });
+  });
+
+  document.getElementById('qaytar').addEventListener('click', function(){
+    if (!confirm('Barcha o‘zgarishlar bekor qilinadi. Davom etasizmi?')) return;
+    location.reload();
+  });
+
+  document.getElementById('shablon-form').addEventListener('submit', function(e){
+    hisobla();
+    if (saqla.disabled){ e.preventDefault(); return; }
+    if (!confirm('Shablon almashtiriladi. Eski nusxa zaxiraga saqlanadi. Davom etasizmi?')){
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('beforeunload', function(e){
+    if (!saqla.disabled){ e.preventDefault(); e.returnValue = ''; }
+  });
+
+  hisobla();
+})();
+</script>
+{% endblock %}
