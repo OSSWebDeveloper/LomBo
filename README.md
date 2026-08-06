@@ -57,6 +57,7 @@ sayt kerak bo'lsa, unga alohida boshliq hisobi yarating.
 | Word yuklab olish | ✅ | ✅ | ✅ |
 | PDF yuklab olish | ✅ | ✅ | ✅ |
 | Shartnomani to'liq tahrirlash | ❌ | ❌ | ✅ |
+| O'zi kiritgan shartnomani tuzatish | ✅ (60 daqiqa ichida) | ❌ | ✅ (muddatsiz) |
 | Shartnomani o'chirish | so'rov orqali | ✅ | ✅ |
 | Ishchi qo'shish/bo'shatish | ❌ | ✅ | ✅ |
 | Monitoring | ❌ | ✅ | ✅ |
@@ -92,7 +93,34 @@ ko'rish kerak bo'lsa, admin paneldagi **Foydalanuvchilar** bo'limi o'sha-o'sha t
 **Ishchilarni** boshliq saytning o'zidan qo'shadi (admin panel kerak emas); qo'shgan
 boshliq avtomatik biriktiriladi va o'chirish so'rovlari o'shanga boradi.
 
+## Ishchining tuzatish muddati
+
+Ishchi shartnomani kiritgach, **60 daqiqa** ichida uni o'zi to'g'rilay oladi:
+shartnoma sahifasida "✏️ Tuzatish" tugmasi turadi va yonida qancha vaqt
+qolgani yozib turiladi. Bu — yangi kiritilgan shartnomadagi xatoni (ism,
+summa, hujjat raqami) darrov tuzatish uchun.
+
+- Muddat **kiritilgan vaqtdan** sanaladi — tuzatish uni cho'zmaydi.
+- Muddat o'tgach tugma yo'qoladi, tahrirlash faqat vakolatli boshliqda qoladi.
+- Ishchi faqat **o'zi kiritgan** shartnomani va faqat u `faol` holatda
+  bo'lgandagina tuzata oladi (o'chirish so'rovi yuborilgani tahrirlanmaydi).
+- Shartnoma raqami, garov raqami va tugash sanasi baribir qulflangan —
+  ular avtomatik hisoblanadi.
+- Har bir tuzatish "Tarix" bo'limiga yoziladi (`Shartnomani o'zgartirdi`,
+  izohda "kiritgandan keyingi tuzatish").
+
+Muddatni `config/settings.py` dagi `ISHCHI_TAHRIR_DAQIQA` o'zgartiradi;
+`0` qo'yilsa ishchi umuman tahrirlay olmaydi.
+
 ## O'chirish oqimi
+
+Boshliq shartnoma sahifasidagi qizil **"🗑 O'chirish"** tugmasi orqali
+istalgan shartnomani o'zi o'chiradi — tasdiqlash sahifasi chiqadi, "Ha,
+o'chirilsin" bosilgach shartnoma butunlay o'chadi va amal tarixga yoziladi.
+
+Ishchida bu tugma yo'q. Uning uchun so'rov oqimi mo'ljallangan (kodda to'liq
+ishlaydi, lekin hozir shartnoma sahifasida "O'chirishni so'rash" tugmasi
+ko'rsatilmayapti — kerak bo'lsa tugmani qaytarish bir necha qatorlik ish):
 
 1. Ishchi shartnoma sahifasida "O'chirishni so'rash" tugmasini bosadi va sabab yozadi.
 2. Shartnoma `o'chirish so'ralgan` holatiga o'tadi, lekin **o'chirilmaydi**.
@@ -152,6 +180,9 @@ bloklarini tahrirlang — qolgan barcha uslublar shu tokenlardan foydalanadi.
 
   Ikkalasi ham bazadagi eng katta raqamdan davom etadi. Raqamni boshqa joydan
   boshlash kerak bo'lsa, birinchi shartnoma kiritilishidan **oldin** o'zgartiring.
+
+- `ISHCHI_TAHRIR_DAQIQA = 60` — ishchi o'zi kiritgan shartnomani necha daqiqa
+  ichida tuzata oladi (qarang: "Ishchining tuzatish muddati"). `0` — o'chiradi.
 
 ### Avtomatik to'ldiriladigan maydonlar
 

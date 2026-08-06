@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load pul %}
 {% block title %}Shartnomani o‘chirish{% endblock %}
 {% block content %}
 
@@ -8,7 +8,7 @@
   <table>
     <tr><th style="width:35%">Mijoz</th><td>{{ contract.borrower_fio }}</td></tr>
     <tr><th>Sana</th><td>{{ contract.date|date:'d.m.Y' }}</td></tr>
-    <tr><th>Summa</th><td>{{ contract.amount|floatformat:0 }} so‘m</td></tr>
+    <tr><th>Summa</th><td>{{ contract.amount|pul }} so‘m</td></tr>
     <tr><th>Ta’minot</th><td>{{ contract.get_collateral_type_display }}</td></tr>
   </table>
 </div>

@@ -5,7 +5,7 @@ from django import forms
 from django.forms import inlineformset_factory
 
 from .docgen import contract_end_date
-from .formatlash import hujjat_raqami
+from .formatlash import hujjat_raqami, pul_matn, pul_son
 from .models import (VILOYATLAR, Contract, GuarantorInfo, JewelryItem, VehicleInfo,
                      next_contract_number, next_garov_number)
 
@@ -14,13 +14,39 @@ class DateInput(forms.DateInput):
     input_type = 'date'
 
 
+class PulInput(forms.TextInput):
+    """Pul summasi «7 000 000» ko'rinishida ko'rsatiladi.
+
+    `type=number` bo'lganda brauzer bo'shliqni qabul qilmaydi — shuning uchun
+    oddiy matn maydoni ishlatiladi, telefonlarda esa raqamli klaviatura
+    chiqishi uchun `inputmode=numeric` qo'yiladi.
+    """
+
+    def __init__(self, attrs=None):
+        birlashgan = {'class': 'form-control pul', 'inputmode': 'numeric',
+                      'autocomplete': 'off'}
+        birlashgan.update(attrs or {})
+        super().__init__(birlashgan)
+
+    def format_value(self, value):
+        return pul_matn(super().format_value(value))
+
+
+class PulField(forms.DecimalField):
+    """«7 000 000» ham, «7000000» ham bir xil qabul qilinadi."""
+    widget = PulInput
+
+    def to_python(self, value):
+        return super().to_python(pul_son(value))
+
+
 class ContractForm(forms.ModelForm):
     class Meta:
         model = Contract
         fields = [
             'number', 'date', 'collateral_type',
             'borrower_fio', 'passport_region', 'passport_org', 'passport_date',
-            'passport_number', 'borrower_address',
+            'passport_number', 'borrower_address', 'borrower_phone', 'monthly_income',
             'amount', 'term_months', 'interest_rate', 'end_date',
             'garov_number', 'garov_value',
         ]
@@ -29,7 +55,13 @@ class ContractForm(forms.ModelForm):
             'passport_date': DateInput(),
             'end_date': DateInput(),
             'borrower_address': forms.TextInput(),
+            'borrower_phone': forms.TextInput(attrs={
+                'inputmode': 'tel', 'autocomplete': 'off',
+                'placeholder': '91 415-00-87', 'maxlength': 25}),
         }
+        # Pul summalari «7 000 000» ko'rinishida yoziladi
+        field_classes = {'amount': PulField, 'garov_value': PulField,
+                         'monthly_income': PulField}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,6 +85,12 @@ class ContractForm(forms.ModelForm):
             self.fields['garov_number'].initial = next_garov_number()
 
         self.fields['garov_value'].required = False
+
+        # Telefon va oylik daromad arizaga tushadi — to'ldirish majburiy.
+        # Modelda bo'sh qolishi mumkin, chunki eski shartnomalarda bu
+        # maydonlar umuman bo'lmagan.
+        self.fields['borrower_phone'].required = True
+        self.fields['monthly_income'].required = True
 
         # Hujjat raqami: AE№2437494 — 10 belgidan ortiq yozib bo'lmaydi
         self.fields['passport_number'].widget.attrs['maxlength'] = 10
@@ -81,6 +119,23 @@ class ContractForm(forms.ModelForm):
     def clean_passport_number(self):
         """«ae5862145» -> «AE№5862145» (seriya va raqam avtomatik ajratiladi)."""
         return hujjat_raqami(self.cleaned_data.get('passport_number', ''))
+
+    def clean_borrower_phone(self):
+        """«+998(91)4150087» ham, «914150087» ham bir xil qabul qilinadi.
+
+        O'zbekiston raqami (9 xona) hujjatdagidek «91 415-00-87» ko'rinishiga
+        keltiriladi; boshqacha yozilgani faqat ortiqcha bo'shliqlardan tozalanadi.
+        """
+        xom = (self.cleaned_data.get('borrower_phone') or '').strip()
+        son = re.sub(r'\D', '', xom)
+        if len(son) == 12 and son.startswith('998'):
+            son = son[3:]
+        if len(son) == 9:
+            return f'{son[:2]} {son[2:5]}-{son[5:7]}-{son[7:]}'
+        if len(son) < 7:
+            raise forms.ValidationError(
+                'Telefon raqamini to‘liq kiriting. Masalan: 91 415-00-87')
+        return re.sub(r'\s+', ' ', xom)
 
     def clean(self):
         data = super().clean()
@@ -123,11 +178,14 @@ class JewelryItemForm(forms.ModelForm):
     class Meta:
         model = JewelryItem
         fields = ['name', 'quantity', 'weight', 'proba', 'value']
+        field_classes = {'value': PulField}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'form-control form-control-sm')
+        # Jadval katagidagi pul maydoni ham kichik o'lchamda bo'lsin
+        self.fields['value'].widget.attrs['class'] = 'form-control form-control-sm pul'
 
 
 JewelryFormSet = inlineformset_factory(
@@ -157,6 +215,7 @@ class GuarantorForm(forms.ModelForm):
     class Meta:
         model = GuarantorInfo
         exclude = ['contract']
+        field_classes = {'amount': PulField}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

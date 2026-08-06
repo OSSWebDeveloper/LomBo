@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -34,6 +35,36 @@ def _boss_required(user):
 def _can_view_contract(user, contract):
     """Ishchi faqat o'zinikini, boshliq hammasini ko'radi."""
     return user.is_boshliq or contract.created_by_id == user.id
+
+
+def _tahrir_huquqi(user, contract):
+    """Kim tahrirlay oladi.
+
+    Vakolatli boshliq — istalgan shartnomani, istalgan vaqtda.
+    Ishchi — faqat o'zi endigina kiritgan shartnomani (ISHCHI_TAHRIR_DAQIQA).
+    """
+    return bool(user.is_superuser
+                or (user.is_boshliq and user.can_full_edit)
+                or contract.ishchi_tahrirlay_oladi(user))
+
+
+def _tahrir_rad_sababi(user, contract):
+    """Tahrirlab bo'lmasa — foydalanuvchiga nima qilishini aytadigan izoh."""
+    if user.is_boshliq:
+        return ("Shartnomani to'liq tahrirlash uchun maxsus vakolat kerak. "
+                "Vakolatni administrator admin panel orqali beradi.")
+    if contract.created_by_id != user.id:
+        return 'Bu shartnoma sizga tegishli emas.'
+    if contract.status != Contract.STATUS_ACTIVE:
+        return ("Bu shartnoma uchun o'chirish so'rovi yuborilgan — "
+                "boshliq javob bergunicha uni o'zgartirib bo'lmaydi.")
+    daqiqa = getattr(settings, 'ISHCHI_TAHRIR_DAQIQA', 0)
+    if not daqiqa:
+        return ("Shartnomani tahrirlash ishchilar uchun yopilgan. "
+                "O'zgartirish uchun boshlig'ingizga murojaat qiling.")
+    return (f"Shartnomani faqat kiritilgandan keyingi {daqiqa} daqiqa ichida "
+            f"tuzatish mumkin, bu muddat o'tib ketdi. "
+            f"O'zgartirish uchun boshlig'ingizga murojaat qiling.")
 
 
 def _garov_bahosini_yangila(contract):
@@ -183,13 +214,13 @@ def contract_create(request):
 
 @login_required
 def contract_edit(request, pk):
-    """To'liq tahrirlash — faqat maxsus vakolatli boshliq."""
+    """Tahrirlash — vakolatli boshliq yoki shartnomani endigina kiritgan ishchi."""
     contract = get_object_or_404(Contract, pk=pk)
-    if not (request.user.is_superuser or
-            (request.user.is_boshliq and request.user.can_full_edit)):
-        raise PermissionDenied(
-            "Shartnomani to'liq tahrirlash uchun maxsus vakolat kerak. "
-            "Vakolatni administrator admin panel orqali beradi.")
+    if not _tahrir_huquqi(request.user, contract):
+        raise PermissionDenied(_tahrir_rad_sababi(request.user, contract))
+    # Ishchining tuzatishi: muddat GET va POST'da alohida tekshiriladi,
+    # ya'ni forma ochiq turganda muddat tugasa saqlab bo'lmaydi.
+    ishchi_tahriri = request.user.is_ishchi
 
     data = request.POST or None
     form = ContractForm(data, instance=contract)
@@ -241,16 +272,20 @@ def contract_edit(request, pk):
                 soni += len(vehicle.changed_data)
             elif tur == Contract.TYPE_KAFILLIK:
                 soni += len(guarantor.changed_data)
-            amal_yoz(request.user, Amal.OZGARTIRDI, f'Shartnoma №{contract.number}',
-                     f'{soni} ta qism o\'zgartirildi')
+            izoh = f'{soni} ta qism o\'zgartirildi'
+            if ishchi_tahriri:
+                izoh += ' (kiritgandan keyingi tuzatish)'
+            amal_yoz(request.user, Amal.OZGARTIRDI, f'Shartnoma №{contract.number}', izoh)
             messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi.')
             return redirect('contract_detail', pk=contract.pk)
         messages.error(request, 'Formada xatolar bor.')
 
     return render(request, 'contracts/contract_form.html', {
         'form': form, 'jewelry': jewelry, 'vehicle': vehicle, 'guarantor': guarantor,
-        'title': f"Shartnoma №{contract.number} — to'liq tahrirlash",
+        'title': (f"Shartnoma №{contract.number} — tuzatish" if ishchi_tahriri
+                  else f"Shartnoma №{contract.number} — to'liq tahrirlash"),
         'is_edit': True, 'contract': contract,
+        'tahrir_qoldiq': contract.tahrir_qoldiq_daqiqa if ishchi_tahriri else 0,
     })
 
 
@@ -260,12 +295,16 @@ def contract_detail(request, pk):
         Contract.objects.select_related('created_by'), pk=pk)
     if not _can_view_contract(request.user, contract):
         raise PermissionDenied('Bu shartnoma sizga tegishli emas.')
-    can_edit = request.user.is_superuser or (
-        request.user.is_boshliq and request.user.can_full_edit)
+    can_edit = _tahrir_huquqi(request.user, contract)
+    ishchi_tuzatishi = contract.ishchi_tahrirlay_oladi(request.user)
     pending = contract.delete_requests.filter(
         status=DeleteRequest.STATUS_PENDING).first()
     return render(request, 'contracts/contract_detail.html', {
         'contract': contract, 'can_edit': can_edit,
+        # O'chirish tugmasi faqat boshliqda: ishchining o'chirish so'rovi
+        # oqimi hozircha saytda ochilmagan (qarang: contract_delete).
+        'can_delete': request.user.is_boshliq,
+        'tahrir_qoldiq': contract.tahrir_qoldiq_daqiqa if ishchi_tuzatishi else 0,
         'schedule': payment_schedule(contract),
         'pending_request': pending,
         'pdf_bor': pdf_imkoni_bor(),
@@ -542,8 +581,10 @@ def _barcha_xatboshilar(doc):
 
 
 def _sinov_konteksti():
-    nomlar = ['raqam', 'garov_raqam', 'sana', 'tugash', 'muddat', 'muddat_soz',
-              'foiz', 'foiz_soz', 'summa', 'fio', 'pasport', 'manzil',
+    nomlar = ['raqam', 'garov_raqam', 'sana', 'sana_soz', 'tugash', 'muddat',
+              'muddat_soz', 'foiz', 'foiz_soz', 'summa', 'fio', 'pasport', 'manzil',
+              'telefon', 'daromad', 'pasport_seriya', 'pasport_soni', 'pasport_sana',
+              'pasport_viloyat', 'pasport_bolim',
               'garov_baho', 'garov_baho_raqam', 'jami_soni', 'jami_ogirligi',
               'kafil', 'kafillik_summa', 'garov_mulki', 'garov_egasi',
               'garov_rahbari', 'garov_rahbari_qisqa', 'summa_raqam_soz',

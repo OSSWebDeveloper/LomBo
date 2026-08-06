@@ -54,6 +54,13 @@ CONTRACT_START_NUMBER = 200
 # Faqat zargarlik va transport garovida beriladi (kafillikda garov shartnomasi yo'q).
 GAROV_START_NUMBER = 1
 
+# Ishchi o'zi kiritgan shartnomani necha daqiqa ichida tuzata oladi?
+# Shartnoma kiritilgach shu vaqt ichida ishchi xatosini o'zi to'g'rilaydi
+# (masalan, ism yoki summani noto'g'ri yozgan bo'lsa). Muddat o'tgach
+# tahrirlash faqat vakolatli boshliqda qoladi.
+# 0 qo'yilsa ishchi umuman tahrirlay olmaydi.
+ISHCHI_TAHRIR_DAQIQA = 60
+
 # To'lov jadvali («1-илова») Word hujjatga qo'shilsinmi?
 # Asl shartnoma fayllarida bu ilova yo'q edi — shuning uchun hozircha o'chirilgan.
 # Kerak bo'lsa True qiling, kodning qolgan qismi o'zgarmaydi.
@@ -73,8 +80,12 @@ LOMBARD_ORG = {
     'bank': '«ASIA ALLIANCE BANK» Бухоро филиали',
     'bank_name_full': '“Asia Alliance Bank” банкининг Бухоро вилоят филиали',
     'bank_code': '01095',
+    # Garov shartnomasida boshqa hisob raqami ko'rsatiladi (2026-08 dagi
+    # yurist tahriridan) — mikroqarz shartnomasining 9-bandidagisi o'zgarmagan.
+    'garov_account': '20216000405489627001',
+    'garov_bank_code': '01137',
     'address': 'Бухоро шахар Б.Накшбанд кўчаси 153-уй',
-    'phone': '(99891) 415-00-87',
+    'phone': '55 310 00 87, 91 415-00-87',
     'city': 'Бухоро шаҳри',
 }
 

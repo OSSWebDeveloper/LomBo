@@ -14,9 +14,15 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
+from .formatlash import sana_sozlar
 from .num2words_uz import num2words_uz, summa_formatlangan
 
 SHABLONLAR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shablonlar')
+
+# Ma'lumot yo'q bo'lsa hujjatda qo'lda to'ldiriladigan chiziq qoladi.
+# Telefon va oylik daromad maydonlari 2026-08 da qo'shilgan — undan oldingi
+# shartnomalarda bu qiymatlar bo'lmaydi.
+BOSH_CHIZIQ = '____________'
 
 # Asl fayllarda raqamlar ichida uzilmas bo'shliq ishlatilgan
 NBSP = ' '
@@ -94,19 +100,9 @@ def zargarlik_konteksti(c):
     buyumlar = list(c.jewelry_items.all())
     jami_soni = sum(b.quantity for b in buyumlar)
     jami_ogirligi = sum(b.weight for b in buyumlar)
-    return {
-        'raqam': str(c.number),
+    ctx = _umumiy(c)
+    ctx.update({
         'garov_raqam': str(c.garov_number or c.number),
-        'sana': c.date.strftime('%d.%m.%Y'),
-        'tugash': c.end_date.strftime('%d.%m.%Y'),
-        'muddat': str(c.term_months),
-        'muddat_soz': num2words_uz(c.term_months),
-        'foiz': str(c.interest_rate),
-        'foiz_soz': num2words_uz(c.interest_rate),
-        'summa': _pul(c.amount),
-        'fio': c.borrower_fio,
-        'pasport': c.passport_full,
-        'manzil': c.borrower_address,
         'garov_baho': _pul(c.garov_value or 0),
         'garov_baho_raqam': _raqam(c.garov_value or 0),
         'jami_soni': str(jami_soni),
@@ -114,7 +110,8 @@ def zargarlik_konteksti(c):
         '_buyumlar': [{'nomi': b.name, 'soni': str(b.quantity),
                        'ogirligi': _vergul(b.weight), 'probasi': b.proba,
                        'summasi': _raqam(b.value)} for b in buyumlar],
-    }
+    })
+    return ctx
 
 
 # --------------------------------------------------------------- asosiy
@@ -124,6 +121,7 @@ def _umumiy(c):
     return {
         'raqam': str(c.number),
         'sana': c.date.strftime('%d.%m.%Y'),
+        'sana_soz': sana_sozlar(c.date),        # arizada: «05 август 2026»
         'tugash': c.end_date.strftime('%d.%m.%Y'),
         'muddat': str(c.term_months),
         'muddat_soz': num2words_uz(c.term_months),
@@ -133,6 +131,14 @@ def _umumiy(c):
         'fio': c.borrower_fio,
         'pasport': c.passport_full,
         'manzil': c.borrower_address,
+        'telefon': c.borrower_phone or BOSH_CHIZIQ,
+        'daromad': _raqam(c.monthly_income) if c.monthly_income else BOSH_CHIZIQ,
+        # Arizada pasport ma'lumoti alohida kataklarga bo'lingan
+        'pasport_seriya': c.passport_seriya,
+        'pasport_soni': c.passport_soni,
+        'pasport_sana': c.passport_date.strftime('%d.%m.%Y'),
+        'pasport_viloyat': c.passport_region,
+        'pasport_bolim': c.passport_org,
     }
 
 

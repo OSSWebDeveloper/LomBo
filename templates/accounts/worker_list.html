@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load pul %}
 {% block title %}Ishchilar{% endblock %}
 {% block content %}
 
@@ -18,7 +18,7 @@
     <td class="muted">{{ w.username }}</td>
     <td class="num"><b>{{ w.contracts_added }}</b></td>
     <td class="num">{{ w.live_count }}</td>
-    <td class="num">{{ w.live_amount|default:0|floatformat:0 }}</td>
+    <td class="num">{{ w.live_amount|default:0|pul }}</td>
     <td>{% if w.is_active %}<span class="pill pill-active">faol</span>
         {% else %}<span class="pill pill-rejected">bo‘shatilgan</span>{% endif %}</td>
     <td class="right actions">

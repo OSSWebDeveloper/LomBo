@@ -136,6 +136,7 @@ def _ctx(contract):
         'fio': c.borrower_fio,
         'passport': c.passport_full,
         'address': c.borrower_address,
+        'phone': c.borrower_phone or '____________',
         'amount': _pul(c.amount),
         'term': c.term_months,
         'term_soz': num2words_uz(c.term_months),
@@ -365,8 +366,8 @@ def _mikroqarz_shartnoma(doc, contract, ctx):
         'этадилар.',
         '5.2. «Тарафлар»нинг бири музокара олиб боришни рад қилган тақдирда, музокарага '
         'ташриф буюрмаган тақдирда ёки «Тарафлар» низоли масалалар юзасидан музокара йўли '
-        'билан келиша олмаган тақдирда низоли масалалар амалдаги қонунчиликка мувофиқ Суд '
-        'тартибида ҳал қилинадилар.',
+        'билан келиша олмаган тақдирда низоли масалалар амалдаги қонунчиликка мувофиқ '
+        'Нотариал идоранинг Ижро хати ҳамда Суд тартибида ҳал қилинадилар.',
     ]:
         _p(doc, t)
 
@@ -432,7 +433,7 @@ def _mikroqarz_shartnoma(doc, contract, ctx):
     _p(doc, f'Манзил: {org["address"]}. Телефон: {org["phone"]}', indent=False)
     doc.add_paragraph()
     _p(doc, f'«Қарз олувчи»: {ctx["fio"]} ({ctx["passport"]})', indent=False)
-    _p(doc, f'Манзил: {ctx["address"]}', indent=False)
+    _p(doc, f'Манзил: {ctx["address"]}. Телефон: {ctx["phone"]}', indent=False)
     doc.add_paragraph()
 
     table = doc.add_table(rows=2, cols=2)
@@ -602,7 +603,8 @@ def _garov_shartnoma(doc, contract, ctx):
     _p(doc, '8. ТАРАФЛАРНИНГ РЕКВИЗИТ ВА ИМЗОЛАРИ', bold=True, center=True)
     table = doc.add_table(rows=1, cols=2)
     left = (f'Гаровга олувчи:\n{org["name"]}\n{org["bank_name_full"]}\n'
-            f'Х/Р {org["account"]}\nМ.Ф.О. {org["bank_code"]}  ИНН: {org["stir"]}\n'
+            f'Х/Р {org["garov_account"]}\n'
+            f'М.Ф.О. {org["garov_bank_code"]}  ИНН: {org["stir"]}\n'
             f'Манзил: {org["address"]}\n\n'
             f'Директор ___________ {org["director_short"]}')
     if is_transport and contract.vehicle.owner_head:
@@ -794,11 +796,15 @@ def _jadval(doc, contract, ctx):
 def build_contract_docx(contract) -> bytes:
     """Shartnoma paketini .docx bayt ko'rinishida qaytaradi.
 
+    Asl namunalardagidek hamma qism bitta faylda bo'ladi: mikroqarz
+    shartnomasi, kelishuv, garov shartnomasi va baholash dalolatnomasi
+    (kafillikda garov qismi bo'lmaydi).
+
     Asl shartnoma fayllaridan yasalgan shablonlar ishlatiladi — o'zgarmas
     matn va formatlash asl faylning aynan o'zi bo'ladi.
     """
     from .shablondan import hujjat_yasa
-    return hujjat_yasa(contract, qism='asosiy')
+    return hujjat_yasa(contract, qism='hammasi')
 
 
 def build_garov_docx(contract):

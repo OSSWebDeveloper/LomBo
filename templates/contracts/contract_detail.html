@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load pul %}
 {% block title %}Shartnoma №{{ contract.number }}{% endblock %}
 {% block content %}
 
@@ -8,7 +8,25 @@
       <span class="pill pill-pending">o‘chirish so‘ralgan</span>
     {% endif %}
   </h1>
+  {% if can_edit or can_delete %}
+  <div class="actions">
+    {% if can_edit %}
+      <a class="btn btn-secondary" href="{% url 'contract_edit' contract.pk %}">✏️
+        {% if tahrir_qoldiq %}Tuzatish{% else %}To‘liq tahrirlash{% endif %}</a>
+    {% endif %}
+    {% if can_delete %}
+      <a class="btn btn-danger" href="{% url 'contract_delete' contract.pk %}">🗑 O‘chirish</a>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
+
+{% if tahrir_qoldiq %}
+<div class="alert alert-info">
+  ✏️ Bu shartnomani yana <b>{{ tahrir_qoldiq }}</b> daqiqa davomida o‘zingiz tuzatishingiz mumkin.
+  Keyin o‘zgartirish faqat boshliq orqali bo‘ladi.
+</div>
+{% endif %}
 
 <div class="card">
   <h2 style="margin-top:0">Hujjatlar</h2>
@@ -37,13 +55,15 @@
       <tr><th>Berilgan</th><td>{{ contract.passport_org }} ИИВ,
         {{ contract.passport_date|date:'d.m.Y' }}</td></tr>
       <tr><th>Manzil</th><td>{{ contract.borrower_address }}</td></tr>
+      <tr><th>Telefon</th><td>{{ contract.borrower_phone|default:'—' }}</td></tr>
+      <tr><th>Oylik daromad</th><td>{% if contract.monthly_income %}{{ contract.monthly_income|pul }} so‘m{% else %}—{% endif %}</td></tr>
     </table>
   </div>
 
   <div class="card">
     <h2 style="margin-top:0">Kredit</h2>
     <table>
-      <tr><th style="width:40%">Summa</th><td><b>{{ contract.amount|floatformat:0 }}</b> so‘m</td></tr>
+      <tr><th style="width:40%">Summa</th><td><b>{{ contract.amount|pul }}</b> so‘m</td></tr>
       <tr><th>Muddat</th><td>{{ contract.term_months }} oy</td></tr>
       <tr><th>Yillik foiz</th><td>{{ contract.interest_rate }}%</td></tr>
       <tr><th>Sanalar</th><td>{{ contract.date|date:'d.m.Y' }} —
@@ -68,13 +88,13 @@
         <td class="num">{{ i.quantity }} та</td>
         <td class="num">{{ i.weight }} гр</td>
         <td class="num">{{ i.proba }}</td>
-        <td class="num">{{ i.value|floatformat:0 }}</td>
+        <td class="num">{{ i.value|pul }}</td>
       </tr>
       {% empty %}
       <tr><td colspan="6" class="muted">Buyumlar kiritilmagan.</td></tr>
       {% endfor %}
     </table>
-    <p><b>Garov bahosi:</b> {{ contract.garov_value|floatformat:0 }} so‘m</p>
+    <p><b>Garov bahosi:</b> {{ contract.garov_value|pul }} so‘m</p>
 
   {% elif contract.collateral_type == 'transport' %}
     <table>
@@ -88,13 +108,13 @@
         {{ contract.vehicle.chassis_number }}</td></tr>
       <tr><th>Ishlab chiqarilgan</th><td>{{ contract.vehicle.year }}</td></tr>
       <tr><th>Texpasport</th><td>{{ contract.vehicle.techpassport }}</td></tr>
-      <tr><th>Garov bahosi</th><td><b>{{ contract.garov_value|floatformat:0 }}</b> so‘m</td></tr>
+      <tr><th>Garov bahosi</th><td><b>{{ contract.garov_value|pul }}</b> so‘m</td></tr>
     </table>
 
   {% else %}
     <table>
       <tr><th style="width:40%">Kafil</th><td>{{ contract.guarantor.fio }}</td></tr>
-      <tr><th>Kafillik summasi</th><td>{{ contract.guarantor.amount|floatformat:0 }} so‘m</td></tr>
+      <tr><th>Kafillik summasi</th><td>{{ contract.guarantor.amount|pul }} so‘m</td></tr>
     </table>
   {% endif %}
 </div>
@@ -108,10 +128,10 @@
     <tr>
       <td>{{ n }}</td>
       <td>{{ d|date:'d.m.Y' }}</td>
-      <td class="num">{{ principal|floatformat:0 }}</td>
-      <td class="num">{{ interest|floatformat:0 }}</td>
-      <td class="num"><b>{{ total|floatformat:0 }}</b></td>
-      <td class="num">{{ remaining|floatformat:0 }}</td>
+      <td class="num">{{ principal|pul }}</td>
+      <td class="num">{{ interest|pul }}</td>
+      <td class="num"><b>{{ total|pul }}</b></td>
+      <td class="num">{{ remaining|pul }}</td>
     </tr>
     {% endfor %}
   </table>

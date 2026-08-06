@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load pul %}
 {% block title %}{{ worker }}{% endblock %}
 {% block content %}
 
@@ -24,7 +24,7 @@
   </div>
   <div class="stat">
     <div class="label">Umumiy summa</div>
-    <div class="value sm">{{ live_amount|floatformat:0 }} so‘m</div>
+    <div class="value sm">{{ live_amount|pul }} so‘m</div>
   </div>
   <div class="stat">
     <div class="label">Login</div>
@@ -44,7 +44,7 @@
       <td>{{ c.date|date:'d.m.Y' }}</td>
       <td>{{ c.borrower_fio }}</td>
       <td class="muted">{{ c.get_collateral_type_display }}</td>
-      <td class="num">{{ c.amount|floatformat:0 }}</td>
+      <td class="num">{{ c.amount|pul }}</td>
       <td class="right"><a class="btn btn-secondary btn-sm"
            href="{% url 'contract_detail' c.pk %}">Ochish</a></td>
     </tr>

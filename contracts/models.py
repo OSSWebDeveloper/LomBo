@@ -1,6 +1,10 @@
+import math
+from datetime import timedelta
+
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 
 
 # Hujjat berilgan hudud — 12 viloyat, Toshkent shahri va Qoraqalpog'iston.
@@ -69,6 +73,14 @@ class Contract(models.Model):
     passport_number = models.CharField('Hujjat seriya-raqami', max_length=30,
                                        help_text='Masalan: АE№2437494')
     borrower_address = models.CharField('Manzil (kirillda)', max_length=300)
+    # Arizadagi «Телефон ракам 1)» va shartnomaning «Қарз олувчи» rekvizitlariga tushadi.
+    # Eski shartnomalarda bo'lmagani uchun bazada bo'sh bo'lishi mumkin — yangisida
+    # formada to'ldirish majburiy (qarang: ContractForm).
+    borrower_phone = models.CharField('Telefon raqami', max_length=25, blank=True,
+                                      help_text='Masalan: 91 415-00-87')
+    # Arizadagi «Мен ойида ўртача ... сўм даромадларга эга» jumlasi uchun
+    monthly_income = models.DecimalField('Oylik daromad (so\'m)', max_digits=15,
+                                         decimal_places=0, null=True, blank=True)
 
     # Kredit shartlari
     amount = models.DecimalField('Kredit summasi (so\'m)', max_digits=15, decimal_places=0)
@@ -96,12 +108,56 @@ class Contract(models.Model):
         return f'№{self.number} — {self.borrower_fio}'
 
     @property
+    def tahrir_muddati(self):
+        """Ishchi uchun tahrirlash oynasi qachon yopiladi.
+
+        Muddat kiritilgan vaqtdan (`created_at`) sanaladi, shuning uchun
+        tahrirlash oynani uzaytirmaydi. Saqlanmagan shartnomada — None.
+        """
+        daqiqa = getattr(settings, 'ISHCHI_TAHRIR_DAQIQA', 0)
+        if not self.created_at or daqiqa <= 0:
+            return None
+        return self.created_at + timedelta(minutes=daqiqa)
+
+    @property
+    def tahrir_qoldiq_daqiqa(self):
+        """Tahrirlash oynasi yopilishiga necha daqiqa qoldi (o'tgan bo'lsa 0)."""
+        muddat = self.tahrir_muddati
+        if muddat is None:
+            return 0
+        return max(0, math.ceil((muddat - timezone.now()).total_seconds() / 60))
+
+    def ishchi_tahrirlay_oladi(self, user):
+        """Ishchi faqat o'zi endigina kiritgan shartnomani tuzata oladi.
+
+        O'chirish so'rovi yuborilgan shartnoma tahrirlanmaydi — boshliq
+        so'rovni ko'rayotgan shartnoma o'zgarib ketmasligi kerak.
+        """
+        muddat = self.tahrir_muddati
+        return bool(muddat
+                    and timezone.now() < muddat
+                    and getattr(user, 'is_ishchi', False)
+                    and self.created_by_id == user.id
+                    and self.status == self.STATUS_ACTIVE)
+
+    @property
     def passport_full(self):
         """«Бухоро вилояти, 61013-сонли ИИВ томонидан 23.04.2025-йилда берилган АE№2437494 ...»"""
         region = f'{self.passport_region}, ' if self.passport_region else ''
         return (f'{region}{self.passport_org}-сонли ИИВ томонидан '
                 f'{self.passport_date.strftime("%d.%m.%Y")}-йилда берилган '
                 f'{self.passport_number} ракамли шахс гувохномаси')
+
+    @property
+    def passport_seriya(self):
+        """«АD№2540542» -> «АD». Arizada seriya va raqam alohida kataklarda."""
+        return (self.passport_number or '').split('№')[0].strip()
+
+    @property
+    def passport_soni(self):
+        """«АD№2540542» -> «2540542»"""
+        qismlar = (self.passport_number or '').split('№')
+        return qismlar[1].strip() if len(qismlar) > 1 else ''
 
 
 class JewelryItem(models.Model):

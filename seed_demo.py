@@ -72,6 +72,7 @@ def main():
         passport_region='Бухоро вилояти', passport_org='61013-сонли',
         passport_date=date(2025, 4, 23), passport_number='АE№2437494',
         borrower_address='Бухоро шахар, Имом Ал-Бухорий МФЙ, Тагбанбафон кўчаси, 22-уй',
+        borrower_phone='91 415-00-87', monthly_income=Decimal('6000000'),
         amount=Decimal('35000000'), term_months=12, interest_rate=60,
         end_date=add_months(date(2025, 11, 3), 12),
         garov_number=200, garov_value=Decimal('43750000'), created_by=w1)
@@ -91,6 +92,7 @@ def main():
         passport_region='Бухоро шахар', passport_org='6206-сонли',
         passport_date=date(2021, 4, 8), passport_number='АD 0301390',
         borrower_address='Бухоро шахар, Шайхон кучаси, 156-уй',
+        borrower_phone='90 220-11-33', monthly_income=Decimal('12000000'),
         amount=Decimal('50000000'), term_months=12, interest_rate=60,
         end_date=add_months(date(2025, 11, 10), 12),
         garov_number=201, garov_value=Decimal('70000000'), created_by=w1)
@@ -108,6 +110,7 @@ def main():
         passport_region='', passport_org='61013-сонли',
         passport_date=date(2025, 5, 20), passport_number='АE№2751664',
         borrower_address='Бухоро вилояти, Бухоро тумани, Работикалмок МФЙ, Тикончи кўчаси',
+        borrower_phone='93 777-05-14', monthly_income=Decimal('4500000'),
         amount=Decimal('7000000'), term_months=12, interest_rate=60,
         end_date=add_months(date(2025, 10, 31), 12), created_by=w2)
     GuarantorInfo.objects.create(contract=c3, fio='Жураев Азизбек Носирович',

@@ -1,22 +1,37 @@
 # -*- coding: utf-8 -*-
-"""Asl .doc shartnomalaridan docxtpl shablonlarini yasaydi.
+"""Asl .doc hujjatlaridan docxtpl shablonlarini yasaydi.
 
 Asl fayldagi o'zgaruvchan qiymatlar (mijoz ismi, summa, sana...) o'rniga
 `{{ nom }}` shaklidagi belgilar qo'yiladi. O'zgarmas matn va butun formatlash
 asl faylning aynan o'zi bo'lib qoladi.
 
+Har bir shablon uchta hujjatdan yig'iladi va hammasi bitta faylda bo'ladi:
+    1) mikroqarz shartnomasi (+ garov shartnomasi, + baholash dalolatnomasi)
+    2) ariza          — `m_ariza.docx`
+    3) kredit qo'mitasi bayoni va farmoyish — `m_bayon.docx`
+
+Manba fayllar:
+    m159.docx  — yurist tuzatgan yangi shartnoma (zargarlik namunasi, 2026-08)
+    m199.docx  — transport va kafillik namunasi (yurist tuzatishlari kodda
+                 qo'lda qo'llanadi, chunki bu turlar uchun yangi namuna yo'q)
+    m196.docx  — eski zargarlik namunasi, tarix uchun saqlanmoqda
+
 Ishga tushirish:  python contracts/shablon_yasash.py
 """
 import copy
 import os
+import re
 import sys
 
 from docx import Document
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 PAPKA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shablonlar')
+
+ZARGARLIK, TRANSPORT, KAFILLIK = 'zargarlik', 'transport', 'kafillik'
 
 
 # --------------------------------------------------------------- yurish
@@ -39,11 +54,15 @@ def jadvallar(doc):
 
 # --------------------------------------------------------------- almashtirish
 
-def xatboshida_almashtir(p, eski, yangi):
+def xatboshida_almashtir(p, eski, yangi, bir_marta=False):
     """Run'lar orasiga bo'lingan matnni ham almashtiradi.
 
     Topilgan joyning birinchi run'i formatlashi saqlanadi — ya'ni asl faylda
     qizil bo'lgan qism qizilligicha qoladi.
+
+    `bir_marta=True` — yangi matn eskisini o'z ichiga olganda kerak
+    (masalan matn oxiriga qo'shimcha yozilganda), aks holda almashtirish
+    o'zini qayta-qayta topib cheksiz aylanib qoladi.
     """
     almashdi = 0
     while True:
@@ -76,21 +95,84 @@ def xatboshida_almashtir(p, eski, yangi):
             else:
                 runs[i].text = matn[:kes_a] + matn[kes_b:]
         almashdi += 1
+        if bir_marta:
+            return almashdi
 
 
-def hujjatda_almashtir(doc, juftlar):
+def hujjatda_almashtir(doc, juftlar, bir_marta=False):
     """juftlar: [(eski_matn, yangi_matn), ...] — tartib muhim."""
     hisob = {eski: 0 for eski, _ in juftlar}
     for p in xatboshilar(doc):
         for eski, yangi in juftlar:
-            hisob[eski] += xatboshida_almashtir(p, eski, yangi)
+            hisob[eski] += xatboshida_almashtir(p, eski, yangi, bir_marta)
     return hisob
+
+
+def naqsh_bilan_almashtir(doc, naqsh, yasovchi):
+    """Regulyar ifoda topgan joyni `yasovchi(m)` qaytargan matnga almashtiradi.
+
+    Bo'shliqlar soni aniq bo'lmagan joylarda (chiziqchalar, ustunlar orasi)
+    ishlatiladi — topilgani baribir `xatboshida_almashtir` orqali yoziladi,
+    ya'ni formatlash saqlanadi.
+    """
+    almashdi = 0
+    for p in xatboshilar(doc):
+        toliq = ''.join(r.text for r in p.runs).replace(' ', ' ')
+        m = naqsh.search(toliq)
+        if m:
+            almashdi += xatboshida_almashtir(p, m.group(0), yasovchi(m), bir_marta=True)
+    return almashdi
+
+
+def natijani_chop(sarlavha, hisob):
+    """Har bir juftlik nechta joyda ishlaganini ko'rsatadi."""
+    print(f'  {sarlavha}:')
+    for eski, n in hisob.items():
+        belgi = 'OK ' if n else "YO'Q"
+        print(f'    [{belgi}] {n:2} marta: {eski[:62]}')
+    return all(hisob.values())
+
+
+def qoldiqni_tekshir(doc, sozlar):
+    """Namunadagi mijoz ma'lumoti qolib ketmaganini tekshiradi."""
+    matn = '\n'.join(''.join(r.text for r in p.runs) for p in xatboshilar(doc))
+    qolgan = [s for s in sozlar if s in matn]
+    for s in qolgan:
+        print(f"    [XATO] namuna qiymati qolib ketdi: {s}")
+    return not qolgan
+
+
+# --------------------------------------------------------------- hujjatlarni ulash
+
+def hujjatni_ulash(nishon, manba):
+    """`nishon` hujjat oxiriga `manba` hujjatni qo'shadi.
+
+    Har bir hujjat o'z sahifa sozlamalarini (chekkalar, yo'nalish) saqlab
+    qoladi: joriy bo'lim sozlamasi oxirgi xatboshiga biriktiriladi, manba
+    hujjatniki esa yangi bo'lim bo'lib qo'shiladi. Bo'lim uzilishi o'zi yangi
+    sahifadan boshlanadi, shuning uchun alohida sahifa uzilishi kerak emas.
+    """
+    n_body = nishon.element.body
+    m_body = manba.element.body
+
+    joriy_sect = n_body.find(qn('w:sectPr'))
+    if joriy_sect is not None:
+        n_body.remove(joriy_sect)
+        chegara = OxmlElement('w:p')
+        pPr = OxmlElement('w:pPr')
+        pPr.append(copy.deepcopy(joriy_sect))
+        chegara.append(pPr)
+        n_body.append(chegara)
+
+    for el in list(m_body):
+        n_body.append(copy.deepcopy(el))
+    return nishon
 
 
 # --------------------------------------------------------------- zargarlik jadvali
 
 def zargarlik_jadvalini_shablonla(doc):
-    """4 ta namuna qatorini bitta takrorlanuvchi qatorga aylantiradi."""
+    """Namuna qatorlarini bitta takrorlanuvchi qatorga aylantiradi."""
     # Aynan buyumlar jadvali: kamida 5 ustun va sarlavhasida «Кимматликлар»
     # bo'lgan qisqa katak (uni o'rab turgan katta jadvaldan farqlash uchun).
     nishon = None
@@ -110,11 +192,10 @@ def zargarlik_jadvalini_shablonla(doc):
 
     # 0 — sarlavha, 1..n-2 — buyumlar, oxirgisi — «Жами»
     birinchi_buyum = qatorlar[1]
-    jami_qatori = qatorlar[-1]
 
     # Birinchi buyum qatorini namuna qatoriga aylantiramiz.
     # Bu qator docxtpl'ga tegishli emas — u render'dan keyin har bir buyum
-    # uchun nusxalanadi (docgen.py dagi _buyumlar_jadvali).
+    # uchun nusxalanadi (shablondan.py dagi _buyumlar_jadvali).
     qiymatlar = ['#IDX#', '#NOMI#', '#SONI# та', '#OGIR# гр', '#PROBA#', '#SUMMA#']
     kataklar = birinchi_buyum.cells
     for i, katak in enumerate(kataklar):
@@ -130,64 +211,178 @@ def zargarlik_jadvalini_shablonla(doc):
         for qoshimcha in katak.paragraphs[1:]:
             for r in qoshimcha.runs:
                 r.text = ''
+        # Asl faylda kataklarda 1 sm manfiy chekinish bor, matn esa oldiga
+        # bo'shliq qo'yilib to'g'rilangan. Biz katak matnini butunlay qayta
+        # yozamiz — bo'shliqlar yo'qolgani uchun chekinishni ham nolga
+        # tushiramiz, aks holda raqam katakdan chiqib ketib ko'rinmay qoladi.
+        for qism in katak.paragraphs:
+            qism.paragraph_format.left_indent = 0
 
-    # Ortiqcha namuna qatorlarini o'chiramiz (jami qatoridan tashqari)
-    for qator in list(qatorlar[2:-1]):
+    # Ortiqcha namuna qatorlarini o'chiramiz («Жами» qatoridan tashqari)
+    ortiqcha = list(qatorlar[2:-1])
+    for qator in ortiqcha:
         qator._element.getparent().remove(qator._element)
 
-    return True, f'jadval shablonlandi, {len(qatorlar) - 3} ta ortiqcha qator olindi'
+    return True, f'jadval shablonlandi, {len(ortiqcha)} ta ortiqcha qator olindi'
 
 
-# --------------------------------------------------------------- 196 -> zargarlik
+# =============================================================== ARIZA
+
+# Namunadagi mijoz: Рахмонова Шахноза Элмуродовна, 5 000 000 сўм, 12 ой, 60%
+ARIZA_TAMINOT = ('Рахмонова Шахноза Элмуродовна (узимга) тегишли заргарлик '
+                 'буюмларини гаровга такдим этаман')
+ARIZA_TAMINOT_YANGI = {
+    ZARGARLIK: 'узимга тегишли заргарлик буюмларини гаровга такдим этаман',
+    TRANSPORT: '{{ garov_mulki }}ни гаровга такдим этаман',
+    KAFILLIK: ('{{ kafil }}нинг {{ kafillik_summa }} сўмлик иш хакки '
+               'кафиллигини такдим этаман'),
+}
+
+ARIZA_UMUMIY = [
+    # Uzunroq va aniqroqlari birinchi
+    ('5 000 000 (беш миллион)', '{{ summa }}'),
+    ('ойида ўртача 5 000 000 сўм', 'ойида ўртача {{ daromad }} сўм'),
+    ('12 ой муддатга', '{{ muddat }} ой муддатга'),
+    ('йилига 60 фоиз', 'йилига {{ foiz }} фоиз'),
+    ('09.02.2023-йилда , Бухоро вилояти 6224 - сонли ИИВ томонидан берилган',
+     '{{ pasport_sana }}-йилда, {{ pasport_viloyat }} {{ pasport_bolim }} - '
+     'сонли ИИВ томонидан берилган'),
+    ('№ 2540542', '№ {{ pasport_soni }}'),
+    ('АD', '{{ pasport_seriya }}'),
+    ('Менинг доимий яшаш манзилим: Бухоро вил,Гиждувон туман, Чогдаре МФЙ, '
+     'Чогдаре кишлоги.', 'Менинг доимий яшаш манзилим: {{ manzil }}'),
+    ('05 август 2026 йил', '{{ sana_soz }} йил'),
+    ('Рахмонова Шахноза Элмуродовна', '{{ fio }}'),
+]
+
+# «Телефон ракам  1)________» — chiziqchalar soni aniq bo'lmagani uchun naqsh
+TELEFON_NAQSHI = re.compile(r'(Телефон ракам\s*1\))\s*_+')
+
+
+def ariza_hujjati(tur):
+    doc = Document(os.path.join(PAPKA, 'm_ariza.docx'))
+    juftlar = [(ARIZA_TAMINOT, ARIZA_TAMINOT_YANGI[tur])] + ARIZA_UMUMIY
+    ok = natijani_chop('ariza', hujjatda_almashtir(doc, juftlar))
+
+    n = naqsh_bilan_almashtir(doc, TELEFON_NAQSHI,
+                              lambda m: m.group(1) + ' {{ telefon }}')
+    print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: Телефон ракам 1)____")
+    ok = ok and bool(n)
+    return doc, ok
+
+
+# =============================================================== BAYON
+
+BAYON_TAMINOT = {
+    ZARGARLIK: [],
+    TRANSPORT: [
+        ('Гаров таьминоти сифатида фукаро Рахмонова Шахноза Элмуродовнага '
+         'тегишли заргарлик буюмлари қабул қилинсин.',
+         'Гаров таьминоти сифатида {{ garov_mulki }} қабул қилинсин.'),
+        ('накд пулда, Рахмонова Шахноза Элмуродовнага тегишли заргарлик '
+         'буюмлари гарови асосида',
+         'накд пулда, {{ garov_mulki }} гарови асосида'),
+        ('Рахмонова Шахноза Элмуродовна узига тегишли заргарлик буюмларини '
+         'гаровга куйилишини', '{{ garov_mulki }} гаровга куйилишини'),
+    ],
+    KAFILLIK: [
+        ('гаров таьминоти сифатида Рахмонова Шахноза Элмуродовна узига тегишли '
+         'заргарлик буюмларини гаровга куйилишини',
+         'таъминот сифатида {{ kafil }}нинг {{ kafillik_summa }} сўмлик иш хакки '
+         'кафиллиги такдим этилишини'),
+        ('таъминот сифатида Рахмонова Шахноза Элмуродовна узига тегишли '
+         'заргарлик буюмларини гаровга куйилишини',
+         'таъминот сифатида {{ kafil }}нинг {{ kafillik_summa }} сўмлик иш хакки '
+         'кафиллиги такдим этилганини'),
+        ('Гаров таьминоти сифатида фукаро Рахмонова Шахноза Элмуродовнага '
+         'тегишли заргарлик буюмлари қабул қилинсин.',
+         'Таъминот сифатида {{ kafil }}нинг {{ kafillik_summa }} сўмлик иш хакки '
+         'кафиллиги қабул қилинсин.'),
+        ('накд пулда, Рахмонова Шахноза Элмуродовнага тегишли заргарлик '
+         'буюмлари гарови асосида',
+         'накд пулда, {{ kafil }}нинг {{ kafillik_summa }} сўмлик иш хакки '
+         'кафиллиги асосида'),
+    ],
+}
+
+BAYON_UMUMIY = [
+    ('№159-сонли', '№{{ raqam }}-сонли'),
+    ('№159', '№{{ raqam }}'),
+    ('05.08.2026', '{{ sana }}'),
+    ('5 000 000 (беш миллион)', '{{ summa }}'),
+    ('12 ой муддатга', '{{ muddat }} ой муддатга'),
+    ('йиллик 60 фоиз', 'йиллик {{ foiz }} фоиз'),
+    ('Рахмонова Шахноза Элмуродовнага', '{{ fio }}га'),
+    ('Рахмонова Шахноза Элмуродовна', '{{ fio }}'),
+]
+
+
+def bayon_hujjati(tur):
+    doc = Document(os.path.join(PAPKA, 'm_bayon.docx'))
+    juftlar = BAYON_TAMINOT[tur] + BAYON_UMUMIY
+    ok = natijani_chop('bayon', hujjatda_almashtir(doc, juftlar))
+    return doc, ok
+
+
+# =============================================================== zargarlik (m159)
 
 ZARGARLIK_JUFTLAR = [
-    # Uzunroq va aniqroqlari birinchi
-    ('Бухоро вилояти, 61013-сонли ИИВ томонидан 23.04.2025-йилда берилган '
-     'АE№2437494 ракамли шахс гувохномаси', '{{ pasport }}'),
-    ('Бухоро шахар, Имом Ал-Бухорий МФЙ, Тагбанбафон  кўчаси, 22-уй', '{{ manzil }}'),
-    ('43 750 000 (кирк уч миллион етти юз эллик минг)', '{{ garov_baho }}'),
-    ('35 000 000 (Ўттиз беш миллион)', '{{ summa }}'),
-    ('Микрокарз шартномаси №196', 'Микрокарз шартномаси №{{ raqam }}'),
-    ('Гаров шартнома 196', 'Гаров шартнома {{ garov_raqam }}'),
-    ('№196-сонли', '№{{ raqam }}-сонли'),
-    ('Джураева Майсара Ахмедовнага', '{{ fio }}га'),
-    ('Джураева Майсара Ахмедовна', '{{ fio }}'),
-    ('02.11.2026', '{{ tugash }}'),
-    ('03.11.2025', '{{ sana }}'),
-    ('12(ўн икки)', '{{ muddat }}({{ muddat_soz }})'),
+    # Manzil + telefon — 9-banddagi «Қарз олувчи» rekvizitlari
+    ('Манзил: Бухоро вилояти,Гиждувон туман, Чогдаре МФЙ, Чогдаре кишлоги.',
+     'Манзил: {{ manzil }}. Телефон: {{ telefon }}'),
+    # Pasport asl faylda to'rt xil yozilgan (chiziqcha bor/yo'q, uzun tire)
+    ('Бухоро вилояти 6224 сонли ИИВ томонидан 09.02.2023-йилда берилган '
+     'АD №2540542 ракамли шахс гувохномаси', '{{ pasport }}'),
+    ('Бухоро вилояти 6224 - сонли ИИВ томонидан 09.02.2023-йилда берилган '
+     'АD №2540542 ракамли шахс гувохномаси', '{{ pasport }}'),
+    ('Бухоро вилояти 6224 – сонли ИИВ томонидан 09.02.2023-йилда берилган '
+     'АD №2540542 ракамли шахс гувохномаси', '{{ pasport }}'),
+    ('Бухоро вилояти 6224 томонидан 09.02.2023-йилда берилган '
+     'АD №2540542 ракамли шахс гувохномаси', '{{ pasport }}'),
+    ('Бухоро вилояти, Гиждувон тумани, Чогдаре МФЙ, Чогдаре кишлоги', '{{ manzil }}'),
+    ('Гиждувон туман, Чогдаре МФЙ, Чогдаре кишлоги', '{{ manzil }}'),
+    ('6 000 000 (олти миллион)', '{{ garov_baho }}'),
+    ('5 000 000 (беш миллион)', '{{ summa }}'),
+    ('Микрокарз шартномаси №159', 'Микрокарз шартномаси №{{ raqam }}'),
+    ('Гаров шартнома 159', 'Гаров шартнома {{ garov_raqam }}'),
+    ('далолатномаси №159', 'далолатномаси №{{ raqam }}'),
+    ('№159-сонли', '№{{ raqam }}-сонли'),
+    ('Рахмонова Шахноза Элмуродовнага', '{{ fio }}га'),
+    ('Рахмонова Шахноза Элмуродовна', '{{ fio }}'),
+    ('04.08.2027', '{{ tugash }}'),
+    ('05.08.2026', '{{ sana }}'),
+    ('12 (ун икки)', '{{ muddat }} ({{ muddat_soz }})'),
     ('60% (олтмиш)', '{{ foiz }}% ({{ foiz_soz }})'),
-    # Jadval jami qatori
-    ('11 та', '{{ jami_soni }} та'),
-    ('46,10 гр', '{{ jami_ogirligi }} гр'),
-    ('43 750 000', '{{ garov_baho_raqam }}'),
+    # Jadvalning «Жами» qatori
+    ('2 та', '{{ jami_soni }} та'),
+    ('6,70 гр', '{{ jami_ogirligi }} гр'),
+    ('6 000 000', '{{ garov_baho_raqam }}'),
 ]
 
 
 def zargarlik_shabloni():
-    manba = os.path.join(PAPKA, 'm196.docx')
-    doc = Document(manba)
+    doc = Document(os.path.join(PAPKA, 'm159.docx'))
 
     ok, xabar = zargarlik_jadvalini_shablonla(doc)
     print(f'  jadval: {xabar}')
 
-    hisob = hujjatda_almashtir(doc, ZARGARLIK_JUFTLAR)
-    for eski, n in hisob.items():
-        belgi = 'OK ' if n else 'YO\'Q'
-        print(f'  [{belgi}] {n:2} marta: {eski[:60]}')
-
-    chiqish = os.path.join(PAPKA, 'zargarlik.docx')
-    doc.save(chiqish)
-    print(f'  -> {chiqish}')
-    return all(hisob.values())
+    ok &= natijani_chop('shartnoma', hujjatda_almashtir(doc, ZARGARLIK_JUFTLAR))
+    return _yakunla(doc, ZARGARLIK, 'zargarlik.docx', ok,
+                    ['Рахмонова', 'Чогдаре', '2540542', '6224'])
 
 
-# --------------------------------------------------------------- 199 -> kafillik / transport
+# =============================================================== transport / kafillik (m199)
 
 # 199-faylning mikroqarz qismidagi umumiy qiymatlar
 Q199_UMUMIY = [
     ('61013-сонли ИИВ томонидан 20.05.2025-йилда берилган АE№2751664 '
      'ракамли шахс гувохномаси', '{{ pasport }}'),
-    ('Бухоро вилояти, Бухоро  туман, Работикалмок МФЙ,Тикончи кўчаси', '{{ manzil }}'),
+    # 9-banddagi rekvizitlar — bu yerga telefon ham qo'shiladi
+    ('Манзил:Бухоро вилояти, Бухоро  туман, Работикалмок МФЙ,Тикончи кўчаси.',
+     'Манзил: {{ manzil }}. Телефон: {{ telefon }}'),
+    # Kirish xatboshisida manzil boshqacha yozilgan («кучаси»)
+    ('Манзил:Бухоро вилояти, Бухоро  туман, Работикалмок МФЙ,Тикончи кучаси',
+     'Манзил: {{ manzil }}'),
     ('7 000 000 (етти миллион)', '{{ summa }}'),
     ('Микрокарз шартномаси №199', 'Микрокарз шартномаси №{{ raqam }}'),
     ('Содиков Ботир Нусратович', '{{ fio }}'),
@@ -195,6 +390,25 @@ Q199_UMUMIY = [
     ('31.10.2025', '{{ sana }}'),
     ('12(ўн икки)', '{{ muddat }}({{ muddat_soz }})'),
     ('60% (олтмиш )', '{{ foiz }}% ({{ foiz_soz }})'),
+]
+
+# Yurist 2026-08 da kiritgan tuzatishlar — m159 da ular allaqachon bor,
+# m199 ga esa shu yerda qo'llanadi.
+YURIST_TUZATISHLARI = [
+    ('мувофиқ Суд тартибида ҳал қилинадилар',
+     'мувофиқ Нотариал идоранинг Ижро хати хамда Суд тартибида ҳал қилинадилар'),
+    ('Телефон: (99891) 415-00-87;', 'Телефон: 55 310 00 87, 91 415-00-87;'),
+]
+
+# Garov shartnomasidagi bank rekvizitlari o'zgargan (faqat garov qismida).
+# Bo'shliqlar soni aniq bo'lmagani uchun naqsh bilan almashtiriladi.
+GAROV_NAQSHLARI = [
+    (re.compile(r'(Х/Р\s+)20216000005489627001'),
+     lambda m: m.group(1) + '20216000405489627001'),
+    (re.compile(r'(М\.Ф\.О\.\s+)01095'), lambda m: m.group(1) + '01137'),
+    # Dalolatnoma sarlavhasiga shartnoma raqami qo'shildi
+    (re.compile(r'келишуви\s+асосида\s+бахолаш\s+далолатномаси\s*$'),
+     lambda m: m.group(0).rstrip() + ' №{{ raqam }}'),
 ]
 
 # 1.1-banddagi ta'minot jumlasi — turga qarab boshqacha
@@ -246,33 +460,50 @@ def _garov_qismini_ochir(doc):
     return ochirildi
 
 
-def _shablon_yasa(nomi, juftlar, taminot_yangi, garovni_ochir=False):
+def _yakunla(doc, tur, nomi, ok, qoldiq_sozlari):
+    """Arizani va bayonni ulab, shablonni saqlaydi."""
+    ariza, ariza_ok = ariza_hujjati(tur)
+    bayon, bayon_ok = bayon_hujjati(tur)
+    hujjatni_ulash(doc, ariza)
+    hujjatni_ulash(doc, bayon)
+
+    toza = qoldiqni_tekshir(doc, qoldiq_sozlari)
+    chiqish = os.path.join(PAPKA, nomi)
+    doc.save(chiqish)
+    print(f'  -> {chiqish}')
+    return bool(ok and ariza_ok and bayon_ok and toza)
+
+
+def _m199_shabloni(nomi, tur, juftlar, taminot_yangi, garovni_ochir=False):
     doc = Document(os.path.join(PAPKA, 'm199.docx'))
 
     if garovni_ochir:
         n = _garov_qismini_ochir(doc)
         print(f'  garov qismi olib tashlandi: {n} ta blok')
 
-    juftlar = [(KAFILLIK_TAMINOT, taminot_yangi)] + juftlar
-    hisob = hujjatda_almashtir(doc, juftlar)
-    for eski, n in hisob.items():
-        belgi = 'OK ' if n else 'YO\'Q'
-        print(f'  [{belgi}] {n:2} marta: {eski[:58]}')
+    juftlar = [(KAFILLIK_TAMINOT, taminot_yangi)] + juftlar + YURIST_TUZATISHLARI
+    ok = natijani_chop('shartnoma', hujjatda_almashtir(doc, juftlar))
 
-    chiqish = os.path.join(PAPKA, nomi)
-    doc.save(chiqish)
-    print(f'  -> {chiqish}')
-    return all(hisob.values())
+    if not garovni_ochir:
+        for naqsh, yasovchi in GAROV_NAQSHLARI:
+            n = naqsh_bilan_almashtir(doc, naqsh, yasovchi)
+            print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: {naqsh.pattern[:52]}")
+            ok = ok and bool(n)
+
+    qoldiq = ['Содиков', 'Работикалмок', '2751664']
+    if not garovni_ochir:
+        qoldiq += ['Бахшиллоева', 'Express Alligator', 'KRONE']
+    return _yakunla(doc, tur, nomi, ok, qoldiq)
 
 
 def kafillik_shabloni():
-    return _shablon_yasa('kafillik.docx', list(Q199_UMUMIY),
-                         KAFILLIK_YANGI, garovni_ochir=True)
+    return _m199_shabloni('kafillik.docx', KAFILLIK, list(Q199_UMUMIY),
+                          KAFILLIK_YANGI, garovni_ochir=True)
 
 
 def transport_shabloni():
-    return _shablon_yasa('transport.docx', list(Q199_UMUMIY) + TRANSPORT_JUFTLAR,
-                         TRANSPORT_YANGI)
+    return _m199_shabloni('transport.docx', TRANSPORT,
+                          list(Q199_UMUMIY) + TRANSPORT_JUFTLAR, TRANSPORT_YANGI)
 
 
 if __name__ == '__main__':
@@ -283,4 +514,5 @@ if __name__ == '__main__':
     natijalar.append(kafillik_shabloni())
     print('\nTRANSPORT shabloni:')
     natijalar.append(transport_shabloni())
+    print('\nNatija:', 'hammasi joyida' if all(natijalar) else 'XATOLAR BOR')
     sys.exit(0 if all(natijalar) else 1)

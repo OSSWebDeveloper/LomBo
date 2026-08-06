@@ -4,6 +4,13 @@
 
 <h1>{{ title }}</h1>
 
+{% if tahrir_qoldiq %}
+<div class="alert alert-info">
+  ⏳ Tuzatish muddati: yana <b>{{ tahrir_qoldiq }}</b> daqiqa.
+  Muddat o‘tgach o‘zgartirish faqat boshliq orqali bo‘ladi.
+</div>
+{% endif %}
+
 <form method="post" id="contract-form">
   {% csrf_token %}
 
@@ -29,6 +36,8 @@
       {% include 'contracts/_field.html' with field=form.passport_date %}
       {% include 'contracts/_field.html' with field=form.passport_number %}
       {% include 'contracts/_field.html' with field=form.borrower_address %}
+      {% include 'contracts/_field.html' with field=form.borrower_phone %}
+      {% include 'contracts/_field.html' with field=form.monthly_income %}
     </div>
     <div class="help">Barcha matnlar hujjatga qanday yozilishi kerak bo‘lsa — kirill alifbosida
       kiriting (masalan: Джураева Майсара Ахмедовна).</div>
@@ -117,6 +126,40 @@
 
 <script>
 (function(){
+  // ---- Pul maydonlari: yozayotganda har 3 raqamdan keyin bo'shliq ----
+  // «7000000» -> «7 000 000». Barcha bo'shliq turlari (oddiy, uzilmas)
+  // tashlab yuboriladi, serverga baribir toza son boradi.
+  function pulRaqam(matn){
+    return String(matn == null ? '' : matn).replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '');
+  }
+  function pulFormat(matn){
+    return pulRaqam(matn).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+  function pulSon(matn){
+    var r = pulRaqam(matn);
+    return r ? parseInt(r, 10) : 0;
+  }
+  function pulMaydon(inp){
+    var eski = inp.value;
+    var yangi = pulFormat(eski);
+    if (yangi === eski) return;
+    // Kursordan oldingi raqamlar sonini eslab qolamiz — qayta yozgach o'sha joyga qaytaramiz
+    var kursor = inp.selectionStart;
+    var oldingiRaqam = kursor === null ? -1 : (eski.slice(0, kursor).match(/\d/g) || []).length;
+    inp.value = yangi;
+    if (oldingiRaqam < 0) return;
+    var joy = 0, sanoq = 0;
+    while (joy < yangi.length && sanoq < oldingiRaqam){
+      if (yangi.charCodeAt(joy) >= 48 && yangi.charCodeAt(joy) <= 57) sanoq++;
+      joy++;
+    }
+    try { inp.setSelectionRange(joy, joy); } catch (e){}
+  }
+  document.addEventListener('input', function(e){
+    if (e.target.classList && e.target.classList.contains('pul')) pulMaydon(e.target);
+  });
+  document.querySelectorAll('.pul').forEach(pulMaydon);
+
   var sel = document.getElementById('id_collateral_type');
   var blocks = {
     'zargarlik': document.getElementById('block-zargarlik'),
@@ -177,9 +220,9 @@
     if (!garovValue || sel.value !== 'zargarlik') return;
     var total = 0;
     document.querySelectorAll('#jewelry-table input[name$="-value"]').forEach(function(i){
-      var v = parseFloat(i.value); if (!isNaN(v)) total += v;
+      total += pulSon(i.value);
     });
-    garovValue.value = total > 0 ? total : '';
+    garovValue.value = total > 0 ? pulFormat(String(total)) : '';
   }
 
   function garovBahoHolati(){

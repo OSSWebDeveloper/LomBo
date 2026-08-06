@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load pul %}
 {% block title %}Shartnomalar{% endblock %}
 {% block content %}
 
@@ -39,7 +39,7 @@
     <td>{{ c.date|date:'d.m.Y' }}</td>
     <td>{{ c.borrower_fio }}</td>
     <td class="muted">{{ c.get_collateral_type_display }}</td>
-    <td class="num">{{ c.amount|floatformat:0 }}</td>
+    <td class="num">{{ c.amount|pul }}</td>
     <td class="num">{{ c.term_months }} oy</td>
     {% if user.is_boshliq %}<td class="muted">{{ c.created_by|default:'—' }}</td>{% endif %}
     <td>
@@ -53,10 +53,7 @@
       <a class="btn btn-secondary btn-sm" href="{% url 'contract_detail' c.pk %}">Ochish</a>
       <a class="btn btn-primary btn-sm" href="{% url 'contract_download' c.pk %}"
          title="Mikroqarz shartnomasi (Word)">Shartnoma</a>
-      {% if c.collateral_type != 'kafillik' %}
-        <a class="btn btn-secondary btn-sm" href="{% url 'contract_download_garov' c.pk %}"
-           title="Garov shartnomasi + baholash dalolatnomasi (Word)">Garov</a>
-      {% endif %}
+      
     </td>
   </tr>
   {% endfor %}
