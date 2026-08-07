@@ -179,7 +179,6 @@ def contract_create(request):
         if ok and extra_ok:
             contract = form.save(commit=False)
             contract.end_date = form.cleaned_data['end_date']
-            contract.garov_number = form.cleaned_data['garov_number']
             contract.created_by = request.user
             contract.save()
 
@@ -240,7 +239,6 @@ def contract_edit(request, pk):
         if ok and extra_ok:
             contract = form.save(commit=False)
             contract.end_date = form.cleaned_data['end_date']
-            contract.garov_number = form.cleaned_data['garov_number']
             contract.save()
 
             # Ta'minot turi o'zgargan bo'lsa, eskisining ma'lumotlarini tozalash
@@ -825,11 +823,11 @@ def _garov_hujjati(request, pk, pdf=False):
             messages.error(request, str(xato))
             return redirect('contract_detail', pk=pk)
         tur = 'application/pdf'
-        nom = f'garov_{contract.garov_number or contract.number}.pdf'
+        nom = f'garov_{contract.number}.pdf'
     else:
         tur = ('application/vnd.openxmlformats-officedocument'
                '.wordprocessingml.document')
-        nom = f'garov_{contract.garov_number or contract.number}.docx'
+        nom = f'garov_{contract.number}.docx'
 
     resp = HttpResponse(data, content_type=tur)
     resp['Content-Disposition'] = f'attachment; filename="{nom}"'

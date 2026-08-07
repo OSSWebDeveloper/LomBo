@@ -75,7 +75,7 @@ def main():
         borrower_phone='91 415-00-87', monthly_income=Decimal('6000000'),
         amount=Decimal('35000000'), term_months=12, interest_rate=60,
         end_date=add_months(date(2025, 11, 3), 12),
-        garov_number=200, garov_value=Decimal('43750000'), created_by=w1)
+        garov_value=Decimal('43750000'), created_by=w1)
     for name, qty, wt, val in [
         ('Тилла комплект (халка узук)', 2, '21.95', 24750000),
         ('Тилла узук', 6, '12.50', 10000000),
@@ -95,7 +95,7 @@ def main():
         borrower_phone='90 220-11-33', monthly_income=Decimal('12000000'),
         amount=Decimal('50000000'), term_months=12, interest_rate=60,
         end_date=add_months(date(2025, 11, 10), 12),
-        garov_number=201, garov_value=Decimal('70000000'), created_by=w1)
+        garov_value=Decimal('70000000'), created_by=w1)
     VehicleInfo.objects.create(
         contract=c2, owner='“Express Alligator Bukhara” МЧЖ',
         owner_head='Бахшиллоева Дилноза Бахтиёровна',

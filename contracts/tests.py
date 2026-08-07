@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Hujjat yasash va forma tekshiruvlari."""
 import io
+import re
 from datetime import date
 
 from django.test import TestCase
@@ -46,7 +47,7 @@ class HujjatYasashTest(TestCase):
             borrower_phone='90 123-45-67', monthly_income=4_000_000,
             amount=8_000_000, term_months=12, interest_rate=60,
             end_date=contract_end_date(sana, 12),
-            garov_number=17, **qoshimcha)
+            **qoshimcha)
         return c
 
     def zargarlik(self):
@@ -145,6 +146,37 @@ class HujjatYasashTest(TestCase):
                 self.assertIn('20216000405489627001', matn)
                 self.assertIn('01137', matn)
                 Contract.objects.all().delete()
+
+    def test_muqova_toplamning_birinchi_sahifasi(self):
+        c = self.zargarlik()
+        matn = hujjat_matni(hujjat_yasa(c, qism='hammasi'))
+        self.assertIn('масъулияти чекланган жамияти', matn)
+        self.assertIn('Кредит №', matn)
+        self.assertIn('8 000 000,00', matn)
+        self.assertIn('Заргарлик буюмлари', matn)
+        self.assertIn('Бухоро шаҳри 2026 йил', matn)
+        # Muqova shartnomadan oldin turishi kerak
+        self.assertLess(matn.index('масъулияти чекланган жамияти'),
+                        matn.index('Микрокарз шартномаси'))
+
+    def test_muqovada_garov_turi_yoziladi(self):
+        for yasovchi, kutilgan in ((self.zargarlik, 'Заргарлик буюмлари'),
+                                   (self.transport, 'Транспорт воситаси'),
+                                   (self.kafillik, 'Иш хаки кафиллиги')):
+            with self.subTest(tur=yasovchi.__name__):
+                c = yasovchi()
+                matn = hujjat_matni(hujjat_yasa(c, qism='hammasi'))
+                self.assertIn(kutilgan, matn)
+                Contract.objects.all().delete()
+
+    def test_hamma_hujjat_bitta_raqam_bilan(self):
+        """Shartnoma, garov, dalolatnoma, bayon va farmoyish — bir xil raqamda."""
+        c = self.zargarlik()
+        matn = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='hammasi')))
+        for ibora in ('Микрокарз шартномаси №301', 'Гаров шартнома 301',
+                      '№301-сонли', 'далолатномаси №301', 'БАЁНИ №301',
+                      'ФАРМОЙИШ №301'):
+            self.assertIn(ibora, matn)
 
     def test_zargarlik_jadvali_barcha_buyumni_chiqaradi(self):
         c = self.zargarlik()

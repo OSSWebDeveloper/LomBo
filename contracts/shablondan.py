@@ -14,6 +14,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
+from .docx_ulash import hujjatni_ulash
 from .formatlash import sana_sozlar
 from .num2words_uz import num2words_uz, summa_formatlangan
 
@@ -102,7 +103,9 @@ def zargarlik_konteksti(c):
     jami_ogirligi = sum(b.weight for b in buyumlar)
     ctx = _umumiy(c)
     ctx.update({
-        'garov_raqam': str(c.garov_number or c.number),
+        # Garov shartnomasi, bayon, farmoyish va dalolatnoma — hammasi
+        # shartnomaning o'sha raqami bilan yuritiladi.
+        'garov_raqam': str(c.number),
         'garov_baho': _pul(c.garov_value or 0),
         'garov_baho_raqam': _raqam(c.garov_value or 0),
         'jami_soni': str(jami_soni),
@@ -165,7 +168,9 @@ def transport_konteksti(c):
             f'{v.model} русумли транспорт воситаси')
     ctx = _umumiy(c)
     ctx.update({
-        'garov_raqam': str(c.garov_number or c.number),
+        # Garov shartnomasi, bayon, farmoyish va dalolatnoma — hammasi
+        # shartnomaning o'sha raqami bilan yuritiladi.
+        'garov_raqam': str(c.number),
         'garov_mulki': mulk,
         'garov_egasi': v.owner,
         'garov_rahbari': v.owner_head or v.owner,
@@ -323,12 +328,22 @@ def qismlarga_ajrat(bayt):
     return b1.getvalue(), b2.getvalue()
 
 
+def muqova_bilan(contract, bayt):
+    """Hujjat oldiga muqovani (to'plamning 1-sahifasi) qo'shadi."""
+    from .muqova import muqova_hujjati
+
+    doc = hujjatni_ulash(muqova_hujjati(contract), Document(io.BytesIO(bayt)))
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
 def hujjat_yasa(contract, qism='asosiy'):
     """Shartnoma turiga qarab hujjat yasaydi.
 
-    qism='asosiy'   — mikroqarz shartnomasi (garovsiz)
+    qism='asosiy'   — muqova + mikroqarz shartnomasi (garovsiz)
     qism='garov'    — garov shartnomasi + baholash dalolatnomasi (yo'q bo'lsa None)
-    qism='hammasi'  — bitta faylda barchasi
+    qism='hammasi'  — bitta faylda barchasi, muqovadan boshlab
     """
     from django.conf import settings
 
@@ -346,10 +361,11 @@ def hujjat_yasa(contract, qism='asosiy'):
     toliq = shablondan_yasa(shablon, kontekst_fn(contract),
                             contract=contract, jadval_qatorlari=qatorlar)
     if qism == 'hammasi':
-        return toliq
+        return muqova_bilan(contract, toliq)
 
     asosiy, garov = qismlarga_ajrat(toliq)
-    return garov if qism == 'garov' else asosiy
+    # Garov hujjati alohida olinganda muqova kerak emas — u to'plamniki
+    return garov if qism == 'garov' else muqova_bilan(contract, asosiy)
 
 
 def garovi_bormi(contract):

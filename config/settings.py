@@ -50,10 +50,6 @@ if not DEBUG:
 # Bazada bundan katta raqam bo'lsa, eng kattasidan davom etadi.
 CONTRACT_START_NUMBER = 200
 
-# Garov shartnomasi o'z alohida raqamlanishiga ega — shu raqamdan boshlanadi.
-# Faqat zargarlik va transport garovida beriladi (kafillikda garov shartnomasi yo'q).
-GAROV_START_NUMBER = 1
-
 # Ishchi o'zi kiritgan shartnomani necha daqiqa ichida tuzata oladi?
 # Shartnoma kiritilgach shu vaqt ichida ishchi xatosini o'zi to'g'rilaydi
 # (masalan, ism yoki summani noto'g'ri yozgan bo'lsa). Muddat o'tgach
@@ -71,6 +67,9 @@ TOLOV_JADVALI_QOSHILSIN = False
 LOMBARD_ORG = {
     'name': '“Asia Invest Mikromoliya tashkiloti” МЧЖ',
     'name_short': '“Asia Invest Mikromoliya tashkiloti” МЧЖ',
+    # Muqovaning yirik sarlavhasi — «МЧЖ»siz, chunki uning tagida
+    # «масъулияти чекланган жамияти» deb yoziladi.
+    'title_latin': 'Asia Invest Mikromoliya tashkiloti',
     'director_full': 'Самиев Бахриддин Баходирович',
     'director_short': 'Б.Б.Самиев',
     'employee_short': 'Б.Т.Хўжаев',

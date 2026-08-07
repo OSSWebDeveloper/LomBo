@@ -24,10 +24,14 @@ import re
 import sys
 
 from docx import Document
-from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
+
+# Skript sifatida ham (`python contracts/shablon_yasash.py`), paket ichidan ham
+# ishlashi kerak — shuning uchun modul yo'li qo'lda qo'shiladi.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from docx_ulash import hujjatni_ulash  # noqa: E402
 
 PAPKA = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shablonlar')
 
@@ -140,33 +144,6 @@ def qoldiqni_tekshir(doc, sozlar):
     for s in qolgan:
         print(f"    [XATO] namuna qiymati qolib ketdi: {s}")
     return not qolgan
-
-
-# --------------------------------------------------------------- hujjatlarni ulash
-
-def hujjatni_ulash(nishon, manba):
-    """`nishon` hujjat oxiriga `manba` hujjatni qo'shadi.
-
-    Har bir hujjat o'z sahifa sozlamalarini (chekkalar, yo'nalish) saqlab
-    qoladi: joriy bo'lim sozlamasi oxirgi xatboshiga biriktiriladi, manba
-    hujjatniki esa yangi bo'lim bo'lib qo'shiladi. Bo'lim uzilishi o'zi yangi
-    sahifadan boshlanadi, shuning uchun alohida sahifa uzilishi kerak emas.
-    """
-    n_body = nishon.element.body
-    m_body = manba.element.body
-
-    joriy_sect = n_body.find(qn('w:sectPr'))
-    if joriy_sect is not None:
-        n_body.remove(joriy_sect)
-        chegara = OxmlElement('w:p')
-        pPr = OxmlElement('w:pPr')
-        pPr.append(copy.deepcopy(joriy_sect))
-        chegara.append(pPr)
-        n_body.append(chegara)
-
-    for el in list(m_body):
-        n_body.append(copy.deepcopy(el))
-    return nishon
 
 
 # --------------------------------------------------------------- zargarlik jadvali

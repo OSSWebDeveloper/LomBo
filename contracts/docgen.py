@@ -142,7 +142,8 @@ def _ctx(contract):
         'term_soz': num2words_uz(c.term_months),
         'rate': c.interest_rate,
         'rate_soz': num2words_uz(c.interest_rate),
-        'garov_number': c.garov_number or c.number,
+        # Butun to'plam shartnomaning bitta raqami bilan yuritiladi
+        'garov_number': c.number,
         'garov_value': _pul(c.garov_value) if c.garov_value else '',
     }
 

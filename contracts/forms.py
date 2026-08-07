@@ -7,7 +7,7 @@ from django.forms import inlineformset_factory
 from .docgen import contract_end_date
 from .formatlash import hujjat_raqami, pul_matn, pul_son
 from .models import (VILOYATLAR, Contract, GuarantorInfo, JewelryItem, VehicleInfo,
-                     next_contract_number, next_garov_number)
+                     next_contract_number)
 
 
 class DateInput(forms.DateInput):
@@ -48,7 +48,7 @@ class ContractForm(forms.ModelForm):
             'borrower_fio', 'passport_region', 'passport_org', 'passport_date',
             'passport_number', 'borrower_address', 'borrower_phone', 'monthly_income',
             'amount', 'term_months', 'interest_rate', 'end_date',
-            'garov_number', 'garov_value',
+            'garov_value',
         ]
         widgets = {
             'date': DateInput(),
@@ -72,17 +72,17 @@ class ContractForm(forms.ModelForm):
         # Avtomatik to'ldiriladigan maydonlar qo'lda o'zgartirilmaydi.
         # disabled=True bo'lganda Django yuborilgan qiymatni e'tiborsiz qoldirib,
         # har doim initial'ni oladi — ya'ni brauzerdan soxta qiymat kelolmaydi.
-        for nom in ('number', 'end_date', 'garov_number'):
+        for nom in ('number', 'end_date'):
             self.fields[nom].disabled = True
             self.fields[nom].required = False
 
-        self.fields['number'].help_text = 'Tizim tomonidan avtomatik beriladi.'
+        self.fields['number'].help_text = (
+            'Tizim tomonidan avtomatik beriladi. Garov shartnomasi, ariza, '
+            'bayon va dalolatnoma ham shu raqam bilan chiqadi.')
         self.fields['end_date'].help_text = 'Sana va muddatdan avtomatik hisoblanadi.'
-        self.fields['garov_number'].help_text = 'Tizim tomonidan avtomatik beriladi.'
 
         if not self.instance.pk:
             self.fields['number'].initial = next_contract_number()
-            self.fields['garov_number'].initial = next_garov_number()
 
         self.fields['garov_value'].required = False
 
@@ -152,14 +152,8 @@ class ContractForm(forms.ModelForm):
         if data.get('date') and data.get('term_months'):
             data['end_date'] = contract_end_date(data['date'], data['term_months'])
 
-        # Garov shartnomasi faqat zargarlik va transportda bo'ladi
-        if tur in (Contract.TYPE_ZARGARLIK, Contract.TYPE_TRANSPORT):
-            gnum = data.get('garov_number')
-            if not gnum or Contract.objects.filter(
-                    garov_number=gnum).exclude(pk=self.instance.pk).exists():
-                data['garov_number'] = next_garov_number()
-        else:
-            data['garov_number'] = None
+        # Garov bahosi faqat zargarlik va transportda bo'ladi
+        if tur == Contract.TYPE_KAFILLIK:
             data['garov_value'] = None
 
         # Zargarlikda garov bahosi jadvaldan yig'iladi (view'da hisoblanadi),

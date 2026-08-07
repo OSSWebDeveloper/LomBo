@@ -33,12 +33,6 @@ def next_contract_number():
     return max(last + 1, settings.CONTRACT_START_NUMBER)
 
 
-def next_garov_number():
-    """Garov shartnomasi uchun alohida raqamlanish (GAROV_START_NUMBER dan)."""
-    last = Contract.objects.aggregate(m=models.Max('garov_number'))['m'] or 0
-    return max(last + 1, settings.GAROV_START_NUMBER)
-
-
 class Contract(models.Model):
     TYPE_ZARGARLIK = 'zargarlik'
     TYPE_TRANSPORT = 'transport'
@@ -89,7 +83,12 @@ class Contract(models.Model):
     end_date = models.DateField('Tugash sanasi')
 
     # Garov umumiy
-    garov_number = models.PositiveIntegerField('Garov shartnomasi №', null=True, blank=True)
+    # ESKIRGAN: garov shartnomasiga alohida raqam berilardi. Endi butun to'plam
+    # shartnomaning bitta raqami bilan yuritiladi. Ustun eski shartnomalarda
+    # qanday raqam turgani yozma qolishi uchun saqlanmoqda — hujjatlarga
+    # tushmaydi va formada ko'rinmaydi.
+    garov_number = models.PositiveIntegerField('Garov shartnomasi № (eskirgan)',
+                                               null=True, blank=True)
     garov_value = models.DecimalField('Garov bahosi (so\'m)', max_digits=15, decimal_places=0,
                                       null=True, blank=True)
 
