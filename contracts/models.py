@@ -75,6 +75,9 @@ class Contract(models.Model):
                                       help_text='Masalan: 12 345-67-89')
     borrower_phone2 = models.CharField('Telefon raqami 2', max_length=25, blank=True)
     borrower_phone3 = models.CharField('Telefon raqami 3', max_length=25, blank=True)
+    # Arizadagi «Менинг иш жойим ва унинг манзили» qatori
+    borrower_workplace = models.CharField('Ish joyi va manzili (kirillda)',
+                                          max_length=300, blank=True)
     # Arizadagi «Мен ойида ўртача ... сўм даромадларга эга» jumlasi uchun
     monthly_income = models.DecimalField('Oylik daromad (so\'m)', max_digits=15,
                                          decimal_places=0, null=True, blank=True)

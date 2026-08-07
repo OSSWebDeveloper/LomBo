@@ -76,7 +76,8 @@ class ContractForm(forms.ModelForm):
             'number', 'date', 'collateral_type',
             'borrower_fio', 'passport_region', 'passport_org', 'passport_date',
             'passport_number', 'borrower_address',
-            'borrower_phone', 'borrower_phone2', 'borrower_phone3', 'monthly_income',
+            'borrower_phone', 'borrower_phone2', 'borrower_phone3',
+            'borrower_workplace', 'monthly_income',
             'amount', 'term_months', 'interest_rate', 'end_date',
             'garov_value',
         ]
@@ -88,6 +89,7 @@ class ContractForm(forms.ModelForm):
             'borrower_phone': TelefonInput(),
             'borrower_phone2': TelefonInput(),
             'borrower_phone3': TelefonInput(),
+            'borrower_workplace': forms.TextInput(),
         }
         # Pul summalari «7 000 000» ko'rinishida yoziladi
         field_classes = {'amount': PulField, 'garov_value': PulField,
@@ -121,8 +123,10 @@ class ContractForm(forms.ModelForm):
         # Modelda bo'sh qolishi mumkin, chunki eski shartnomalarda bu
         # maydonlar umuman bo'lmagan.
         for nom in ('borrower_phone', 'borrower_phone2', 'borrower_phone3',
-                    'monthly_income'):
+                    'borrower_workplace', 'monthly_income'):
             self.fields[nom].required = True
+        self.fields['borrower_workplace'].help_text = (
+            'Ishlamasa «—» qo‘ying.')
 
         # Hujjat raqami: AE№2437494 — 10 belgidan ortiq yozib bo'lmaydi
         self.fields['passport_number'].widget.attrs['maxlength'] = 10

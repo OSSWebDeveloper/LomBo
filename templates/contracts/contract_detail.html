@@ -56,6 +56,7 @@
         {{ contract.passport_date|date:'d.m.Y' }}</td></tr>
       <tr><th>Manzil</th><td>{{ contract.borrower_address }}</td></tr>
       <tr><th>Telefon</th><td>{% if contract.borrower_phone %}{{ contract.borrower_phone }}{% if contract.borrower_phone2 %}, {{ contract.borrower_phone2 }}{% endif %}{% if contract.borrower_phone3 %}, {{ contract.borrower_phone3 }}{% endif %}{% else %}—{% endif %}</td></tr>
+      <tr><th>Ish joyi</th><td>{{ contract.borrower_workplace|default:'—' }}</td></tr>
       <tr><th>Oylik daromad</th><td>{% if contract.monthly_income %}{{ contract.monthly_income|pul }} so‘m{% else %}—{% endif %}</td></tr>
     </table>
   </div>

@@ -138,6 +138,7 @@ def _umumiy(c):
         'telefon': c.borrower_phone or BOSH_CHIZIQ,
         'telefon2': c.borrower_phone2 or BOSH_CHIZIQ,
         'telefon3': c.borrower_phone3 or BOSH_CHIZIQ,
+        'ish_joyi': c.borrower_workplace or BOSH_CHIZIQ,
         'daromad': _raqam(c.monthly_income) if c.monthly_income else BOSH_CHIZIQ,
         # Arizada pasport ma'lumoti alohida kataklarga bo'lingan
         'pasport_seriya': c.passport_seriya,

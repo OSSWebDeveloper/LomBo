@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Hujjat yasash va forma tekshiruvlari."""
 import io
 import re
@@ -45,7 +45,8 @@ class HujjatYasashTest(TestCase):
             passport_date=date(2025, 4, 23), passport_number='АE№2437494',
             borrower_address='Бухоро шахар, Навоий кўчаси, 5-уй',
             borrower_phone='90 123-45-67', borrower_phone2='91 222-33-44',
-            borrower_phone3='93 555-66-77', monthly_income=4_000_000,
+            borrower_phone3='93 555-66-77', borrower_workplace='Бухоро тикув фабрикаси',
+            monthly_income=4_000_000,
             amount=8_000_000, term_months=12, interest_rate=60,
             end_date=contract_end_date(sana, 12),
             **qoshimcha)
@@ -123,6 +124,8 @@ class HujjatYasashTest(TestCase):
         self.assertIn('ойида ўртача 4 000 000 сўм', matn)
         self.assertIn('23.04.2025-йилда, Бухоро вилояти 61013 - сонли', matn)
         self.assertIn('05 август 2026 йил', matn)
+        self.assertIn('Менинг иш жойим ва унинг манзили: Бухоро тикув фабрикаси',
+                      matn)
 
     def test_telefon_yoq_bolsa_chiziq_qoladi(self):
         """Eski shartnomalarda telefon va daromad yo'q — joyi bo'sh qolmaydi."""
@@ -268,7 +271,9 @@ class FormaSahifasiTest(TestCase):
             'passport_date': '2025-04-23', 'passport_number': 'АE№2437494',
             'borrower_address': 'Бухоро шахар, Навоий кўчаси, 5-уй',
             'borrower_phone': '901234567', 'borrower_phone2': '912223344',
-            'borrower_phone3': '935556677', 'monthly_income': '4 000 000',
+            'borrower_phone3': '935556677',
+            'borrower_workplace': 'Бухоро тикув фабрикаси',
+            'monthly_income': '4 000 000',
             'amount': '8 000 000', 'term_months': '12', 'interest_rate': '60',
             'jewelry-TOTAL_FORMS': '1', 'jewelry-INITIAL_FORMS': '0',
             'jewelry-MIN_NUM_FORMS': '0', 'jewelry-MAX_NUM_FORMS': '1000',
@@ -310,3 +315,4 @@ class TelefonFormatiTest(TestCase):
 
     def test_boshqa_format_ozgarmaydi(self):
         self.assertEqual(self._tozala('8 (495) 123-45-67'), '8 (495) 123-45-67')
+

@@ -237,6 +237,9 @@ ARIZA_UMUMIY = [
 TELEFON_NAQSHI = re.compile(
     r'(Телефон ракам\s*1\))\s*_+(\s*2\))\s*_+(\s*3\))\s*_+')
 
+# «Менинг иш жойим ва унинг манзили: ______»
+ISH_JOYI_NAQSHI = re.compile(r'(Менинг иш жойим ва унинг манзили:)\s*_+')
+
 
 def ariza_hujjati(tur):
     doc = Document(os.path.join(PAPKA, 'm_ariza.docx'))
@@ -250,7 +253,11 @@ def ariza_hujjati(tur):
                    f'{m.group(3)} {{{{ telefon3 }}}}'))
     print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: Телефон ракам 1) 2) 3)")
     ok = ok and bool(n)
-    return doc, ok
+
+    m = naqsh_bilan_almashtir(doc, ISH_JOYI_NAQSHI,
+                              lambda x: f'{x.group(1)} {{{{ ish_joyi }}}}')
+    print(f"    [{'OK ' if m else 'YO`Q'}] {m:2} marta: Менинг иш жойим...")
+    return doc, ok and bool(m)
 
 
 # =============================================================== BAYON

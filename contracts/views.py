@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import json
 import os
 import re
@@ -583,7 +583,7 @@ def _sinov_konteksti():
               'muddat_soz', 'foiz', 'foiz_soz', 'summa', 'fio', 'pasport', 'manzil',
               'telefon', 'daromad', 'pasport_seriya', 'pasport_soni', 'pasport_sana',
               'pasport_viloyat', 'pasport_bolim',
-              'telefon', 'telefon2', 'telefon3', 'daromad', 'sana_soz',
+              'telefon', 'telefon2', 'telefon3', 'ish_joyi', 'daromad', 'sana_soz',
               'pasport_seriya', 'pasport_soni', 'pasport_sana',
               'pasport_viloyat', 'pasport_bolim',
               'garov_baho', 'garov_baho_raqam', 'jami_soni', 'jami_ogirligi',
@@ -847,3 +847,4 @@ def contract_download_garov(request, pk):
 def contract_download_garov_pdf(request, pk):
     """Garov shartnomasi + baholash dalolatnomasi (PDF)."""
     return _garov_hujjati(request, pk, pdf=True)
+
