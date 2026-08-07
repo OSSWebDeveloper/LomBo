@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 """Shartnoma to'plamining muqovasi (birinchi sahifa).
 
-Namuna .doc fayli bo'lmagani uchun matn koddan yoziladi. Asl chop etilgan
-muqovadagi tartib saqlangan:
+Namuna .doc fayli bo'lmagani uchun matn koddan yoziladi. Mijoz tanlagan
+ko'rinish (2026-08-07) — ma'lumotlar ramkali quti ichida:
 
         Asia Invest Mikromoliya tashkiloti
-                 ─────────────
-          масъулияти чекланган жамияти
-
-              Кредит №      159
-    Сана: 05.08.2026 й        Муддати: 04.08.2027 й
 
            Рахмонова Шахноза Элмуродовна
 
-    Микрокарз суммаси:   5 000 000,00
-    Йиллик фоизи:        60%
-    Гаров:               Заргарлик буюмлари
+               ──────────────────
 
-              Бухоро шахри 2026 йил
+        ┌──────────────────────┬───────────────────────────┐
+        │ Кредит №             │ 159                       │
+        │ Сана / Муддати       │ 05.08.2026 й — 04.08.2027 й│
+        │ Микрокарз суммаси    │ 5 000 000,00              │
+        │ Йиллик фоизи / Гаров │ 60% — Заргарлик буюмлари  │
+        └──────────────────────┴───────────────────────────┘
+
+              Бухоро шаҳри 2026 йил
 """
 from django.conf import settings
 from docx import Document
@@ -28,14 +28,12 @@ from docx.shared import Cm, Pt, RGBColor
 
 SHRIFT = 'Times New Roman'
 
-# Asl muqovadagi o'lchamlar
-SARLAVHA_PT = 26
-TASHKILOT_PT = 13
-ISM_PT = 24
+SARLAVHA_PT = 30       # tashkilot nomi
+ISM_PT = 26            # qarz oluvchi
 MATN_PT = 12
-BELGI_PT = 10          # «Микрокарз суммаси», «Йиллик фоизи» kabi yozuvlar
+BELGI_PT = 12          # quti ichidagi yozuvlar
 
-KULRANG = '595959'     # tashkilot turi yozuvi uchun mayinroq rang
+KULRANG = '595959'     # bezak chizig'i uchun
 
 PAGE_W, PAGE_H = 21.0, 29.7
 MARGIN = 2.0
@@ -121,21 +119,41 @@ def _jadval_chekinishi(jadval, sm):
     tblPr.append(ind)
 
 
-def _qatorlar_jadvali(doc, qatorlar, enlar, chekinish, olcham=BELGI_PT):
-    """Chegarasiz jadval: har qator — bir nechta katak, o'lchamlari qat'iy.
+def _jadval_chegarasi(jadval, qalinlik='6', rang='000000'):
+    """Jadvalga chegara beradi.
+
+    Uslub (`Table Grid`) ishlatilmaydi: muqova shartnoma hujjatining ichiga
+    qo'yiladi, u yerda bu uslub yo'q — chegara ko'rinmay qolardi.
+    """
+    borders = OxmlElement('w:tblBorders')
+    for tomon in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+        el = OxmlElement(f'w:{tomon}')
+        el.set(qn('w:val'), 'single')
+        el.set(qn('w:sz'), qalinlik)
+        el.set(qn('w:space'), '0')
+        el.set(qn('w:color'), rang)
+        borders.append(el)
+    jadval._tbl.tblPr.append(borders)
+
+
+def _qatorlar_jadvali(doc, qatorlar, enlar, chekinish, olcham=BELGI_PT,
+                      chegara=False, oraliq_pt=3):
+    """Har qator — bir nechta katak, o'lchamlari qat'iy.
 
     `qatorlar` — [[(matn, qalin), ...], ...], `enlar` — ustun enlari (sm).
     """
     jadval = doc.add_table(rows=len(qatorlar), cols=len(enlar))
     jadval.autofit = False
     _jadval_chekinishi(jadval, chekinish)
+    if chegara:
+        _jadval_chegarasi(jadval)
     for i, qator in enumerate(qatorlar):
         for ustun, en in enumerate(enlar):
             katak = jadval.cell(i, ustun)
             katak.width = Cm(en)
             par = katak.paragraphs[0]
-            par.paragraph_format.space_before = Pt(0)
-            par.paragraph_format.space_after = Pt(3)
+            par.paragraph_format.space_before = Pt(oraliq_pt)
+            par.paragraph_format.space_after = Pt(oraliq_pt)
             if ustun < len(qator):
                 matn, qalin = qator[ustun]
                 _yoz(par, matn, olcham=olcham, qalin=qalin)
@@ -172,36 +190,30 @@ def muqova_hujjati(contract):
         for chekka in ('top_margin', 'bottom_margin', 'left_margin', 'right_margin'):
             setattr(bolim, chekka, Cm(MARGIN))
 
-    # Bloklar sahifa bo'ylab asl muqovadagi balandliklarda joylashadi
-    _bosh_joy(doc, 0.45)
-    _p(doc, org['title_latin'], olcham=SARLAVHA_PT, qalin=True, kursiv=True,
-       soya=True, oraliq=1.2, keyin=0)
-    _bezak_chizigi(doc, en=9.0, keyin=8)
-    _p(doc, 'масъулияти чекланган жамияти', olcham=TASHKILOT_PT, oraliq=2.0,
-       rang=KULRANG, keyin=0)
+    # Tashkilot nomi — qalin, kursivsiz, yengil soya bilan
+    _bosh_joy(doc, 1.2)
+    _p(doc, org['title_latin'], olcham=SARLAVHA_PT, qalin=True,
+       soya=True, oraliq=1.0, keyin=0)
 
-    _bosh_joy(doc, 4.7)
-    _qatorlar_jadvali(doc, [[('Кредит №', False), (str(contract.number), True)]],
-                      enlar=[4.5, 3.0], chekinish=5.5, olcham=MATN_PT)
-
-    _bosh_joy(doc, 0.2)
-    _qatorlar_jadvali(doc, [[
-        ('Сана:', False), (f'{contract.date.strftime("%d.%m.%Y")} й', True),
-        ('Муддати:', False), (f'{contract.end_date.strftime("%d.%m.%Y")} й', True),
-    ]], enlar=[2.2, 6.9, 2.4, 3.4], chekinish=1.8, olcham=MATN_PT)
-
-    # Qarz oluvchi ismi — muqovadagi eng yirik yozuv
-    _bosh_joy(doc, 1.1)
+    # Qarz oluvchi ismi — muqovadagi ikkinchi yirik yozuv
+    _bosh_joy(doc, 3.6)
     _p(doc, contract.borrower_fio, olcham=ISM_PT, keyin=0)
 
-    _bosh_joy(doc, 1.7)
-    _qatorlar_jadvali(doc, [
-        [('Микрокарз суммаси:', True), (_summa_matni(contract), True)],
-        [('Йиллик фоизи:', True), (f'{contract.interest_rate}%', True)],
-        [('Гаров:', True), (_garov_matni(contract), True)],
-    ], enlar=[3.9, 6.0], chekinish=3.4)
+    _bosh_joy(doc, 0.5)
+    _bezak_chizigi(doc, en=11.0, keyin=8)
 
-    _bosh_joy(doc, 1.2)
+    _bosh_joy(doc, 1.0)
+    sana = contract.date.strftime('%d.%m.%Y')
+    tugash = contract.end_date.strftime('%d.%m.%Y')
+    _qatorlar_jadvali(doc, [
+        [('Кредит №', True), (str(contract.number), True)],
+        [('Сана / Муддати', True), (f'{sana} й — {tugash} й', True)],
+        [('Микрокарз суммаси', True), (_summa_matni(contract), True)],
+        [('Йиллик фоизи / Гаров', True),
+         (f'{contract.interest_rate}% — {_garov_matni(contract)}', True)],
+    ], enlar=[5.2, 6.5], chekinish=3.0, chegara=True)
+
+    _bosh_joy(doc, 1.6)
     _p(doc, f'{org["city"]} {contract.date.year} йил',
        olcham=MATN_PT, qalin=True, kursiv=True, tagchiziq=True)
 

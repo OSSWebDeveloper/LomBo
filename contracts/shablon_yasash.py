@@ -232,8 +232,10 @@ ARIZA_UMUMIY = [
     ('Рахмонова Шахноза Элмуродовна', '{{ fio }}'),
 ]
 
-# «Телефон ракам  1)________» — chiziqchalar soni aniq bo'lmagani uchun naqsh
-TELEFON_NAQSHI = re.compile(r'(Телефон ракам\s*1\))\s*_+')
+# «Телефон ракам  1)____ 2) ____ 3) ____» — chiziqchalar soni aniq bo'lmagani
+# uchun naqsh bilan topiladi. Uchala o'rin ham to'ldiriladi.
+TELEFON_NAQSHI = re.compile(
+    r'(Телефон ракам\s*1\))\s*_+(\s*2\))\s*_+(\s*3\))\s*_+')
 
 
 def ariza_hujjati(tur):
@@ -241,9 +243,12 @@ def ariza_hujjati(tur):
     juftlar = [(ARIZA_TAMINOT, ARIZA_TAMINOT_YANGI[tur])] + ARIZA_UMUMIY
     ok = natijani_chop('ariza', hujjatda_almashtir(doc, juftlar))
 
-    n = naqsh_bilan_almashtir(doc, TELEFON_NAQSHI,
-                              lambda m: m.group(1) + ' {{ telefon }}')
-    print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: Телефон ракам 1)____")
+    n = naqsh_bilan_almashtir(
+        doc, TELEFON_NAQSHI,
+        lambda m: (f'{m.group(1)} {{{{ telefon }}}}'
+                   f'{m.group(2)} {{{{ telefon2 }}}}'
+                   f'{m.group(3)} {{{{ telefon3 }}}}'))
+    print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: Телефон ракам 1) 2) 3)")
     ok = ok and bool(n)
     return doc, ok
 

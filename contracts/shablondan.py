@@ -134,7 +134,10 @@ def _umumiy(c):
         'fio': c.borrower_fio,
         'pasport': c.passport_full,
         'manzil': c.borrower_address,
+        # Arizada uchta raqam, shartnoma rekvizitlarida birinchisi
         'telefon': c.borrower_phone or BOSH_CHIZIQ,
+        'telefon2': c.borrower_phone2 or BOSH_CHIZIQ,
+        'telefon3': c.borrower_phone3 or BOSH_CHIZIQ,
         'daromad': _raqam(c.monthly_income) if c.monthly_income else BOSH_CHIZIQ,
         # Arizada pasport ma'lumoti alohida kataklarga bo'lingan
         'pasport_seriya': c.passport_seriya,

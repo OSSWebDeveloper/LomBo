@@ -32,6 +32,35 @@ class PulInput(forms.TextInput):
         return pul_matn(super().format_value(value))
 
 
+class TelefonInput(forms.TextInput):
+    """Telefon maydoni — telefonlarda raqamli klaviatura chiqadi."""
+
+    def __init__(self, attrs=None):
+        birlashgan = {'class': 'form-control', 'inputmode': 'tel',
+                      'autocomplete': 'off', 'placeholder': '12 345-67-89',
+                      'maxlength': 25}
+        birlashgan.update(attrs or {})
+        super().__init__(birlashgan)
+
+
+def telefon_tozala(xom):
+    """«+998(91)4150087» ham, «914150087» ham bir xil ko'rinishga keladi.
+
+    O'zbekiston raqami (9 xona) hujjatdagidek «12 345-67-89» ko'rinishiga
+    keltiriladi; boshqacha yozilgani faqat ortiqcha bo'shliqlardan tozalanadi.
+    Qaytaradi: (tayyor_matn, xato_matni). Xato bo'lsa birinchisi None.
+    """
+    xom = (xom or '').strip()
+    son = re.sub(r'\D', '', xom)
+    if len(son) == 12 and son.startswith('998'):
+        son = son[3:]
+    if len(son) == 9:
+        return f'{son[:2]} {son[2:5]}-{son[5:7]}-{son[7:]}', None
+    if len(son) < 7:
+        return None, 'Telefon raqamini to‘liq kiriting. Masalan: 12 345-67-89'
+    return re.sub(r'\s+', ' ', xom), None
+
+
 class PulField(forms.DecimalField):
     """«7 000 000» ham, «7000000» ham bir xil qabul qilinadi."""
     widget = PulInput
@@ -46,7 +75,8 @@ class ContractForm(forms.ModelForm):
         fields = [
             'number', 'date', 'collateral_type',
             'borrower_fio', 'passport_region', 'passport_org', 'passport_date',
-            'passport_number', 'borrower_address', 'borrower_phone', 'monthly_income',
+            'passport_number', 'borrower_address',
+            'borrower_phone', 'borrower_phone2', 'borrower_phone3', 'monthly_income',
             'amount', 'term_months', 'interest_rate', 'end_date',
             'garov_value',
         ]
@@ -55,10 +85,9 @@ class ContractForm(forms.ModelForm):
             'passport_date': DateInput(),
             'end_date': DateInput(),
             'borrower_address': forms.TextInput(),
-            'borrower_phone': forms.TextInput(attrs={
-                'inputmode': 'tel', 'autocomplete': 'off',
-                # 'placeholder': '91 415-00-87', 'maxlength': 25}),
-                'placeholder': '12 345-67-89', 'maxlength': 25}),
+            'borrower_phone': TelefonInput(),
+            'borrower_phone2': TelefonInput(),
+            'borrower_phone3': TelefonInput(),
         }
         # Pul summalari «7 000 000» ko'rinishida yoziladi
         field_classes = {'amount': PulField, 'garov_value': PulField,
@@ -88,10 +117,12 @@ class ContractForm(forms.ModelForm):
         self.fields['garov_value'].required = False
 
         # Telefon va oylik daromad arizaga tushadi — to'ldirish majburiy.
+        # Arizada uchta raqam so'ralgani uchun uchalasi ham majburiy.
         # Modelda bo'sh qolishi mumkin, chunki eski shartnomalarda bu
         # maydonlar umuman bo'lmagan.
-        self.fields['borrower_phone'].required = True
-        self.fields['monthly_income'].required = True
+        for nom in ('borrower_phone', 'borrower_phone2', 'borrower_phone3',
+                    'monthly_income'):
+            self.fields[nom].required = True
 
         # Hujjat raqami: AE№2437494 — 10 belgidan ortiq yozib bo'lmaydi
         self.fields['passport_number'].widget.attrs['maxlength'] = 10
@@ -121,22 +152,20 @@ class ContractForm(forms.ModelForm):
         """«ae5862145» -> «AE№5862145» (seriya va raqam avtomatik ajratiladi)."""
         return hujjat_raqami(self.cleaned_data.get('passport_number', ''))
 
-    def clean_borrower_phone(self):
-        """«+998(91)4150087» ham, «914150087» ham bir xil qabul qilinadi.
+    def _telefon(self, nom):
+        tayyor, xato = telefon_tozala(self.cleaned_data.get(nom))
+        if xato:
+            raise forms.ValidationError(xato)
+        return tayyor
 
-        O'zbekiston raqami (9 xona) hujjatdagidek «91 415-00-87» ko'rinishiga
-        keltiriladi; boshqacha yozilgani faqat ortiqcha bo'shliqlardan tozalanadi.
-        """
-        xom = (self.cleaned_data.get('borrower_phone') or '').strip()
-        son = re.sub(r'\D', '', xom)
-        if len(son) == 12 and son.startswith('998'):
-            son = son[3:]
-        if len(son) == 9:
-            return f'{son[:2]} {son[2:5]}-{son[5:7]}-{son[7:]}'
-        if len(son) < 7:
-            raise forms.ValidationError(
-                'Telefon raqamini to‘liq kiriting. Masalan: 12 345-67-89')
-        return re.sub(r'\s+', ' ', xom)
+    def clean_borrower_phone(self):
+        return self._telefon('borrower_phone')
+
+    def clean_borrower_phone2(self):
+        return self._telefon('borrower_phone2')
+
+    def clean_borrower_phone3(self):
+        return self._telefon('borrower_phone3')
 
     def clean(self):
         data = super().clean()
