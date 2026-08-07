@@ -14,7 +14,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
-from .docx_ulash import hujjatni_ulash
+from .docx_ulash import hujjatni_boshiga_qoy
 from .formatlash import sana_sozlar
 from .num2words_uz import num2words_uz, summa_formatlangan
 
@@ -329,10 +329,15 @@ def qismlarga_ajrat(bayt):
 
 
 def muqova_bilan(contract, bayt):
-    """Hujjat oldiga muqovani (to'plamning 1-sahifasi) qo'shadi."""
+    """Hujjat oldiga muqovani (to'plamning 1-sahifasi) qo'yadi.
+
+    Muqova shartnoma hujjatining ichiga qo'yiladi, teskarisi emas — shunda
+    shartnomaning uslublari joyida qoladi (qarang: hujjatni_boshiga_qoy).
+    """
     from .muqova import muqova_hujjati
 
-    doc = hujjatni_ulash(muqova_hujjati(contract), Document(io.BytesIO(bayt)))
+    doc = Document(io.BytesIO(bayt))
+    hujjatni_boshiga_qoy(doc, muqova_hujjati(contract))
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()

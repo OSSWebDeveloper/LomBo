@@ -57,7 +57,8 @@ class ContractForm(forms.ModelForm):
             'borrower_address': forms.TextInput(),
             'borrower_phone': forms.TextInput(attrs={
                 'inputmode': 'tel', 'autocomplete': 'off',
-                'placeholder': '91 415-00-87', 'maxlength': 25}),
+                # 'placeholder': '91 415-00-87', 'maxlength': 25}),
+                'placeholder': '12 345-67-89', 'maxlength': 25}),
         }
         # Pul summalari «7 000 000» ko'rinishida yoziladi
         field_classes = {'amount': PulField, 'garov_value': PulField,
@@ -134,7 +135,7 @@ class ContractForm(forms.ModelForm):
             return f'{son[:2]} {son[2:5]}-{son[5:7]}-{son[7:]}'
         if len(son) < 7:
             raise forms.ValidationError(
-                'Telefon raqamini to‘liq kiriting. Masalan: 91 415-00-87')
+                'Telefon raqamini to‘liq kiriting. Masalan: 12 345-67-89')
         return re.sub(r'\s+', ' ', xom)
 
     def clean(self):

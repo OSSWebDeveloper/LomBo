@@ -71,7 +71,7 @@ class Contract(models.Model):
     # Eski shartnomalarda bo'lmagani uchun bazada bo'sh bo'lishi mumkin — yangisida
     # formada to'ldirish majburiy (qarang: ContractForm).
     borrower_phone = models.CharField('Telefon raqami', max_length=25, blank=True,
-                                      help_text='Masalan: 91 415-00-87')
+                                      help_text='Masalan: 12 345-67-89')
     # Arizadagi «Мен ойида ўртача ... сўм даромадларга эга» jumlasi uchun
     monthly_income = models.DecimalField('Oylik daromad (so\'m)', max_digits=15,
                                          decimal_places=0, null=True, blank=True)
