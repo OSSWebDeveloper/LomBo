@@ -553,6 +553,54 @@ class FormaSahifasiTest(TestCase):
         self.assertEqual(c.garov_beruvchi_fio, c.borrower_fio)
 
 
+class RoyxatSahifasiTest(TestCase):
+    """Shartnomalar ro'yxatidagi tugmalar."""
+
+    def setUp(self):
+        from accounts.models import User
+        self.boshliq = User.objects.create_user(
+            username='boshliq1', password='x', role=User.ROLE_BOSHLIQ)
+        self.ishchi = User.objects.create_user(
+            username='ishchi1', password='x', role=User.ROLE_ISHCHI, added_by=self.boshliq)
+        sana = date(2026, 8, 5)
+        self.c = Contract.objects.create(
+            number=301, garov_number=55, date=sana,
+            collateral_type=Contract.TYPE_ZARGARLIK,
+            borrower_fio='Каримова Нилуфар Аскаровна',
+            passport_region='Бухоро вилояти', passport_org='61013',
+            passport_date=date(2025, 4, 23), passport_number='АE№2437494',
+            borrower_address='Бухоро шахар', borrower_phone='90 123-45-67',
+            borrower_phone2='91 222-33-44', borrower_phone3='93 555-66-77',
+            borrower_workplace='—', monthly_income=4_000_000, amount=8_000_000,
+            term_months=12, interest_rate=60, end_date=contract_end_date(sana, 12),
+            garov_value=8_000_000, created_by=self.ishchi)
+
+    def _royxat(self, user):
+        self.client.force_login(user)
+        javob = self.client.get('/shartnomalar/')
+        self.assertEqual(javob.status_code, 200)
+        return javob.content.decode()
+
+    def test_boshliqda_ochirish_tugmasi_bor(self):
+        matn = self._royxat(self.boshliq)
+        self.assertIn(f'/shartnoma/{self.c.pk}/ochirish/', matn)
+        self.assertIn('btn-danger', matn)
+
+    def test_ishchida_ochirish_tugmasi_yoq(self):
+        """Ishchining o'chirish oqimi ataylab yopiq (qarang: contract_delete)."""
+        matn = self._royxat(self.ishchi)
+        self.assertNotIn('ochirish', matn)
+        self.assertNotIn('btn-danger', matn)
+
+    def test_shablon_izohlari_sahifaga_chiqmaydi(self):
+        """`{# #}` ko'p qatorli bo'lolmaydi — izoh matn bo'lib chiqib ketmasin."""
+        for user in (self.boshliq, self.ishchi):
+            with self.subTest(user=user.username):
+                matn = self._royxat(user)
+                self.assertNotIn('{#', matn)
+                self.assertNotIn('{%', matn)
+
+
 class TelefonFormatiTest(TestCase):
     """Telefon raqami turlicha yozilsa ham bir ko'rinishga keltiriladi."""
 

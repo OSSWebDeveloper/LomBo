@@ -53,7 +53,13 @@
       <a class="btn btn-secondary btn-sm" href="{% url 'contract_detail' c.pk %}">Ochish</a>
       <a class="btn btn-primary btn-sm" href="{% url 'contract_download' c.pk %}"
          title="Mikroqarz shartnomasi (Word)">Shartnoma</a>
-      
+      {% if user.is_boshliq %}
+        {% comment %}O'chirish faqat boshliqda. Havola tasdiqlash sahifasiga
+        olib boradi — bir bosishda o'chib ketmaydi.{% endcomment %}
+        <a class="btn btn-danger btn-sm btn-belgi" href="{% url 'contract_delete' c.pk %}"
+           title="Shartnoma №{{ c.number }} — o‘chirish"
+           aria-label="Shartnoma №{{ c.number }} — o‘chirish">🗑</a>
+      {% endif %}
     </td>
   </tr>
   {% endfor %}
