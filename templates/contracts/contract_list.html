@@ -58,7 +58,9 @@
         olib boradi — bir bosishda o'chib ketmaydi.{% endcomment %}
         <a class="btn btn-danger btn-sm btn-belgi" href="{% url 'contract_delete' c.pk %}"
            title="Shartnoma №{{ c.number }} — o‘chirish"
-           aria-label="Shartnoma №{{ c.number }} — o‘chirish">🗑</a>
+           aria-label="Shartnoma №{{ c.number }} — o‘chirish">
+          {% include 'contracts/_savat_belgisi.html' %}
+        </a>
       {% endif %}
     </td>
   </tr>

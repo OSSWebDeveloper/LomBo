@@ -396,9 +396,10 @@ input[readonly],.avto-maydon{
 .btn-danger{background:var(--danger);color:#fff}
 .btn-sm{padding:5px 11px;font-size:12.5px}
 [data-style="ixcham"] .btn-sm{padding:3px 8px}
-/* Faqat belgidan iborat tugma (ro'yxatdagi 🗑) — matnli tugmalar bilan bir
-   balandlikda tursin, lekin keragidan keng bo'lmasin */
-.btn-belgi{padding-left:9px;padding-right:9px;font-size:14px;line-height:1.25}
+/* Faqat belgidan iborat tugma (ro'yxatdagi savat) — keragidan keng bo'lmasin.
+   `align-self:stretch` uni yonidagi matnli tugmalar balandligiga tenglashtiradi:
+   belgi matndan pastroq bo'lgani uchun aks holda 4 px past turib qolardi. */
+.btn-belgi{padding-left:9px;padding-right:9px;align-self:stretch}
 .btn-link{
   background:none;border:0;color:var(--danger);cursor:pointer;
   font:inherit;font-size:13px;font-weight:600;padding:0;
@@ -407,6 +408,19 @@ input[readonly],.avto-maydon{
 /* Jadval qatoridagi tugmalar o'ngga tekislanadi va o'ralganda bir-biriga
    yopishib turadi (aks holda ular qator bo'yi bo'ylab yoyilib ketadi) */
 td.actions{justify-content:flex-end;align-content:center}
+
+/* Ro'yxat qatoridagi tugmalar — yumshoq ohangda: fon yengil tusda, matn
+   rangli. Jadvalda o'nlab qator turadi, to'q rangli tugmalar ko'zni
+   charchatadi; rang esa amalning ma'nosini bildirib turaveradi.
+   `-soft` juftliklari oltala mavzuda ham aniqlangan, shuning uchun tungi
+   rejimda fon to'q, matn yorug' bo'lib almashadi. */
+td.actions .btn{box-shadow:none}
+td.actions .btn-secondary{background:var(--surface-2)}
+td.actions .btn-primary{background:var(--accent-soft);color:var(--accent)}
+td.actions .btn-danger{background:var(--danger-soft);color:var(--danger)}
+/* Yengil fonda `brightness` deyarli sezilmaydi — bosib turish o'rniga
+   chegara ko'rsatamiz */
+td.actions .btn:hover{filter:none;border-color:currentColor}
 .inline{display:inline}
 
 /* ---------- xabarlar ---------- */
