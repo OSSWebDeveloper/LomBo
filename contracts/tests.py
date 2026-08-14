@@ -4,6 +4,7 @@ import io
 import re
 from datetime import date
 
+from django.conf import settings
 from django.test import TestCase
 
 from docx import Document
@@ -11,7 +12,8 @@ from docx.oxml.ns import qn
 
 from .docgen import contract_end_date
 from .forms import ContractForm
-from .models import Contract, GuarantorInfo, JewelryItem, VehicleInfo
+from .models import (HUJJAT_ID_KARTA, HUJJAT_PASPORT, Contract, GuarantorInfo,
+                     JewelryItem, VehicleInfo)
 from .shablondan import hujjat_yasa
 
 
@@ -53,7 +55,8 @@ class HujjatYasashTest(TestCase):
         return c
 
     def zargarlik(self):
-        c = self._shartnoma(Contract.TYPE_ZARGARLIK, garov_value=9_000_000)
+        c = self._shartnoma(Contract.TYPE_ZARGARLIK, garov_value=9_000_000,
+                            garov_number=55)
         JewelryItem.objects.create(contract=c, name='Тилла узук', quantity=1,
                                    weight=3, proba='585', value=4_000_000)
         JewelryItem.objects.create(contract=c, name='Тилла халка', quantity=2,
@@ -61,7 +64,8 @@ class HujjatYasashTest(TestCase):
         return c
 
     def transport(self):
-        c = self._shartnoma(Contract.TYPE_TRANSPORT, garov_value=90_000_000)
+        c = self._shartnoma(Contract.TYPE_TRANSPORT, garov_value=90_000_000,
+                            garov_number=55)
         VehicleInfo.objects.create(
             contract=c, owner='“Test Trans” МЧЖ', owner_head='Азизов Акмал Шухратович',
             state_number='01 A123AA', model='ISUZU NQR', color='ОК',
@@ -180,14 +184,23 @@ class HujjatYasashTest(TestCase):
                 self.assertIn(kutilgan, matn)
                 Contract.objects.all().delete()
 
-    def test_hamma_hujjat_bitta_raqam_bilan(self):
-        """Shartnoma, garov, dalolatnoma, bayon va farmoyish — bir xil raqamda."""
+    def test_garov_shartnomasi_oz_raqamida(self):
+        """Garov shartnomasi alohida raqamda, qolgan hujjatlar asosiy raqamda."""
         c = self.zargarlik()
         matn = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='hammasi')))
-        for ibora in ('Микрокарз шартномаси №301', 'Гаров шартнома 301',
-                      '№301-сонли', 'далолатномаси №301', 'БАЁНИ №301',
-                      'ФАРМОЙИШ №301'):
+        for ibora in ('Микрокарз шартномаси №301', '№301-сонли',
+                      'далолатномаси №301', 'БАЁНИ №301', 'ФАРМОЙИШ №301'):
             self.assertIn(ibora, matn)
+        self.assertIn('Гаров шартнома 55', matn)
+        self.assertNotIn('Гаров шартнома 301', matn)
+
+    def test_garov_raqami_yoq_bolsa_asosiysi_ishlatiladi(self):
+        """Eski shartnomalarda garov raqami yo'q — hujjat baribir chiqadi."""
+        c = self.zargarlik()
+        Contract.objects.filter(pk=c.pk).update(garov_number=None)
+        c.refresh_from_db()
+        matn = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='hammasi')))
+        self.assertIn('Гаров шартнома 301', matn)
 
     def test_zargarlik_jadvali_barcha_buyumni_chiqaradi(self):
         c = self.zargarlik()
@@ -212,6 +225,115 @@ class HujjatYasashTest(TestCase):
         self.assertNotIn('ШАРТНОМА  ПРЕДМЕТИ', matn)
         self.assertIn('Салимов Жасур Анварович', matn)
         self.assertIn('6 000 000 (олти миллион) сўмлик иш хакки кафиллиги', matn)
+
+    # ------------------------------------------------------- pasport turi
+
+    def test_biometrik_pasportda_iiv_raqami_yozilmaydi(self):
+        """Yashil pasportda IIV bo'lim raqami yo'q — matn raqamsiz tuziladi."""
+        c = self.zargarlik()
+        Contract.objects.filter(pk=c.pk).update(
+            passport_type=HUJJAT_PASPORT, passport_org='')
+        c.refresh_from_db()
+        self.assertEqual(
+            c.passport_full,
+            'Бухоро вилояти ИИВ томонидан 23.04.2025-йилда берилган '
+            'АE№2437494 ракамли паспорти')
+        matn = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='hammasi')))
+        self.assertIn('Бухоро вилояти ИИВ томонидан 23.04.2025-йилда берилган', matn)
+        self.assertNotIn('- сонли', matn)          # arizadagi joyi ham toza
+        self.assertNotIn('-сонли ИИВ', matn)
+
+    def test_pasport_turi_hujjatdagi_iborani_belgilaydi(self):
+        for turi, kutilgan, kutilmagan in (
+                (HUJJAT_ID_KARTA, 'ракамли шахс гувохномаси',
+                 'ракамли паспорти'),
+                (HUJJAT_PASPORT, 'ракамли паспорти',
+                 'ракамли шахс гувохномаси')):
+            with self.subTest(turi=turi):
+                Contract.objects.all().delete()
+                c = self.zargarlik()
+                Contract.objects.filter(pk=c.pk).update(passport_type=turi)
+                c.refresh_from_db()
+                matn = hujjat_matni(hujjat_yasa(c, qism='hammasi'))
+                self.assertIn(f'АE№2437494 {kutilgan}', matn)
+                self.assertNotIn(kutilmagan, matn)
+
+    # ------------------------------------------------- garovga qo'yuvchi
+
+    def _garov_beruvchili(self):
+        c = self.zargarlik()
+        Contract.objects.filter(pk=c.pk).update(
+            pledgor_other=True, pledgor_fio='Юсупова Гулнора Рахимовна',
+            pledgor_passport_type=HUJJAT_PASPORT,
+            pledgor_passport_region='Бухоро вилояти', pledgor_passport_org='61020',
+            pledgor_passport_date=date(2024, 3, 15),
+            pledgor_passport_number='АА№1112223',
+            pledgor_address='Бухоро шахар, Гиждувон кўчаси, 12-уй')
+        c.refresh_from_db()
+        return c
+
+    def test_garovga_qoyuvchi_boshqa_shaxs_hujjatga_tushadi(self):
+        c = self._garov_beruvchili()
+        garov = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='garov')))
+        # Garov shartnomasi va dalolatnomada — garovga qo'yuvchi
+        self.assertIn('гаровга кўювчи: Юсупова Гулнора Рахимовна', garov)
+        self.assertIn('АА№1112223 ракамли паспорти', garov)
+        self.assertIn('Бухоро шахар, Гиждувон кўчаси, 12-уй', garov)
+        # Qarz oluvchi ham o'z o'rnida qoladi
+        self.assertIn('Каримова Нилуфар Аскаровна', garov)
+        self.assertIn('қарз олувчи Каримова Нилуфар Аскаровна', garov)
+        self.assertIn('ва гаровга куювчи Юсупова Гулнора Рахимовна', garov)
+
+    def test_garovga_qoyuvchi_asosiy_shartnomaga_tegmaydi(self):
+        """Mikroqarz shartnomasida faqat qarz oluvchi bo'ladi."""
+        c = self._garov_beruvchili()
+        asosiy = hujjat_matni(hujjat_yasa(c, qism='asosiy'))
+        self.assertIn('«Қарз олувчи»: Каримова Нилуфар Аскаровна', asosiy)
+        # Arizada esa kimning mulki gaovga qo'yilayotgani aytiladi
+        self.assertIn('Юсупова Гулнора Рахимовнага тегишли заргарлик буюмларини',
+                      asosiy)
+
+    def test_garovga_qoyuvchi_kiritilmasa_qarz_oluvchi_qoladi(self):
+        """Belgi qo'yilmagan bo'lsa hujjat avvalgidek chiqadi."""
+        c = self.zargarlik()
+        garov = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='garov')))
+        self.assertIn('гаровга кўювчи: Каримова Нилуфар Аскаровна', garov)
+        self.assertIn('қарз олувчи ва гаровга куювчи Каримова Нилуфар Аскаровна',
+                      garov)
+        asosiy = hujjat_matni(hujjat_yasa(c, qism='asosiy'))
+        self.assertIn('узимга тегишли заргарлик буюмларини', asosiy)
+
+    # ------------------------------------------------------ ko'rinishi
+
+    def test_hujjatda_qora_bolmagan_harf_qolmaydi(self):
+        """Asl faylda qizil bo'lgan joylar ham qora chiqadi."""
+        for yasovchi in (self.zargarlik, self.transport, self.kafillik):
+            with self.subTest(tur=yasovchi.__name__):
+                Contract.objects.all().delete()
+                doc = Document(io.BytesIO(hujjat_yasa(yasovchi(), qism='hammasi')))
+                uchragan = set()
+                for run in doc.element.body.iter(qn('w:r')):
+                    if not ''.join(t.text or '' for t in run.iter(qn('w:t'))).strip():
+                        continue
+                    rPr = run.find(qn('w:rPr'))
+                    rang = rPr.find(qn('w:color')) if rPr is not None else None
+                    uchragan.add(rang.get(qn('w:val')) if rang is not None else None)
+                # Qora, oq (ko'rinmas to'ldirgich) va rangsiz — boshqasi bo'lmasin.
+                # Rangsiz run Word'da baribir qora chiqadi (muqova shunday yasaladi).
+                self.assertEqual(uchragan - {'FFFFFF', None}, {'000000'})
+
+    def test_telefondan_keyin_bosh_qator_qoladi(self):
+        """9-band: telefon raqami imzo jadvaliga yopishib qolmaydi."""
+        for yasovchi in (self.zargarlik, self.transport, self.kafillik):
+            with self.subTest(tur=yasovchi.__name__):
+                Contract.objects.all().delete()
+                doc = Document(io.BytesIO(hujjat_yasa(yasovchi(), qism='hammasi')))
+                pars = [''.join(t.text or '' for t in p.iter(qn('w:t')))
+                        for p in doc.element.body.iter(qn('w:p'))]
+                i = next(n for n, t in enumerate(pars)
+                         if t.strip().endswith('Телефон: 90 123-45-67'))
+                self.assertEqual(pars[i + 1].strip(), '')
+                self.assertEqual(pars[i + 2].strip(), '')
 
 
 class ShablonTekshiruviTest(TestCase):
@@ -267,6 +389,7 @@ class FormaSahifasiTest(TestCase):
         malumot = {
             'date': '2026-08-05', 'collateral_type': Contract.TYPE_ZARGARLIK,
             'borrower_fio': 'Каримова Нилуфар Аскаровна',
+            'passport_type': HUJJAT_ID_KARTA,
             'passport_region': 'Бухоро вилояти', 'passport_org': '61013',
             'passport_date': '2025-04-23', 'passport_number': 'АE№2437494',
             'borrower_address': 'Бухоро шахар, Навоий кўчаси, 5-уй',
@@ -292,6 +415,142 @@ class FormaSahifasiTest(TestCase):
         javob = self.client.post('/shartnoma/yangi/', malumot)
         self.assertEqual(javob.status_code, 200)
         self.assertFalse(Contract.objects.exists())
+
+    # -------------------------------------------------------------- raqamlar
+
+    def test_raqam_maydoni_ochiq_va_toldirilgan(self):
+        """Raqam avtomat taklif qilinadi, lekin qulflanmaydi."""
+        matn = self.client.get('/shartnoma/yangi/').content.decode()
+        maydon = re.search(r'<input[^>]*id="id_number"[^>]*>', matn).group(0)
+        self.assertNotIn('disabled', maydon)
+        self.assertIn(f'value="{settings.CONTRACT_START_NUMBER}"', maydon)
+
+    def test_raqamni_qolda_kiritish(self):
+        malumot = self._malumot()
+        malumot['number'] = '777'
+        malumot['garov_number'] = '42'
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        c = Contract.objects.get()
+        self.assertEqual(c.number, 777)
+        self.assertEqual(c.garov_number, 42)
+
+    def test_band_raqam_xato_beradi(self):
+        self.client.post('/shartnoma/yangi/', self._malumot())
+        bor = Contract.objects.get()
+
+        malumot = self._malumot()
+        malumot['number'] = str(bor.number)
+        javob = self.client.post('/shartnoma/yangi/', malumot)
+        self.assertEqual(javob.status_code, 200)
+        self.assertEqual(Contract.objects.count(), 1)
+        self.assertIn('allaqachon mavjud', javob.content.decode())
+
+    def test_raqamlar_bosh_qoldirilsa_avtomat_beriladi(self):
+        """Ikki shartnoma ketma-ket: raqamlar o'z hisobida oshib boradi."""
+        for _ in range(2):
+            self.assertEqual(
+                self.client.post('/shartnoma/yangi/', self._malumot()).status_code, 302)
+        raqamlar = list(Contract.objects.order_by('number')
+                        .values_list('number', 'garov_number'))
+        self.assertEqual(raqamlar, [(settings.CONTRACT_START_NUMBER,
+                                     settings.GAROV_START_NUMBER),
+                                    (settings.CONTRACT_START_NUMBER + 1,
+                                     settings.GAROV_START_NUMBER + 1)])
+
+    def test_kafillikda_garov_raqami_bolmaydi(self):
+        malumot = {k: v for k, v in self._malumot().items()
+                   if not k.startswith('jewelry')}
+        malumot['collateral_type'] = Contract.TYPE_KAFILLIK
+        malumot['garov_number'] = '42'
+        malumot.update({'guarantor-fio': 'Салимов Жасур Анварович',
+                        'guarantor-amount': '6 000 000'})
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        self.assertIsNone(Contract.objects.get().garov_number)
+
+    # ------------------------------------------------------ garovga qo'yuvchi
+
+    def _garov_beruvchi_malumoti(self):
+        return {
+            'pledgor_other': 'on',
+            'pledgor_fio': 'Юсупова Гулнора Рахимовна',
+            'pledgor_passport_type': HUJJAT_PASPORT,
+            'pledgor_passport_region': 'Бухоро вилояти',
+            'pledgor_passport_org': '61020',
+            'pledgor_passport_date': '2024-03-15',
+            'pledgor_passport_number': 'aa1112223',
+            'pledgor_address': 'Бухоро шахар, Гиждувон кўчаси, 12-уй',
+        }
+
+    def test_garovga_qoyuvchi_saqlanadi(self):
+        malumot = self._malumot()
+        malumot.update(self._garov_beruvchi_malumoti())
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        c = Contract.objects.get()
+        self.assertTrue(c.garov_beruvchi_boshqami)
+        self.assertEqual(c.garov_beruvchi_fio, 'Юсупова Гулнора Рахимовна')
+        # Hujjat raqami qarz oluvchinikidek bir ko'rinishga keltiriladi
+        self.assertEqual(c.pledgor_passport_number, 'AA№1112223')
+        self.assertIn('ракамли паспорти', c.garov_beruvchi_pasport)
+
+    def test_biometrik_pasportda_iiv_raqami_sorlmaydi(self):
+        """Yashil pasport tanlansa IIV maydoni bo'sh bo'lsa ham saqlanadi."""
+        malumot = self._malumot()
+        malumot['passport_type'] = HUJJAT_PASPORT
+        malumot['passport_org'] = ''
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        self.assertEqual(Contract.objects.get().passport_org, '')
+
+    def test_biometrik_pasportda_eski_iiv_raqami_tozalanadi(self):
+        """Turi almashtirilsa eski raqam hujjatda qolib ketmasin."""
+        malumot = self._malumot()
+        malumot['passport_type'] = HUJJAT_PASPORT      # raqam esa yozilib qolgan
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        self.assertEqual(Contract.objects.get().passport_org, '')
+
+    def test_id_kartada_iiv_raqami_majburiy(self):
+        malumot = self._malumot()
+        malumot['passport_org'] = ''
+        javob = self.client.post('/shartnoma/yangi/', malumot)
+        self.assertEqual(javob.status_code, 200)
+        self.assertFalse(Contract.objects.exists())
+        self.assertIn('IIV bo‘lim raqamini kiriting', javob.content.decode())
+
+    def test_garovga_qoyuvchi_biometrik_pasporti_iivsiz(self):
+        malumot = self._malumot()
+        malumot.update(self._garov_beruvchi_malumoti())
+        malumot['pledgor_passport_org'] = ''       # yashil pasport tanlangan
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        c = Contract.objects.get()
+        self.assertEqual(c.pledgor_passport_org, '')
+        self.assertIn('Бухоро вилояти ИИВ томонидан', c.garov_beruvchi_pasport)
+
+    def test_garovga_qoyuvchi_id_kartasida_iiv_majburiy(self):
+        malumot = self._malumot()
+        malumot.update(self._garov_beruvchi_malumoti())
+        malumot['pledgor_passport_type'] = HUJJAT_ID_KARTA
+        malumot['pledgor_passport_org'] = ''
+        javob = self.client.post('/shartnoma/yangi/', malumot)
+        self.assertEqual(javob.status_code, 200)
+        self.assertFalse(Contract.objects.exists())
+
+    def test_garovga_qoyuvchi_yarim_toldirilsa_saqlanmaydi(self):
+        malumot = self._malumot()
+        malumot.update(self._garov_beruvchi_malumoti())
+        malumot['pledgor_address'] = ''
+        javob = self.client.post('/shartnoma/yangi/', malumot)
+        self.assertEqual(javob.status_code, 200)
+        self.assertFalse(Contract.objects.exists())
+
+    def test_belgi_qoyilmasa_maydonlar_tozalanadi(self):
+        """Belgi olib tashlansa eski shaxs hujjatda qolib ketmaydi."""
+        malumot = self._malumot()
+        malumot.update(self._garov_beruvchi_malumoti())
+        malumot.pop('pledgor_other')
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        c = Contract.objects.get()
+        self.assertFalse(c.garov_beruvchi_boshqami)
+        self.assertEqual(c.pledgor_fio, '')
+        self.assertEqual(c.garov_beruvchi_fio, c.borrower_fio)
 
 
 class TelefonFormatiTest(TestCase):

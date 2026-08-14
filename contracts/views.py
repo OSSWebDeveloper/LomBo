@@ -585,8 +585,10 @@ def _sinov_konteksti():
               'pasport_viloyat', 'pasport_bolim',
               'telefon', 'telefon2', 'telefon3', 'ish_joyi', 'daromad', 'sana_soz',
               'pasport_seriya', 'pasport_soni', 'pasport_sana',
-              'pasport_viloyat', 'pasport_bolim',
+              'pasport_viloyat', 'pasport_bolim', 'pasport_bergan',
               'garov_baho', 'garov_baho_raqam', 'jami_soni', 'jami_ogirligi',
+              'garov_fio', 'garov_pasport', 'garov_manzil', 'dalolatnoma_taraflar',
+              'ariza_taminot', 'garov_mulki_egalik',
               'kafil', 'kafillik_summa', 'garov_mulki', 'garov_egasi',
               'garov_rahbari', 'garov_rahbari_qisqa', 'summa_raqam_soz',
               'davlat_raqami', 'rusumi', 'rangi', 'shassi', 'yili', 'texpasport']
@@ -819,6 +821,8 @@ def _garov_hujjati(request, pk, pdf=False):
         messages.error(request, 'Garov hujjati topilmadi.')
         return redirect('contract_detail', pk=pk)
 
+    # Fayl nomi hujjat sarlavhasidagi raqam bilan bir xil bo'lsin
+    raqam = contract.garov_number or contract.number
     if pdf:
         try:
             data = docx_dan_pdf(data)
@@ -826,11 +830,11 @@ def _garov_hujjati(request, pk, pdf=False):
             messages.error(request, str(xato))
             return redirect('contract_detail', pk=pk)
         tur = 'application/pdf'
-        nom = f'garov_{contract.number}.pdf'
+        nom = f'garov_{raqam}.pdf'
     else:
         tur = ('application/vnd.openxmlformats-officedocument'
                '.wordprocessingml.document')
-        nom = f'garov_{contract.number}.docx'
+        nom = f'garov_{raqam}.docx'
 
     resp = HttpResponse(data, content_type=tur)
     resp['Content-Disposition'] = f'attachment; filename="{nom}"'

@@ -14,7 +14,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
-from .docx_ulash import hujjatni_boshiga_qoy
+from .docx_ulash import hujjatni_boshiga_qoy, qora_qil
 from .formatlash import sana_sozlar
 from .num2words_uz import num2words_uz, summa_formatlangan
 
@@ -97,15 +97,46 @@ def _buyumlar_jadvali(doc, buyumlar):
 
 # --------------------------------------------------------------- kontekst
 
+def _dalolatnoma_taraflar(c):
+    """Baholash dalolatnomasidagi ishtirokchilar ro'yxati.
+
+    Odatda qarz oluvchi va garovga qo'yuvchi bitta shaxs — asl hujjatdagidek
+    bitta ism yoziladi. Boshqa shaxs bo'lsa ikkalasi ham alohida ko'rsatiladi.
+    """
+    qarz = f'{c.borrower_fio} ({c.passport_full} ,Манзил: {c.borrower_address})'
+    if not c.garov_beruvchi_boshqami:
+        return f'қарз олувчи ва гаровга куювчи {qarz}'
+    garov = (f'{c.garov_beruvchi_fio} ({c.garov_beruvchi_pasport} '
+             f',Манзил: {c.garov_beruvchi_manzil})')
+    return f'қарз олувчи {qarz} ва гаровга куювчи {garov}'
+
+
 def zargarlik_konteksti(c):
     buyumlar = list(c.jewelry_items.all())
     jami_soni = sum(b.quantity for b in buyumlar)
     jami_ogirligi = sum(b.weight for b in buyumlar)
     ctx = _umumiy(c)
+    boshqa = c.garov_beruvchi_boshqami
     ctx.update({
-        # Garov shartnomasi, bayon, farmoyish va dalolatnoma — hammasi
-        # shartnomaning o'sha raqami bilan yuritiladi.
-        'garov_raqam': str(c.number),
+        # Garov shartnomasining o'z raqami bor (mijoz qarori, 2026-08-14).
+        # Ariza, bayon, farmoyish va dalolatnoma asosiy raqamda qoladi.
+        'garov_raqam': str(c.garov_number or c.number),
+        # Arizada — qarz oluvchining o'z tilidan, bayonda — uchinchi shaxsda.
+        # Garovga qo'yuvchi boshqa bo'lsagina ism aytiladi.
+        'ariza_taminot': (
+            f'{c.garov_beruvchi_fio}га тегишли заргарлик буюмларини гаровга такдим этаман'
+            if boshqa else 'узимга тегишли заргарлик буюмларини гаровга такдим этаман'),
+        'garov_mulki': f'{c.garov_beruvchi_fio}га тегишли заргарлик буюмлари',
+        'garov_mulki_egalik': (
+            f'{c.garov_beruvchi_fio}га тегишли заргарлик буюмлари' if boshqa
+            else f'{c.borrower_fio} узига тегишли заргарлик буюмлари'),
+        # Garov shartnomasi va dalolatnomada «гаровга қўювчи» qarz oluvchining
+        # o'zi bo'lishi shart emas — boshqa shaxs kiritilmagan bo'lsa
+        # xossalar qarz oluvchining ma'lumotini qaytaradi.
+        'garov_fio': c.garov_beruvchi_fio,
+        'garov_pasport': c.garov_beruvchi_pasport,
+        'garov_manzil': c.garov_beruvchi_manzil,
+        'dalolatnoma_taraflar': _dalolatnoma_taraflar(c),
         'garov_baho': _pul(c.garov_value or 0),
         'garov_baho_raqam': _raqam(c.garov_value or 0),
         'jami_soni': str(jami_soni),
@@ -146,6 +177,10 @@ def _umumiy(c):
         'pasport_sana': c.passport_date.strftime('%d.%m.%Y'),
         'pasport_viloyat': c.passport_region,
         'pasport_bolim': c.passport_org,
+        # «Бухоро вилояти 61013 - сонли» yoki (biometrik pasportda, bo'lim
+        # raqami yo'q bo'lgani uchun) shunchaki «Бухоро вилояти»
+        'pasport_bergan': (f'{c.passport_region} {c.passport_org} - сонли'
+                           if c.passport_org else c.passport_region),
     }
 
 
@@ -172,9 +207,8 @@ def transport_konteksti(c):
             f'{v.model} русумли транспорт воситаси')
     ctx = _umumiy(c)
     ctx.update({
-        # Garov shartnomasi, bayon, farmoyish va dalolatnoma — hammasi
-        # shartnomaning o'sha raqami bilan yuritiladi.
-        'garov_raqam': str(c.number),
+        # Garov shartnomasining o'z raqami bor; qolgan hujjatlar asosiy raqamda.
+        'garov_raqam': str(c.garov_number or c.number),
         'garov_mulki': mulk,
         'garov_egasi': v.owner,
         'garov_rahbari': v.owner_head or v.owner,
@@ -264,15 +298,18 @@ def shablondan_yasa(shablon_nomi, ctx, contract=None, jadval_qatorlari=None):
     tpl.save(buf)
     buf.seek(0)
 
-    if buyumlar is not None or jadval_qatorlari:
-        doc = Document(buf)
-        if buyumlar is not None:
-            _buyumlar_jadvali(doc, buyumlar)
-        if jadval_qatorlari:
-            tolov_jadvalini_qosh(doc, contract, jadval_qatorlari)
-        buf = io.BytesIO()
-        doc.save(buf)
+    doc = Document(buf)
+    if buyumlar is not None:
+        _buyumlar_jadvali(doc, buyumlar)
+    if jadval_qatorlari:
+        tolov_jadvalini_qosh(doc, contract, jadval_qatorlari)
+    # Rang shablonda emas, aynan shu yerda qora qilinadi: shunda xodim
+    # o'zi yuklagan shablon ham qora chiqadi, shablon tahrirlash sahifasida
+    # esa `{{ }}` belgilari rangi bilan ajralib turaveradi.
+    qora_qil(doc)
 
+    buf = io.BytesIO()
+    doc.save(buf)
     return buf.getvalue()
 
 

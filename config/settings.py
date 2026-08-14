@@ -50,6 +50,11 @@ if not DEBUG:
 # Bazada bundan katta raqam bo'lsa, eng kattasidan davom etadi.
 CONTRACT_START_NUMBER = 200
 
+# Garov shartnomasi o'z hisobida yuritiladi (asosiy shartnoma raqamidan
+# mustaqil). Avtomatik raqamlash shu sondan boshlanadi; bazada bundan katta
+# raqam bo'lsa, eng kattasidan davom etadi.
+GAROV_START_NUMBER = 1
+
 # Ishchi o'zi kiritgan shartnomani necha daqiqa ichida tuzata oladi?
 # Shartnoma kiritilgach shu vaqt ichida ishchi xatosini o'zi to'g'rilaydi
 # (masalan, ism yoki summani noto'g'ri yozgan bo'lsa). Muddat o'tgach

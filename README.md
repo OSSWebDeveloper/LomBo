@@ -104,8 +104,7 @@ summa, hujjat raqami) darrov tuzatish uchun.
 - Muddat o'tgach tugma yo'qoladi, tahrirlash faqat vakolatli boshliqda qoladi.
 - Ishchi faqat **o'zi kiritgan** shartnomani va faqat u `faol` holatda
   bo'lgandagina tuzata oladi (o'chirish so'rovi yuborilgani tahrirlanmaydi).
-- Shartnoma raqami, garov raqami va tugash sanasi baribir qulflangan —
-  ular avtomatik hisoblanadi.
+- Tugash sanasi baribir qulflangan — u avtomatik hisoblanadi.
 - Har bir tuzatish "Tarix" bo'limiga yoziladi (`Shartnomani o'zgartirdi`,
   izohda "kiritgandan keyingi tuzatish").
 
@@ -138,8 +137,11 @@ Har bir shartnoma bo'yicha **ikkita mustaqil hujjat** chiqadi:
 
 | Fayl | Tarkibi | Kimda bor |
 |---|---|---|
-| `shartnoma_<№>.docx` | Mikroqarz shartnomasi | Barcha turlarda |
-| `garov_<№>.docx` | Garov shartnomasi + Baholash dalolatnomasi | Zargarlik va transportda |
+| `shartnoma_<shartnoma №>.docx` | Mikroqarz shartnomasi | Barcha turlarda |
+| `garov_<garov №>.docx` | Garov shartnomasi + Baholash dalolatnomasi | Zargarlik va transportda |
+
+Garov faylining nomida **garov shartnomasining o'z raqami** turadi — hujjat
+sarlavhasidagi raqam bilan bir xil bo'lishi uchun.
 
 Ish haqi kafilligida garov hujjati tuzilmaydi — faqat mikroqarz shartnomasi.
 
@@ -186,17 +188,37 @@ bloklarini tahrirlang — qolgan barcha uslublar shu tokenlardan foydalanadi.
 
 ### Avtomatik to'ldiriladigan maydonlar
 
-Formada quyidagilar qulflangan (kulrang fonda) — ular o'zi hisoblanadi:
+Formada quyidagilar o'zi hisoblanadi:
 
-| Maydon | Qanday hisoblanadi |
-|---|---|
-| Shartnoma № | Ketma-ket, `CONTRACT_START_NUMBER` dan |
-| Garov shartnomasi № | Ketma-ket, `GAROV_START_NUMBER` dan. Kafillikda berilmaydi |
-| Tugash sanasi | Shartnoma sanasi + muddat − 1 kun |
-| Garov bahosi | Zargarlikda — jadvaldagi summalar yig'indisi. Transportda qo'lda kiritiladi |
+| Maydon | Qanday hisoblanadi | Qo'lda o'zgartirsa bo'ladimi |
+|---|---|---|
+| Shartnoma № | Ketma-ket, `CONTRACT_START_NUMBER` dan | Ha |
+| Garov shartnomasi № | Ketma-ket, `GAROV_START_NUMBER` dan. Kafillikda berilmaydi | Ha |
+| Tugash sanasi | Shartnoma sanasi + muddat − 1 kun | Yo'q, qulflangan |
+| Garov bahosi | Zargarlikda — jadvaldagi summalar yig'indisi. Transportda qo'lda kiritiladi | Zargarlikda yo'q |
 
-Qulflash faqat ekranda emas, server tomonida ham amal qiladi: brauzerdan boshqa
-qiymat yuborilsa ham e'tiborga olinmaydi.
+Raqamlar avtomat taklif qilinadi, lekin xodim ularni o'zgartira oladi. Kiritilgan
+raqam boshqa shartnomada band bo'lsa forma saqlanmaydi va qaysi raqam bo'shligini
+aytadi. Maydon bo'sh qoldirilsa navbatdagi bo'sh raqam qo'yiladi.
+
+Tugash sanasining qulflanishi faqat ekranda emas, server tomonida ham amal qiladi:
+brauzerdan boshqa qiymat yuborilsa ham e'tiborga olinmaydi.
+
+Forma «2. Qarz oluvchi» bo'limi ajratgich bilan ikkiga bo'lingan: yuqorida
+shaxsning o'zi (F.I.Sh., manzil, telefonlar, ish joyi, daromad), pastda
+**Shaxsni tasdiqlovchi hujjat**.
+
+**Hujjat turi** ro'yxatdan tanlanadi: *ID karta* yoki *Biometrik pasport (yashil)*.
+Tanlov ikki narsani belgilaydi:
+
+1. Shartnoma matnidagi ibora — `... ракамли шахс гувохномаси` yoki
+   `... ракамли паспорти`.
+2. **IIV bo'lim raqami** maydoni. Yashil biometrik pasportda bunday raqam
+   bo'lmaydi — maydon yashiriladi va tozalanadi, hujjatda esa
+   `Бухоро вилояти ИИВ томонидан ...` deb, raqamsiz yoziladi (ID kartada
+   avvalgidek `Бухоро вилояти, 61013-сонли ИИВ томонидан ...`).
+
+Bu ikki qoida garovga qo'yuvchining hujjatiga ham aynan shunday qo'llanadi.
 
 **Hujjat berilgan viloyat** ro'yxatdan tanlanadi: 12 ta viloyat, Toshkent shahri va
 Qoraqalpog'iston Respublikasi. Ro'yxat `contracts/models.py` dagi `VILOYATLAR`
@@ -207,6 +229,30 @@ va `migrate` buyruqlarini ishga tushiring.
 `ae5862145`, `AE 5862145`, `АЕ№5862145` — hammasi `AE№5862145` bo'ladi. Kirill
 harflari lotinga o'giriladi, chunki asl shartnomalarda ular aralash yozilgan
 (ko'rinishda bir xil, lekin qidiruvda topilmaydigan) edi.
+
+### Garovga qo'yuvchi boshqa shaxs bo'lsa
+
+Zargarlik garovida «Garovga qo'yuvchi boshqa shaxs» belgisi bor: masalan mijoz
+onasining tillasini garovga qo'ysa. Belgi qo'yilganda F.I.Sh., hujjat (turi,
+viloyat, IIV bo'limi, sana, seriya-raqam) va manzil so'raladi.
+
+Bu ma'lumot faqat **garov shartnomasi** va **baholash dalolatnomasi**ga tushadi —
+mikroqarz shartnomasida qarz oluvchi o'z o'rnida qoladi. Belgi qo'yilmasa hujjat
+avvalgidek, ya'ni garovga qo'yuvchi sifatida qarz oluvchining o'zi chiqadi.
+
+Transportda bu ish alohida qilinmaydi: u yerda «Egasi (garovga qo'yuvchi)» maydoni
+allaqachon bor va garov hujjatiga o'sha tushadi.
+
+### Hujjatdagi harflar rangi
+
+Asl shartnoma fayllarida o'zgaruvchan joylar (ism, summa, sana) qizil rangda
+yozilgan edi. Tayyor hujjatda hammasi **qora** qilinadi — buni
+`contracts/docx_ulash.py` dagi `qora_qil()` bajaradi, hujjat berilayotgan paytda.
+Shablonda ranglar o'z holicha qoladi, shuning uchun shablon tahrirlash sahifasida
+`{{ ... }}` belgilari ajralib turaveradi. Xodim o'zi yuklagan shablon ham qora
+chiqadi.
+
+Oq rangga tegilmaydi: asl faylda u ko'rinmas to'ldirgich sifatida ishlatilgan.
 - `LOMBARD_ORG = {...}` — tashkilot rekvizitlari (nomi, direktor, STIR, bank, manzil).
   Hujjatlarga shu yerdan qo'yiladi, o'zgarsa faqat shu joyni tahrirlang.
 

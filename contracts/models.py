@@ -27,10 +27,50 @@ VILOYATLAR = [
 ]
 
 
+# Shaxsni tasdiqlovchi hujjat ikki xil bo'ladi: yashil biometrik pasport va
+# ID karta. Shartnoma matnidagi ibora shu tanlovga qarab yoziladi — qolgan
+# hamma narsa (seriya-raqam, IIV bo'limi, sana) ikkalasida bir xil.
+HUJJAT_ID_KARTA = 'id_karta'
+HUJJAT_PASPORT = 'passport'
+HUJJAT_TURLARI = [
+    (HUJJAT_ID_KARTA, 'ID karta'),
+    (HUJJAT_PASPORT, 'Biometrik pasport (yashil)'),
+]
+
+HUJJAT_IBORASI = {
+    HUJJAT_ID_KARTA: 'ракамли шахс гувохномаси',
+    HUJJAT_PASPORT: 'ракамли паспорти',
+}
+
+
+def pasport_matni(viloyat, bolim, sana, raqam, turi):
+    """«Бухоро вилояти, 61013-сонли ИИВ томонидан 23.04.2025-йилда берилган
+    АE№2437494 ракамли шахс гувохномаси»
+
+    Qarz oluvchi uchun ham, garovga qo'yuvchi uchun ham shu funksiya ishlaydi.
+    Yashil biometrik pasportda IIV bo'lim raqami bo'lmaydi — u holda
+    «Бухоро вилояти ИИВ томонидан ...» deb, raqamsiz yoziladi.
+    Ma'lumot to'liq bo'lmasa bo'sh matn qaytadi.
+    """
+    if not (sana and raqam):
+        return ''
+    hudud = (f'{viloyat}, ' if bolim else f'{viloyat} ') if viloyat else ''
+    bolim_matni = f'{bolim}-сонли ' if bolim else ''
+    ibora = HUJJAT_IBORASI.get(turi) or HUJJAT_IBORASI[HUJJAT_ID_KARTA]
+    return (f'{hudud}{bolim_matni}ИИВ томонидан '
+            f'{sana.strftime("%d.%m.%Y")}-йилда берилган {raqam} {ibora}')
+
+
 def next_contract_number():
     """Avtomatik raqam: bazadagi eng katta raqam + 1, minimal CONTRACT_START_NUMBER."""
     last = Contract.objects.aggregate(m=models.Max('number'))['m'] or 0
     return max(last + 1, settings.CONTRACT_START_NUMBER)
+
+
+def next_garov_number():
+    """Garov shartnomasi o'z hisobida yuritiladi — asosiy raqamdan mustaqil."""
+    last = Contract.objects.aggregate(m=models.Max('garov_number'))['m'] or 0
+    return max(last + 1, settings.GAROV_START_NUMBER)
 
 
 class Contract(models.Model):
@@ -56,12 +96,15 @@ class Contract(models.Model):
 
     # Qarz oluvchi
     borrower_fio = models.CharField('Qarz oluvchi F.I.Sh. (kirillda)', max_length=200)
+    passport_type = models.CharField('Hujjat turi', max_length=10, choices=HUJJAT_TURLARI,
+                                     default=HUJJAT_ID_KARTA)
     passport_region = models.CharField('Hujjat berilgan viloyat', max_length=100, blank=True,
                                        choices=VILOYATLAR)
-    # Faqat raqam saqlanadi; hujjatda «-сонли» qo'shimchasi o'zi qo'shiladi
-    passport_org = models.CharField('IIV bo\'lim raqami', max_length=50,
+    # Faqat raqam saqlanadi; hujjatda «-сонли» qo'shimchasi o'zi qo'shiladi.
+    # Yashil biometrik pasportda bunday raqam bo'lmaydi — o'shanda bo'sh qoladi.
+    passport_org = models.CharField('IIV bo\'lim raqami', max_length=50, blank=True,
                                     validators=[RegexValidator(
-                                        r'^\d+$', 'Faqat raqam kiriting.')],
+                                        r'^\d*$', 'Faqat raqam kiriting.')],
                                     help_text='Faqat raqam. Masalan: 61013')
     passport_date = models.DateField('Hujjat berilgan sana')
     passport_number = models.CharField('Hujjat seriya-raqami', max_length=30,
@@ -89,14 +132,31 @@ class Contract(models.Model):
     end_date = models.DateField('Tugash sanasi')
 
     # Garov umumiy
-    # ESKIRGAN: garov shartnomasiga alohida raqam berilardi. Endi butun to'plam
-    # shartnomaning bitta raqami bilan yuritiladi. Ustun eski shartnomalarda
-    # qanday raqam turgani yozma qolishi uchun saqlanmoqda — hujjatlarga
-    # tushmaydi va formada ko'rinmaydi.
-    garov_number = models.PositiveIntegerField('Garov shartnomasi № (eskirgan)',
+    # Garov shartnomasining raqami asosiy shartnomanikidan mustaqil (mijoz
+    # qarori, 2026-08-14) — o'z hisobida boradi va qo'lda ham o'zgartiriladi.
+    # Kafillikda garov shartnomasi tuzilmaydi, shuning uchun bo'sh qoladi.
+    garov_number = models.PositiveIntegerField('Garov shartnomasi №', unique=True,
                                                null=True, blank=True)
     garov_value = models.DecimalField('Garov bahosi (so\'m)', max_digits=15, decimal_places=0,
                                       null=True, blank=True)
+
+    # Garovga qo'yuvchi qarz oluvchining o'zi bo'lmasligi mumkin — masalan
+    # onasining tillasini garovga qo'ysa. Bo'sh bo'lsa qarz oluvchining
+    # ma'lumotlari ishlatiladi (garov_beruvchi_* xossalariga qarang).
+    # Transportda bu ish `VehicleInfo.owner` orqali qilinadi.
+    pledgor_other = models.BooleanField('Garovga qo\'yuvchi boshqa shaxs', default=False)
+    pledgor_fio = models.CharField('Garovga qo\'yuvchi F.I.Sh. (kirillda)',
+                                   max_length=200, blank=True)
+    pledgor_passport_type = models.CharField('Hujjat turi', max_length=10, blank=True,
+                                             choices=HUJJAT_TURLARI)
+    pledgor_passport_region = models.CharField('Hujjat berilgan viloyat', max_length=100,
+                                               blank=True, choices=VILOYATLAR)
+    pledgor_passport_org = models.CharField('IIV bo\'lim raqami', max_length=50, blank=True,
+                                            validators=[RegexValidator(
+                                                r'^\d*$', 'Faqat raqam kiriting.')])
+    pledgor_passport_date = models.DateField('Hujjat berilgan sana', null=True, blank=True)
+    pledgor_passport_number = models.CharField('Hujjat seriya-raqami', max_length=30, blank=True)
+    pledgor_address = models.CharField('Manzil (kirillda)', max_length=300, blank=True)
 
     status = models.CharField('Holat', max_length=15, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='Kim kiritgan',
@@ -148,10 +208,34 @@ class Contract(models.Model):
     @property
     def passport_full(self):
         """«Бухоро вилояти, 61013-сонли ИИВ томонидан 23.04.2025-йилда берилган АE№2437494 ...»"""
-        region = f'{self.passport_region}, ' if self.passport_region else ''
-        return (f'{region}{self.passport_org}-сонли ИИВ томонидан '
-                f'{self.passport_date.strftime("%d.%m.%Y")}-йилда берилган '
-                f'{self.passport_number} ракамли шахс гувохномаси')
+        return pasport_matni(self.passport_region, self.passport_org,
+                             self.passport_date, self.passport_number,
+                             self.passport_type)
+
+    # --------------------------------------------------- garovga qo'yuvchi
+    # Alohida shaxs kiritilmagan bo'lsa hamma joyda qarz oluvchining o'zi
+    # garovga qo'yuvchi bo'ladi — hujjat matni shu holatga mo'ljallangan.
+
+    @property
+    def garov_beruvchi_boshqami(self):
+        return bool(self.pledgor_other and self.pledgor_fio)
+
+    @property
+    def garov_beruvchi_fio(self):
+        return self.pledgor_fio if self.garov_beruvchi_boshqami else self.borrower_fio
+
+    @property
+    def garov_beruvchi_pasport(self):
+        if not self.garov_beruvchi_boshqami:
+            return self.passport_full
+        return pasport_matni(self.pledgor_passport_region, self.pledgor_passport_org,
+                             self.pledgor_passport_date, self.pledgor_passport_number,
+                             self.pledgor_passport_type)
+
+    @property
+    def garov_beruvchi_manzil(self):
+        return (self.pledgor_address if self.garov_beruvchi_boshqami
+                else self.borrower_address)
 
     @property
     def passport_seriya(self):

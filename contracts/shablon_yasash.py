@@ -112,6 +112,22 @@ def hujjatda_almashtir(doc, juftlar, bir_marta=False):
     return hisob
 
 
+def xatboshida_topib_almashtir(doc, nishon, juftlar):
+    """Faqat ichida `nishon` bo'lagi bor xatboshilarda almashtiradi.
+
+    Global almashtirish ba'zi joyda yaramaydi: garov shartnomasida
+    `{{ fio }}` goh qarz oluvchini, goh garovga qo'yuvchini bildiradi.
+    """
+    almashdi = 0
+    for p in xatboshilar(doc):
+        toliq = ''.join(r.text for r in p.runs).replace(' ', ' ')
+        if nishon not in toliq:
+            continue
+        for eski, yangi in juftlar:
+            almashdi += xatboshida_almashtir(p, eski, yangi, bir_marta=True)
+    return almashdi
+
+
 def naqsh_bilan_almashtir(doc, naqsh, yasovchi):
     """Regulyar ifoda topgan joyni `yasovchi(m)` qaytargan matnga almashtiradi.
 
@@ -144,6 +160,32 @@ def qoldiqni_tekshir(doc, sozlar):
     for s in qolgan:
         print(f"    [XATO] namuna qiymati qolib ketdi: {s}")
     return not qolgan
+
+
+# --------------------------------------------------------------- telefon oralig'i
+
+# 9-banddagi «Қарз олувчи» rekvizitlarining oxirgi qatori. Undan keyin darrov
+# imzo jadvali boshlanadi — mijoz talabiga ko'ra (2026-08-14) telefon raqami
+# bilan jadval orasida bo'sh joy qoladi.
+TELEFON_REKVIZITI = 'Телефон: {{ telefon }}'
+
+
+def telefondan_keyin_bosh_joy(doc):
+    """Rekvizitlardagi telefon qatoridan keyin bo'sh xatboshi qo'shadi.
+
+    Xatboshi nusxa olib yasaladi — shrift va oraliqlar o'sha qatorniki
+    bo'lib qoladi, faqat matni olib tashlanadi.
+    """
+    qoshildi = 0
+    for p in list(xatboshilar(doc)):
+        if TELEFON_REKVIZITI not in ''.join(r.text for r in p.runs):
+            continue
+        bosh = copy.deepcopy(p._p)
+        for run in bosh.findall(qn('w:r')):
+            bosh.remove(run)
+        p._p.addnext(bosh)
+        qoshildi += 1
+    return qoshildi
 
 
 # --------------------------------------------------------------- zargarlik jadvali
@@ -209,7 +251,9 @@ def zargarlik_jadvalini_shablonla(doc):
 ARIZA_TAMINOT = ('Рахмонова Шахноза Элмуродовна (узимга) тегишли заргарлик '
                  'буюмларини гаровга такдим этаман')
 ARIZA_TAMINOT_YANGI = {
-    ZARGARLIK: 'узимга тегишли заргарлик буюмларини гаровга такдим этаман',
+    # Zargarlikda jumla garovga qo'yuvchiga bog'liq: qarz oluvchining o'zi
+    # bo'lsa «узимга тегишли...», boshqa shaxs bo'lsa uning ismi yoziladi.
+    ZARGARLIK: '{{ ariza_taminot }}',
     TRANSPORT: '{{ garov_mulki }}ни гаровга такдим этаман',
     KAFILLIK: ('{{ kafil }}нинг {{ kafillik_summa }} сўмлик иш хакки '
                'кафиллигини такдим этаман'),
@@ -221,9 +265,10 @@ ARIZA_UMUMIY = [
     ('ойида ўртача 5 000 000 сўм', 'ойида ўртача {{ daromad }} сўм'),
     ('12 ой муддатга', '{{ muddat }} ой муддатга'),
     ('йилига 60 фоиз', 'йилига {{ foiz }} фоиз'),
+    # Viloyat va IIV bo'lim raqami bitta belgida: yashil biometrik pasportda
+    # bo'lim raqami bo'lmaydi, faqat viloyat qoladi (qarang: _umumiy).
     ('09.02.2023-йилда , Бухоро вилояти 6224 - сонли ИИВ томонидан берилган',
-     '{{ pasport_sana }}-йилда, {{ pasport_viloyat }} {{ pasport_bolim }} - '
-     'сонли ИИВ томонидан берилган'),
+     '{{ pasport_sana }}-йилда, {{ pasport_bergan }} ИИВ томонидан берилган'),
     ('№ 2540542', '№ {{ pasport_soni }}'),
     ('АD', '{{ pasport_seriya }}'),
     ('Менинг доимий яшаш манзилим: Бухоро вил,Гиждувон туман, Чогдаре МФЙ, '
@@ -263,7 +308,18 @@ def ariza_hujjati(tur):
 # =============================================================== BAYON
 
 BAYON_TAMINOT = {
-    ZARGARLIK: [],
+    # Garovga qo'yuvchi qarz oluvchining o'zi bo'lmasligi mumkin, shuning uchun
+    # «узига тегишли» iborasi kontekstdan keladi (qarang: zargarlik_konteksti).
+    ZARGARLIK: [
+        ('Гаров таьминоти сифатида фукаро Рахмонова Шахноза Элмуродовнага '
+         'тегишли заргарлик буюмлари қабул қилинсин.',
+         'Гаров таьминоти сифатида фукаро {{ garov_mulki }} қабул қилинсин.'),
+        ('накд пулда, Рахмонова Шахноза Элмуродовнага тегишли заргарлик '
+         'буюмлари гарови асосида',
+         'накд пулда, {{ garov_mulki }} гарови асосида'),
+        ('Рахмонова Шахноза Элмуродовна узига тегишли заргарлик буюмларини '
+         'гаровга куйилишини', '{{ garov_mulki_egalik }}ни гаровга куйилишини'),
+    ],
     TRANSPORT: [
         ('Гаров таьминоти сифатида фукаро Рахмонова Шахноза Элмуродовнага '
          'тегишли заргарлик буюмлари қабул қилинсин.',
@@ -349,6 +405,59 @@ ZARGARLIK_JUFTLAR = [
 ]
 
 
+# Garov shartnomasi va baholash dalolatnomasida «гаровга қўювчи» qarz
+# oluvchining o'zi bo'lmasligi mumkin. Global almashtirishdan keyin aynan shu
+# joylar alohida belgilarga bog'lanadi — qolgan `{{ fio }}` lar (masalan
+# «микрокарз олувчи фукаро {{ fio }}») qarz oluvchida qoladi.
+GAROV_BERUVCHI_JOYLARI = [
+    # (xatboshini tanish uchun bo'lak, [(eski, yangi), ...])
+    ('хамда гаровга кўювчи:',
+     [('{{ fio }} ({{ pasport }})', '{{ garov_fio }} ({{ garov_pasport }})')]),
+    ('келишув далолатномасига асосан гаровга куйиладиган',
+     [('{{ fio }}га тегишли', '{{ garov_fio }}га тегишли')]),
+    ('Кредит таъминоти сифатида гаровга кўйиладиган',
+     [('{{ fio }}га тегишли', '{{ garov_fio }}га тегишли')]),
+    ('Биз, қуйида имзо чекувчилар',
+     [('қарз олувчи ва гаровга куювчи {{ fio }} ({{ pasport }} ,Манзил: {{ manzil }})',
+       '{{ dalolatnoma_taraflar }}')]),
+    ('Гаровга куювчи:',                       # dalolatnoma imzo qatori
+     [('{{ fio }}', '{{ garov_fio }}')]),
+]
+
+# 8-banddagi «Гаровга қўювчи:» rekvizit bloki — sarlavhadan keyingi qatorlar
+GAROV_REKVIZIT_SARLAVHASI = 'Гаровга қўювчи:'
+GAROV_REKVIZIT_JUFTLARI = [
+    ('Манзил: {{ manzil }}', 'Манзил: {{ garov_manzil }}'),
+    ('{{ pasport }}', '{{ garov_pasport }}'),
+    ('{{ fio }}', '{{ garov_fio }}'),
+]
+
+
+def garov_beruvchini_shablonla(doc):
+    """Garovga qo'yuvchiga tegishli joylarni alohida belgilarga bog'laydi."""
+    ok = True
+    for nishon, juftlar in GAROV_BERUVCHI_JOYLARI:
+        n = xatboshida_topib_almashtir(doc, nishon, juftlar)
+        print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: {nishon[:52]}")
+        ok = ok and bool(n)
+
+    # Rekvizit blokida qatorlar alohida xatboshida turadi va ularda «гаровга
+    # қўювчи» so'zi yo'q — shuning uchun sarlavhadan keyingi qatorlar olinadi.
+    pars = list(xatboshilar(doc))
+    topildi = 0
+    for i, p in enumerate(pars):
+        matn = ' '.join(''.join(r.text for r in p.runs).split())
+        if matn != GAROV_REKVIZIT_SARLAVHASI:
+            continue
+        topildi += 1
+        for keyingi in pars[i + 1:i + 4]:
+            for eski, yangi in GAROV_REKVIZIT_JUFTLARI:
+                xatboshida_almashtir(keyingi, eski, yangi, bir_marta=True)
+    print(f"    [{'OK ' if topildi else 'YO`Q'}] {topildi:2} marta: "
+          f'{GAROV_REKVIZIT_SARLAVHASI} rekvizit bloki')
+    return ok and bool(topildi)
+
+
 def zargarlik_shabloni():
     doc = Document(os.path.join(PAPKA, 'm159.docx'))
 
@@ -356,6 +465,8 @@ def zargarlik_shabloni():
     print(f'  jadval: {xabar}')
 
     ok &= natijani_chop('shartnoma', hujjatda_almashtir(doc, ZARGARLIK_JUFTLAR))
+    print('  garovga qo‘yuvchi:')
+    ok &= garov_beruvchini_shablonla(doc)
     return _yakunla(doc, ZARGARLIK, 'zargarlik.docx', ok,
                     ['Рахмонова', 'Чогдаре', '2540542', '6224'])
 
@@ -451,6 +562,10 @@ def _garov_qismini_ochir(doc):
 
 def _yakunla(doc, tur, nomi, ok, qoldiq_sozlari):
     """Arizani va bayonni ulab, shablonni saqlaydi."""
+    n = telefondan_keyin_bosh_joy(doc)
+    print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: telefondan keyin bo'sh qator")
+    ok = ok and bool(n)
+
     ariza, ariza_ok = ariza_hujjati(tur)
     bayon, bayon_ok = bayon_hujjati(tur)
     hujjatni_ulash(doc, ariza)

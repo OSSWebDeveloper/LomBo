@@ -10,6 +10,59 @@ import copy
 
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import RGBColor
+from docx.text.run import Run
+
+QORA = '000000'
+OQ = 'FFFFFF'
+
+
+def qora_qil(doc):
+    """Hujjatdagi barcha harflarni qora qiladi. Nechta run o'zgargani qaytadi.
+
+    Asl shartnoma fayllarida o'zgaruvchan joylar (ism, summa, sana) qizil
+    rangda yozilgan edi. Mijoz talabiga ko'ra (2026-08-14) tayyor hujjatda
+    hamma harf qora bo'lishi kerak.
+
+    Oq rangga tegilmaydi: asl faylda u ko'rinmas to'ldirgich sifatida
+    ishlatilgan, qora qilinsa hujjatda avval bo'lmagan chiziq paydo bo'lardi.
+    """
+    ozgardi = 0
+    for qism in _rang_beriladigan_qismlar(doc):
+        for el in qism.iter(qn('w:r')):
+            if not el.findall(qn('w:t')):
+                continue                      # matnsiz run (rasm, uzilish)
+            run = Run(el, None)
+            try:
+                joriy = run.font.color.rgb
+            except (AttributeError, TypeError, ValueError):
+                joriy = None
+            if joriy is not None and str(joriy).upper() == OQ:
+                continue
+            run.font.color.rgb = RGBColor(0, 0, 0)
+            # Mavzu rangi (themeColor) qo'yilgan bo'lsa w:val'dan ustun turadi
+            rang = el.find(qn('w:rPr')).find(qn('w:color'))
+            for atr in ('w:themeColor', 'w:themeTint', 'w:themeShade'):
+                rang.attrib.pop(qn(atr), None)
+            if joriy is None or str(joriy).upper() != QORA:
+                ozgardi += 1
+    return ozgardi
+
+
+def _rang_beriladigan_qismlar(doc):
+    """Hujjat tanasi va haqiqatda mavjud kolontitullar.
+
+    `is_linked_to_previous` tekshiruvi shart: yo'q kolontitulning `_element`iga
+    murojaat qilinsa python-docx uni o'zi yaratib qo'yadi, bu esa sahifada
+    joy egallab, matnni pastga suradi va hujjat sahifasi ortib ketadi.
+    """
+    yield doc.element.body
+    for bolim in doc.sections:
+        for qism in (bolim.header, bolim.footer,
+                     bolim.first_page_header, bolim.first_page_footer,
+                     bolim.even_page_header, bolim.even_page_footer):
+            if qism is not None and not qism.is_linked_to_previous:
+                yield qism._element
 
 
 def hujjatni_ulash(nishon, manba):

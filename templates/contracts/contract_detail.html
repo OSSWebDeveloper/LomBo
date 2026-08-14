@@ -51,9 +51,10 @@
     <h2 style="margin-top:0">Qarz oluvchi</h2>
     <table>
       <tr><th style="width:40%">F.I.Sh.</th><td>{{ contract.borrower_fio }}</td></tr>
-      <tr><th>Hujjat</th><td>{{ contract.passport_number }}</td></tr>
-      <tr><th>Berilgan</th><td>{{ contract.passport_org }} ИИВ,
-        {{ contract.passport_date|date:'d.m.Y' }}</td></tr>
+      <tr><th>Hujjat</th><td>{{ contract.passport_number }}
+        <span class="muted">({{ contract.get_passport_type_display }})</span></td></tr>
+      <tr><th>Berilgan</th><td>{% if contract.passport_org %}{{ contract.passport_org }}
+        {% endif %}ИИВ, {{ contract.passport_date|date:'d.m.Y' }}</td></tr>
       <tr><th>Manzil</th><td>{{ contract.borrower_address }}</td></tr>
       <tr><th>Telefon</th><td>{% if contract.borrower_phone %}{{ contract.borrower_phone }}{% if contract.borrower_phone2 %}, {{ contract.borrower_phone2 }}{% endif %}{% if contract.borrower_phone3 %}, {{ contract.borrower_phone3 }}{% endif %}{% else %}—{% endif %}</td></tr>
       <tr><th>Ish joyi</th><td>{{ contract.borrower_workplace|default:'—' }}</td></tr>
@@ -77,6 +78,22 @@
 
 <div class="card">
   <h2 style="margin-top:0">Ta’minot — {{ contract.get_collateral_type_display }}</h2>
+
+  {% if contract.garov_number %}
+    <p><b>Garov shartnomasi №{{ contract.garov_number }}</b>
+      <span class="muted">(asosiy shartnoma №{{ contract.number }})</span></p>
+  {% endif %}
+
+  {% if contract.garov_beruvchi_boshqami %}
+    <table style="margin-bottom:12px">
+      <tr><th style="width:40%">Garovga qo‘yuvchi</th><td>{{ contract.pledgor_fio }}</td></tr>
+      <tr><th>Hujjat</th><td>{{ contract.pledgor_passport_number }}
+        <span class="muted">({{ contract.get_pledgor_passport_type_display }})</span></td></tr>
+      <tr><th>Berilgan</th><td>{% if contract.pledgor_passport_org %}{{ contract.pledgor_passport_org }}
+        {% endif %}ИИВ, {{ contract.pledgor_passport_date|date:'d.m.Y' }}</td></tr>
+      <tr><th>Manzil</th><td>{{ contract.pledgor_address }}</td></tr>
+    </table>
+  {% endif %}
 
   {% if contract.collateral_type == 'zargarlik' %}
     <table>
