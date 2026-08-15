@@ -82,7 +82,6 @@
                  style="max-width:100%;border-radius:8px;margin-bottom:6px">
           {% endif %}
           {{ f.rasm }}
-          {{ f.izoh }}
           {% if f.instance.pk %}
             <label class="help" style="display:flex;gap:6px;align-items:center;margin-top:4px">
               {{ f.DELETE }} o‘chirish</label>
@@ -469,6 +468,40 @@
     });
     hujjatF.addEventListener('blur', function(){
       hujjatF.value = hujjatFormatla(hujjatF.value);
+    });
+  });
+
+  // ---- Telefon: «999441824» -> «99 944-18-24» ----
+  // Bo'shliq va chiziqchalar yozayotganda o'zi qo'yiladi. Server ham xuddi
+  // shunday formatlaydi (forms.telefon_tozala) — bu faqat ekrandagi qulaylik.
+  function telefonFormatla(qiymat){
+    // Xorijiy yoki notanish ko'rinishga tegilmaydi: server uni o'zicha qoldiradi
+    if (/[^\d\s\-+()]/.test(qiymat)) return qiymat;
+    var son = qiymat.replace(/\D/g, '');
+    if (son.length === 12 && son.indexOf('998') === 0) son = son.slice(3);
+    if (son.length > 9) return qiymat;
+    var b = [son.slice(0, 2), son.slice(2, 5), son.slice(5, 7), son.slice(7, 9)];
+    var s = b[0];
+    if (b[1]) s += ' ' + b[1];
+    if (b[2]) s += '-' + b[2];
+    if (b[3]) s += '-' + b[3];
+    return s;
+  }
+
+  ['id_borrower_phone', 'id_borrower_phone2', 'id_borrower_phone3'].forEach(function(id){
+    var tel = document.getElementById(id);
+    if (!tel) return;
+    tel.addEventListener('input', function(){
+      // Kursor oxirida bo'lgandagina — o'rtasini tuzatishga xalaqit qilmaymiz
+      if (tel.selectionStart !== tel.value.length) return;
+      var yangi = telefonFormatla(tel.value);
+      if (yangi !== tel.value){
+        tel.value = yangi;
+        tel.setSelectionRange(yangi.length, yangi.length);
+      }
+    });
+    tel.addEventListener('blur', function(){
+      tel.value = telefonFormatla(tel.value);
     });
   });
 })();

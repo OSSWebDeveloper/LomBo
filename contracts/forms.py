@@ -139,9 +139,6 @@ class ContractForm(forms.ModelForm):
         # To'lov jadvali shu sanadan boshlanadi (xaridor talabi, 2026-08-14).
         # Bo'sh qoldirilsa shartnoma sanasidan bir oy keyin olinadi.
         self.fields['payment_start_date'].required = False
-        self.fields['payment_start_date'].help_text = (
-            'Jadval shu sanadan boshlanadi va har oy shu kunda davom etadi. '
-            'Odatda keyingi oyning 10-sanasi — sana tanlanganda o‘zi qo‘yiladi.')
 
         # Hujjat turi (ID karta / biometrik pasport) — hujjat matnidagi ibora
         # shunga qarab yoziladi.
@@ -384,14 +381,12 @@ class GarovRasmForm(forms.ModelForm):
 
     class Meta:
         model = GarovRasm
-        fields = ['rasm', 'izoh']
+        fields = ['rasm']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['rasm'].widget.attrs.update({'class': 'form-control',
                                                  'accept': 'image/*'})
-        self.fields['izoh'].widget.attrs.update({'class': 'form-control',
-                                                 'placeholder': 'ixtiyoriy'})
 
 
 GarovRasmFormSet = inlineformset_factory(

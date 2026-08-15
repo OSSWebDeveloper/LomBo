@@ -14,7 +14,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
-from .docx_ulash import hujjatni_ulash, qora_qil
+from .docx_ulash import hujjatni_ulash, matnni_oddiy_qil
 from .formatlash import sana_sozlar
 from .num2words_uz import num2words_uz, summa_formatlangan
 
@@ -329,10 +329,10 @@ def shablondan_yasa(shablon_nomi, ctx, contract=None, jadval_qatorlari=None):
         _buyumlar_jadvali(doc, buyumlar)
     if jadval_qatorlari:
         tolov_jadvalini_qosh(doc, contract, jadval_qatorlari)
-    # Rang shablonda emas, aynan shu yerda qora qilinadi: shunda xodim
-    # o'zi yuklagan shablon ham qora chiqadi, shablon tahrirlash sahifasida
+    # Ko'rinish shablonda emas, aynan shu yerda tekislanadi: shunda xodim
+    # o'zi yuklagan shablon ham oddiy chiqadi, shablon tahrirlash sahifasida
     # esa `{{ }}` belgilari rangi bilan ajralib turaveradi.
-    qora_qil(doc)
+    matnni_oddiy_qil(doc)
 
     buf = io.BytesIO()
     doc.save(buf)
