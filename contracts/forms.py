@@ -141,7 +141,7 @@ class ContractForm(forms.ModelForm):
         self.fields['payment_start_date'].required = False
         self.fields['payment_start_date'].help_text = (
             'Jadval shu sanadan boshlanadi va har oy shu kunda davom etadi. '
-            'Bo‘sh qoldirsangiz — shartnoma sanasidan bir oy keyin.')
+            'Odatda keyingi oyning 10-sanasi — sana tanlanganda o‘zi qo‘yiladi.')
 
         # Hujjat turi (ID karta / biometrik pasport) — hujjat matnidagi ibora
         # shunga qarab yoziladi.

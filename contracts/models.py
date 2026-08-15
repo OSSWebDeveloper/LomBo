@@ -61,6 +61,19 @@ def pasport_matni(viloyat, bolim, sana, raqam, turi):
             f'{sana.strftime("%d.%m.%Y")}-йилда берилган {raqam} {ibora}')
 
 
+# Grafik odatda keyingi oyning 10-sanasidan boshlanadi (xaridor namunasi:
+# shartnoma 13.08.2026 -> birinchi to'lov 10.09.2026). Shartnoma oyining
+# o'zida emas: aks holda birinchi davr bir necha kun bo'lib qolardi.
+GRAFIK_BOSHLANISH_KUNI = 10
+
+
+def grafik_boshlanishi(shartnoma_sanasi):
+    """Keyingi oyning GRAFIK_BOSHLANISH_KUNI-sanasi."""
+    from .docgen import add_months
+    keyingi = add_months(shartnoma_sanasi, 1)
+    return keyingi.replace(day=GRAFIK_BOSHLANISH_KUNI)
+
+
 def next_contract_number():
     """Avtomatik raqam: bazadagi eng katta raqam + 1, minimal CONTRACT_START_NUMBER."""
     last = Contract.objects.aggregate(m=models.Max('number'))['m'] or 0
@@ -134,7 +147,8 @@ class Contract(models.Model):
     # etadi. Xaridor talabi (2026-08-14): sana qo'ldan belgilanishi kerak —
     # mijoz bilan kelishilgan kun har doim ham «shartnoma + 1 oy» bo'lmaydi.
     # Bo'sh qolsa shartnoma sanasidan bir oy keyin olinadi.
-    payment_start_date = models.DateField("Birinchi to'lov sanasi", null=True, blank=True)
+    payment_start_date = models.DateField('Grafik boshlanish sanasi',
+                                          null=True, blank=True)
 
     # Garov umumiy
     # ESKIRGAN: bir muddat garov shartnomasi o'z raqamida yuritilgan edi.
@@ -213,9 +227,8 @@ class Contract(models.Model):
 
     @property
     def tolov_boshlanishi(self):
-        """Birinchi to'lov sanasi — belgilanmagan bo'lsa shartnomadan bir oy keyin."""
-        from .docgen import add_months
-        return self.payment_start_date or add_months(self.date, 1)
+        """Grafik shu sanadan boshlanadi; belgilanmagan bo'lsa standart sana."""
+        return self.payment_start_date or grafik_boshlanishi(self.date)
 
     @property
     def passport_full(self):

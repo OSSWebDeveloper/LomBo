@@ -396,16 +396,41 @@ def qismlarga_ajrat(bayt):
 def garov_rasmlarini_qosh(doc, contract):
     """To'plam oxiriga garov suratlarini qo'yadi (muqovadan oldin).
 
-    Har sahifada bittadan surat — kengligi matn maydoniga sig'diriladi,
-    balandligi o'zi mos keladi. Fayl diskda topilmasa jimgina o'tkazib
-    yuboriladi: eski shartnoma zaxiradan tiklanganda rasm yo'q bo'lishi mumkin.
+    Bir varaqda ikkita surat (xaridor talabi, 2026-08-14). Har bir surat
+    16×11 sm ramkaga sig'diriladi — nisbati saqlanadi, ya'ni tik surat ham,
+    yotiq surat ham cho'zilmaydi.
+
+    Fayl diskda topilmasa jimgina o'tkazib yuboriladi: eski shartnoma
+    zaxiradan tiklanganda rasm yo'q bo'lishi mumkin.
     """
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt
 
+    RAMKA_EN, RAMKA_BALAND = 16.0, 11.0        # santimetr
+
     rasmlar = list(contract.garov_rasmlari.all())
     if not rasmlar:
         return 0
+
+    def olcham(yol):
+        """Ramkaga sig'adigan (en, balandlik) — nisbatni buzmasdan."""
+        try:
+            from PIL import Image
+            with Image.open(yol) as im:
+                en_px, baland_px = im.size
+        except Exception:
+            return Cm(RAMKA_EN), None          # o'lchamni bilmasak enga qarab
+        nisbat = min(RAMKA_EN / en_px, RAMKA_BALAND / baland_px)
+        return Cm(en_px * nisbat), Cm(baland_px * nisbat)
+
+    def sarlavha(matn, olcham_pt=12):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_after = Pt(4)
+        r = p.add_run(matn)
+        r.bold = True
+        r.font.size = Pt(olcham_pt)
+        r.font.name = 'Times New Roman'
 
     qoshildi = 0
     for rasm in rasmlar:
@@ -414,17 +439,16 @@ def garov_rasmlarini_qosh(doc, contract):
             open(manba, 'rb').close()
         except (OSError, ValueError):
             continue
-        doc.add_page_break()
-        sarlavha = doc.add_paragraph()
-        sarlavha.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        r = sarlavha.add_run(f'Гаров сурати — №{contract.number}'
-                             + (f' ({rasm.izoh})' if rasm.izoh else ''))
-        r.bold = True
-        r.font.size = Pt(12)
-        r.font.name = 'Times New Roman'
+        if qoshildi % 2 == 0:                  # har ikkitadan keyin yangi varaq
+            doc.add_page_break()
+            sarlavha(f'Гаров суратлари — №{contract.number}')
+        if rasm.izoh:
+            sarlavha(rasm.izoh, olcham_pt=10)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p.add_run().add_picture(manba, width=Cm(16))
+        p.paragraph_format.space_after = Pt(8)
+        en, baland = olcham(manba)
+        p.add_run().add_picture(manba, width=en, height=baland)
         qoshildi += 1
     return qoshildi
 

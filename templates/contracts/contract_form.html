@@ -211,6 +211,23 @@
   });
   document.querySelectorAll('.pul').forEach(pulMaydon);
 
+  // ---- Grafik boshlanish sanasi: keyingi oyning 10-sanasi ----
+  // Xodim o'zi kiritgan bo'lsa tegilmaydi (qo'lda o'zgartirish ustun turadi).
+  var sanaF = document.getElementById('id_date');
+  var grafikF = document.getElementById('id_payment_start_date');
+  if (sanaF && grafikF){
+    var qolda = grafikF.value !== '';
+    grafikF.addEventListener('input', function(){ qolda = true; });
+    sanaF.addEventListener('change', function(){
+      if (qolda || !sanaF.value) return;
+      var q = sanaF.value.split('-');           // yyyy-mm-dd
+      var yil = +q[0], oy = +q[1] + 1;
+      if (oy > 12){ oy = 1; yil += 1; }
+      grafikF.value = yil + '-' + String(oy).padStart(2, '0') + '-10';
+    });
+    if (!qolda && sanaF.value) sanaF.dispatchEvent(new Event('change'));
+  }
+
   var sel = document.getElementById('id_collateral_type');
   var blocks = {
     'zargarlik': document.getElementById('block-zargarlik'),
