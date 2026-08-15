@@ -414,16 +414,31 @@ def garov_rasmlarini_qosh(doc, contract):
     if not rasmlar:
         return 0
 
-    def olcham(yol):
-        """Ramkaga sig'adigan (en, balandlik) — nisbatni buzmasdan."""
-        try:
-            from PIL import Image
-            with Image.open(yol) as im:
-                en_px, baland_px = im.size
-        except Exception:
-            return Cm(RAMKA_EN), None          # o'lchamni bilmasak enga qarab
+    # python-docx faqat shu formatlarni tushunadi. Boshqasi (masalan telefon
+    # yoki internetdan olingan .webp) hujjatga qo'yilmasdan oldin PNG'ga
+    # o'giriladi — aks holda UnrecognizedImageError bilan yuklab olish uziladi.
+    QOLLANADIGAN = {'PNG', 'JPEG', 'GIF', 'BMP', 'TIFF'}
+
+    def tayyorla(yol):
+        """(manba, en, balandlik) — manba fayl yo'li yoki xotiradagi oqim.
+
+        Rasm o'lchami ramkaga nisbatini buzmasdan sig'diriladi.
+        """
+        from PIL import Image
+        with Image.open(yol) as im:
+            en_px, baland_px = im.size
+            turi = (im.format or '').upper()
+            manba = yol
+            if turi not in QOLLANADIGAN:
+                buf = io.BytesIO()
+                # Shaffoflik oq fonga tushadi: Word'da PNG shaffofligi
+                # ba'zan qora bo'lib chiqadi
+                nusxa = im.convert('RGB')
+                nusxa.save(buf, 'PNG')
+                buf.seek(0)
+                manba = buf
         nisbat = min(RAMKA_EN / en_px, RAMKA_BALAND / baland_px)
-        return Cm(en_px * nisbat), Cm(baland_px * nisbat)
+        return manba, Cm(en_px * nisbat), Cm(baland_px * nisbat)
 
     def sarlavha(matn, olcham_pt=12):
         p = doc.add_paragraph()
@@ -437,9 +452,10 @@ def garov_rasmlarini_qosh(doc, contract):
     qoshildi = 0
     for rasm in rasmlar:
         try:
-            manba = rasm.rasm.path
-            open(manba, 'rb').close()
-        except (OSError, ValueError):
+            manba, en, baland = tayyorla(rasm.rasm.path)
+        except Exception:
+            # Fayl yo'q, buzilgan yoki tanib bo'lmaydigan format — bitta surat
+            # sababli butun hujjat berilmay qolmasin
             continue
         if qoshildi % 2 == 0:                  # har ikkitadan keyin yangi varaq
             doc.add_page_break()
@@ -449,7 +465,6 @@ def garov_rasmlarini_qosh(doc, contract):
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_after = Pt(8)
-        en, baland = olcham(manba)
         p.add_run().add_picture(manba, width=en, height=baland)
         qoshildi += 1
     return qoshildi

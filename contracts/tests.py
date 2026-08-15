@@ -293,6 +293,54 @@ class HujjatYasashTest(TestCase):
         asosiy = hujjat_matni(hujjat_yasa(c, qism='asosiy'))
         self.assertIn('узимга тегишли заргарлик буюмларини', asosiy)
 
+    # -------------------------------------------------- garov suratlari
+
+    def _rasm(self, contract, nom, fmt):
+        from django.core.files.base import ContentFile
+        from PIL import Image
+        from .models import GarovRasm
+        b = io.BytesIO()
+        Image.new('RGB', (900, 600), (150, 80, 60)).save(b, fmt)
+        return GarovRasm.objects.create(contract=contract,
+                                        rasm=ContentFile(b.getvalue(), nom))
+
+    def test_qollanmaydigan_format_hujjatni_buzmaydi(self):
+        """`.webp` python-docx uchun notanish — PNG'ga o'girilib qo'yiladi.
+
+        Bu haqiqiy nosozlik edi: mijoz telefondan .webp yuklagach shartnomani
+        yuklab olish 500 xato bilan uzilardi (UnrecognizedImageError).
+        """
+        c = self.zargarlik()
+        for nom, fmt in (('a.webp', 'WEBP'), ('b.png', 'PNG'), ('c.gif', 'GIF')):
+            self._rasm(c, nom, fmt)
+        doc = Document(io.BytesIO(hujjat_yasa(c, qism='hammasi')))
+        self.assertEqual(sum(1 for _ in doc.element.body.iter(qn('w:drawing'))), 3)
+
+    def test_buzilgan_surat_otkazib_yuboriladi(self):
+        """Bitta yaroqsiz fayl sababli butun hujjat berilmay qolmasin."""
+        from django.core.files.base import ContentFile
+        from .models import GarovRasm
+        c = self.zargarlik()
+        self._rasm(c, 'yaxshi.png', 'PNG')
+        GarovRasm.objects.create(contract=c,
+                                 rasm=ContentFile(b'buzilgan', 'yomon.png'))
+        doc = Document(io.BytesIO(hujjat_yasa(c, qism='hammasi')))
+        self.assertEqual(sum(1 for _ in doc.element.body.iter(qn('w:drawing'))), 1)
+
+    def test_bir_varaqda_ikkita_surat(self):
+        c = self.zargarlik()
+        for i in range(5):
+            self._rasm(c, f'r{i}.png', 'PNG')
+        doc = Document(io.BytesIO(hujjat_yasa(c, qism='hammasi')))
+        uzilish, sahifa = 0, {}
+        for el in doc.element.body.iter():
+            if el.tag == qn('w:br') and el.get(qn('w:type')) == 'page':
+                uzilish += 1
+            elif el.tag == qn('w:drawing'):
+                sahifa[uzilish] = sahifa.get(uzilish, 0) + 1
+        self.assertEqual(sum(sahifa.values()), 5)
+        self.assertTrue(all(v <= 2 for v in sahifa.values()), sahifa)
+
     # ------------------------------------------------------ ko'rinishi
 
     def test_hujjatda_qora_bolmagan_harf_qolmaydi(self):
