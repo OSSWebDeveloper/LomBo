@@ -137,11 +137,12 @@ class Contract(models.Model):
     payment_start_date = models.DateField("Birinchi to'lov sanasi", null=True, blank=True)
 
     # Garov umumiy
-    # Garov shartnomasining raqami asosiy shartnomanikidan mustaqil (mijoz
-    # qarori, 2026-08-14) — o'z hisobida boradi va qo'lda ham o'zgartiriladi.
-    # Kafillikda garov shartnomasi tuzilmaydi, shuning uchun bo'sh qoladi.
-    garov_number = models.PositiveIntegerField('Garov shartnomasi №', unique=True,
-                                               null=True, blank=True)
+    # ESKIRGAN: bir muddat garov shartnomasi o'z raqamida yuritilgan edi.
+    # Xaridor qarori (2026-08-14 kechqurun) — butun to'plam bitta shartnoma
+    # raqami bilan. Ustun eski yozuvlarda qanday raqam turgani saqlanib
+    # qolishi uchun bazada qoldirilgan; formada ham, hujjatda ham yo'q.
+    garov_number = models.PositiveIntegerField('Garov shartnomasi № (eskirgan)',
+                                               unique=True, null=True, blank=True)
     garov_value = models.DecimalField('Garov bahosi (so\'m)', max_digits=15, decimal_places=0,
                                       null=True, blank=True)
 
@@ -258,6 +259,38 @@ class Contract(models.Model):
         """«АD№2540542» -> «2540542»"""
         qismlar = (self.passport_number or '').split('№')
         return qismlar[1].strip() if len(qismlar) > 1 else ''
+
+
+def garov_rasm_yoli(instance, fayl_nomi):
+    """media/garov/<shartnoma №>/<fayl>. Raqam bo'yicha papkalash qidirishni
+    osonlashtiradi va bir papkaga minglab fayl to'planib qolmaydi."""
+    import os
+    return os.path.join('garov', str(instance.contract.number), fayl_nomi)
+
+
+class GarovRasm(models.Model):
+    """Garovga qo'yilgan mol-mulk surati (xaridor talabi, 2026-08-14).
+
+    Suratlar shartnoma to'plamining oxirida, muqovadan oldin chiqadi.
+    """
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE,
+                                 related_name='garov_rasmlari')
+    rasm = models.ImageField('Surat', upload_to=garov_rasm_yoli)
+    izoh = models.CharField('Izoh', max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = 'Garov surati'
+        verbose_name_plural = 'Garov suratlari'
+
+    def __str__(self):
+        return f'№{self.contract.number} — surat {self.pk}'
+
+    def delete(self, *args, **kwargs):
+        """Yozuv o'chirilsa fayl ham o'chsin — diskda axlat qolmasin."""
+        self.rasm.delete(save=False)
+        return super().delete(*args, **kwargs)
 
 
 class JewelryItem(models.Model):

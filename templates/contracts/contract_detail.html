@@ -79,11 +79,6 @@
 <div class="card">
   <h2 style="margin-top:0">Ta’minot — {{ contract.get_collateral_type_display }}</h2>
 
-  {% if contract.garov_number %}
-    <p><b>Garov shartnomasi №{{ contract.garov_number }}</b>
-      <span class="muted">(asosiy shartnoma №{{ contract.number }})</span></p>
-  {% endif %}
-
   {% if contract.garov_beruvchi_boshqami %}
     <table style="margin-bottom:12px">
       <tr><th style="width:40%">Garovga qo‘yuvchi</th><td>{{ contract.pledgor_fio }}</td></tr>
@@ -134,6 +129,19 @@
       <tr><th style="width:40%">Kafil</th><td>{{ contract.guarantor.fio }}</td></tr>
       <tr><th>Kafillik summasi</th><td>{{ contract.guarantor.amount|pul }} so‘m</td></tr>
     </table>
+  {% endif %}
+
+  {% if contract.garov_rasmlari.exists %}
+    <h3>Garov suratlari</h3>
+    <div class="row">
+      {% for r in contract.garov_rasmlari.all %}
+        <div style="flex:0 0 auto">
+          <img src="{{ r.rasm.url }}" alt="Garov surati"
+               style="max-height:180px;border-radius:8px">
+          {% if r.izoh %}<div class="help">{{ r.izoh }}</div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
   {% endif %}
 </div>
 

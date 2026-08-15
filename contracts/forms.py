@@ -7,8 +7,8 @@ from django.forms import inlineformset_factory
 from .docgen import contract_end_date
 from .formatlash import hujjat_raqami, pul_matn, pul_son
 from .models import (HUJJAT_PASPORT, HUJJAT_TURLARI, VILOYATLAR, Contract,
-                     GuarantorInfo, JewelryItem, VehicleInfo, next_contract_number,
-                     next_garov_number)
+                     GarovRasm, GuarantorInfo, JewelryItem, VehicleInfo,
+                     next_contract_number)
 
 
 class DateInput(forms.DateInput):
@@ -88,7 +88,7 @@ class ContractForm(forms.ModelForm):
             'borrower_workplace', 'monthly_income',
             'amount', 'term_months', 'interest_rate', 'end_date',
             'payment_start_date',
-            'garov_number', 'garov_value',
+            'garov_value',
             'pledgor_other', 'pledgor_fio', 'pledgor_passport_type',
             'pledgor_passport_region', 'pledgor_passport_org',
             'pledgor_passport_date', 'pledgor_passport_number', 'pledgor_address',
@@ -130,13 +130,9 @@ class ContractForm(forms.ModelForm):
         self.fields['number'].help_text = (
             'Avtomatik beriladi — kerak bo‘lsa o‘zgartiring. '
             'Ariza, bayon va dalolatnoma shu raqam bilan chiqadi.')
-        self.fields['garov_number'].required = False
-        self.fields['garov_number'].help_text = (
-            'Garov shartnomasining o‘z raqami — asosiy shartnomanikidan alohida.')
 
         if not self.instance.pk:
             self.fields['number'].initial = next_contract_number()
-            self.fields['garov_number'].initial = next_garov_number()
 
         self.fields['garov_value'].required = False
 
@@ -287,12 +283,6 @@ class ContractForm(forms.ModelForm):
         # Garov bahosi va garov raqami faqat zargarlik va transportda bo'ladi
         if tur == Contract.TYPE_KAFILLIK:
             data['garov_value'] = None
-            data['garov_number'] = None
-        else:
-            if not data.get('garov_number'):
-                data['garov_number'] = next_garov_number()
-            self._raqam_bandligini_tekshir('garov_number', data.get('garov_number'),
-                                           next_garov_number, 'Garov shartnomasi')
 
         self._garov_beruvchini_tekshir(data, tur)
 
@@ -386,3 +376,24 @@ class ContractSearchForm(forms.Form):
                 [('', '— Barchasi —')] + [(u.pk, str(u)) for u in users])
         else:
             self.fields.pop('created_by')
+
+
+class GarovRasmForm(forms.ModelForm):
+    """Garov surati. Bo'sh qator e'tiborsiz qoldiriladi."""
+    use_required_attribute = False
+
+    class Meta:
+        model = GarovRasm
+        fields = ['rasm', 'izoh']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['rasm'].widget.attrs.update({'class': 'form-control',
+                                                 'accept': 'image/*'})
+        self.fields['izoh'].widget.attrs.update({'class': 'form-control',
+                                                 'placeholder': 'ixtiyoriy'})
+
+
+GarovRasmFormSet = inlineformset_factory(
+    Contract, GarovRasm, form=GarovRasmForm, extra=3, can_delete=True,
+)

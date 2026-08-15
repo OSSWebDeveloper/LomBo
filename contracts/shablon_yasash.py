@@ -293,9 +293,11 @@ def ariza_hujjati(tur):
 
     n = naqsh_bilan_almashtir(
         doc, TELEFON_NAQSHI,
-        lambda m: (f'{m.group(1)} {{{{ telefon }}}}'
-                   f'{m.group(2)} {{{{ telefon2 }}}}'
-                   f'{m.group(3)} {{{{ telefon3 }}}}'))
+        # Har bir raqamdan keyin tab — xaridor talabi (2026-08-14): raqamlar
+        # bir-biriga yopishmasin
+        lambda m: (f'{m.group(1)} {{{{ telefon }}}}\t'
+                   f'{m.group(2)} {{{{ telefon2 }}}}\t'
+                   f'{m.group(3)} {{{{ telefon3 }}}}\t'))
     print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: Телефон ракам 1) 2) 3)")
     ok = ok and bool(n)
 
@@ -413,7 +415,7 @@ GAROV_BERUVCHI_JOYLARI = [
     # (xatboshini tanish uchun bo'lak, [(eski, yangi), ...])
     ('хамда гаровга кўювчи:',
      [('{{ fio }} ({{ pasport }})', '{{ garov_fio }} ({{ garov_pasport }})')]),
-    ('келишув далолатномасига асосан гаровга куйиладиган',
+    ('далолатномасига асосан гаровга куйиладиган',
      [('{{ fio }}га тегишли', '{{ garov_fio }}га тегишли')]),
     ('Кредит таъминоти сифатида гаровга кўйиладиган',
      [('{{ fio }}га тегишли', '{{ garov_fio }}га тегишли')]),
@@ -464,7 +466,8 @@ def zargarlik_shabloni():
     ok, xabar = zargarlik_jadvalini_shablonla(doc)
     print(f'  jadval: {xabar}')
 
-    ok &= natijani_chop('shartnoma', hujjatda_almashtir(doc, ZARGARLIK_JUFTLAR))
+    ok &= natijani_chop('shartnoma',
+                        hujjatda_almashtir(doc, DALOLATNOMA_1_3 + ZARGARLIK_JUFTLAR))
     print('  garovga qo‘yuvchi:')
     ok &= garov_beruvchini_shablonla(doc)
     return _yakunla(doc, ZARGARLIK, 'zargarlik.docx', ok,
@@ -510,6 +513,12 @@ GAROV_NAQSHLARI = [
     (re.compile(r'келишуви\s+асосида\s+бахолаш\s+далолатномаси\s*$'),
      lambda m: m.group(0).rstrip() + ' №{{ raqam }}'),
 ]
+
+# Garov shartnomasining 1.3-bandi: xaridor «келишув далолатномаси» o'rniga
+# baholash dalolatnomasini raqami bilan ko'rsatishni so'radi (2026-08-14,
+# Word faylida lotin harflar bilan belgilab bergan).
+DALOLATNOMA_1_3 = [('келишув далолатномасига асосан',
+                    '№{{ raqam }}-сонли бахолаш далолатномасига асосан')]
 
 # 1.1-banddagi ta'minot jumlasi — turga qarab boshqacha
 KAFILLIK_TAMINOT = (
@@ -585,7 +594,10 @@ def _m199_shabloni(nomi, tur, juftlar, taminot_yangi, garovni_ochir=False):
         n = _garov_qismini_ochir(doc)
         print(f'  garov qismi olib tashlandi: {n} ta blok')
 
-    juftlar = [(KAFILLIK_TAMINOT, taminot_yangi)] + juftlar + YURIST_TUZATISHLARI
+    # 1.3-band garov shartnomasida — kafillikda u blok olib tashlangan bo'ladi
+    juftlar = ([(KAFILLIK_TAMINOT, taminot_yangi)]
+               + ([] if garovni_ochir else DALOLATNOMA_1_3)
+               + juftlar + YURIST_TUZATISHLARI)
     ok = natijani_chop('shartnoma', hujjatda_almashtir(doc, juftlar))
 
     if not garovni_ochir:

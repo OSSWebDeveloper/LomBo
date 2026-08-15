@@ -157,6 +157,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Garov suratlari shu yerga yuklanadi (xaridor talabi, 2026-08-14).
+# PythonAnywhere'da Web bo'limida /media/ -> shu papka deb ko'rsatish kerak.
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 LOGIN_URL = 'login'

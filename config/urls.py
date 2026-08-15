@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path
@@ -55,3 +57,8 @@ urlpatterns = [
     path('ishchi/<int:pk>/parol/', acc.worker_password, name='worker_password'),
     path('ishchi/<int:pk>/boshatish/', acc.worker_fire, name='worker_fire'),
 ]
+
+# Garov suratlari. DEBUG rejimida Django o'zi beradi; serverda esa
+# PythonAnywhere'ning Web bo'limida /media/ uchun statik yo'l ko'rsatiladi.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

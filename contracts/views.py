@@ -20,7 +20,7 @@ from docx import Document
 from .docgen import build_contract_docx, build_garov_docx, payment_schedule
 from .pdf import PdfImkoniYoq, docx_dan_pdf, pdf_imkoni_bor
 from .shablondan import SHABLONLAR, garovi_bormi
-from .forms import (ContractForm, ContractSearchForm, DeleteRequestForm, GuarantorForm,
+from .forms import (GarovRasmFormSet, ContractForm, ContractSearchForm, DeleteRequestForm, GuarantorForm,
                     JewelryFormSet, VehicleForm)
 from .models import Amal, Contract, DeleteRequest, amal_yoz
 
@@ -159,11 +159,18 @@ def _collateral_forms(request, contract=None, data=None):
     return jewelry, vehicle, guarantor
 
 
+def _rasm_formseti(request, contract=None, data=None):
+    """Garov suratlari — fayl yuklangani uchun request.FILES ham kerak."""
+    return GarovRasmFormSet(data, request.FILES or None, instance=contract,
+                            prefix='rasm')
+
+
 @login_required
 def contract_create(request):
     data = request.POST or None
     form = ContractForm(data)   # raqamni forma o'zi avtomatik beradi
     jewelry, vehicle, guarantor = _collateral_forms(request, data=data)
+    rasmlar = _rasm_formseti(request, data=data)
 
     if request.method == 'POST':
         tur = request.POST.get('collateral_type')
@@ -197,6 +204,10 @@ def contract_create(request):
                 g.contract = contract
                 g.save()
 
+            rasmlar.instance = contract
+            if rasmlar.is_valid():
+                rasmlar.save()
+
             User.objects.filter(pk=request.user.pk).update(
                 contracts_added=F('contracts_added') + 1)
             amal_yoz(request.user, Amal.YARATDI, f'Shartnoma №{contract.number}',
@@ -207,6 +218,7 @@ def contract_create(request):
 
     return render(request, 'contracts/contract_form.html', {
         'form': form, 'jewelry': jewelry, 'vehicle': vehicle, 'guarantor': guarantor,
+        'rasmlar': rasmlar,
         'title': "Yangi shartnoma qo'shish", 'is_edit': False,
     })
 
@@ -224,6 +236,7 @@ def contract_edit(request, pk):
     data = request.POST or None
     form = ContractForm(data, instance=contract)
     jewelry, vehicle, guarantor = _collateral_forms(request, contract=contract, data=data)
+    rasmlar = _rasm_formseti(request, contract=contract, data=data)
 
     if request.method == 'POST':
         tur = request.POST.get('collateral_type')
@@ -262,6 +275,10 @@ def contract_edit(request, pk):
                 g.contract = contract
                 g.save()
 
+            rasmlar.instance = contract
+            if rasmlar.is_valid():
+                rasmlar.save()
+
             # Logda faqat o'zgargan qismlar soni saqlanadi
             soni = len(form.changed_data)
             if tur == Contract.TYPE_ZARGARLIK:
@@ -280,6 +297,7 @@ def contract_edit(request, pk):
 
     return render(request, 'contracts/contract_form.html', {
         'form': form, 'jewelry': jewelry, 'vehicle': vehicle, 'guarantor': guarantor,
+        'rasmlar': rasmlar,
         'title': (f"Shartnoma №{contract.number} — tuzatish" if ishchi_tahriri
                   else f"Shartnoma №{contract.number} — to'liq tahrirlash"),
         'is_edit': True, 'contract': contract,
@@ -821,8 +839,7 @@ def _garov_hujjati(request, pk, pdf=False):
         messages.error(request, 'Garov hujjati topilmadi.')
         return redirect('contract_detail', pk=pk)
 
-    # Fayl nomi hujjat sarlavhasidagi raqam bilan bir xil bo'lsin
-    raqam = contract.garov_number or contract.number
+    raqam = contract.number
     if pdf:
         try:
             data = docx_dan_pdf(data)

@@ -14,7 +14,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
-from .docx_ulash import hujjatni_boshiga_qoy, qora_qil
+from .docx_ulash import hujjatni_ulash, qora_qil
 from .formatlash import sana_sozlar
 from .num2words_uz import num2words_uz, summa_formatlangan
 
@@ -118,9 +118,9 @@ def zargarlik_konteksti(c):
     ctx = _umumiy(c)
     boshqa = c.garov_beruvchi_boshqami
     ctx.update({
-        # Garov shartnomasining o'z raqami bor (mijoz qarori, 2026-08-14).
-        # Ariza, bayon, farmoyish va dalolatnoma asosiy raqamda qoladi.
-        'garov_raqam': str(c.garov_number or c.number),
+        # Butun to'plam bitta raqam bilan yuritiladi (xaridor qarori,
+        # 2026-08-14 kechqurun — bir kun oldingi «alohida raqam» bekor).
+        'garov_raqam': str(c.number),
         # Arizada — qarz oluvchining o'z tilidan, bayonda — uchinchi shaxsda.
         # Garovga qo'yuvchi boshqa bo'lsagina ism aytiladi.
         'ariza_taminot': (
@@ -207,8 +207,8 @@ def transport_konteksti(c):
             f'{v.model} русумли транспорт воситаси')
     ctx = _umumiy(c)
     ctx.update({
-        # Garov shartnomasining o'z raqami bor; qolgan hujjatlar asosiy raqamda.
-        'garov_raqam': str(c.garov_number or c.number),
+        # Butun to'plam bitta raqam bilan yuritiladi
+        'garov_raqam': str(c.number),
         'garov_mulki': mulk,
         'garov_egasi': v.owner,
         'garov_rahbari': v.owner_head or v.owner,
@@ -393,16 +393,56 @@ def qismlarga_ajrat(bayt):
     return b1.getvalue(), b2.getvalue()
 
 
-def muqova_bilan(contract, bayt):
-    """Hujjat oldiga muqovani (to'plamning 1-sahifasi) qo'yadi.
+def garov_rasmlarini_qosh(doc, contract):
+    """To'plam oxiriga garov suratlarini qo'yadi (muqovadan oldin).
 
-    Muqova shartnoma hujjatining ichiga qo'yiladi, teskarisi emas — shunda
-    shartnomaning uslublari joyida qoladi (qarang: hujjatni_boshiga_qoy).
+    Har sahifada bittadan surat — kengligi matn maydoniga sig'diriladi,
+    balandligi o'zi mos keladi. Fayl diskda topilmasa jimgina o'tkazib
+    yuboriladi: eski shartnoma zaxiradan tiklanganda rasm yo'q bo'lishi mumkin.
+    """
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Cm, Pt
+
+    rasmlar = list(contract.garov_rasmlari.all())
+    if not rasmlar:
+        return 0
+
+    qoshildi = 0
+    for rasm in rasmlar:
+        try:
+            manba = rasm.rasm.path
+            open(manba, 'rb').close()
+        except (OSError, ValueError):
+            continue
+        doc.add_page_break()
+        sarlavha = doc.add_paragraph()
+        sarlavha.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = sarlavha.add_run(f'Гаров сурати — №{contract.number}'
+                             + (f' ({rasm.izoh})' if rasm.izoh else ''))
+        r.bold = True
+        r.font.size = Pt(12)
+        r.font.name = 'Times New Roman'
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run().add_picture(manba, width=Cm(16))
+        qoshildi += 1
+    return qoshildi
+
+
+def muqova_bilan(contract, bayt):
+    """To'plam oxiriga muqovani qo'yadi.
+
+    Xaridor talabi (2026-08-14): muqova («Yuzi») eng oxirida tursin — avval
+    shartnoma, garov, dalolatnoma, ariza, jadval va suratlar.
+
+    Muqova shartnoma hujjatining ichiga qo'shiladi, teskarisi emas — shunda
+    shartnomaning uslublari joyida qoladi (qarang: docx_ulash).
     """
     from .muqova import muqova_hujjati
 
     doc = Document(io.BytesIO(bayt))
-    hujjatni_boshiga_qoy(doc, muqova_hujjati(contract))
+    garov_rasmlarini_qosh(doc, contract)      # suratlar muqovadan oldin
+    hujjatni_ulash(doc, muqova_hujjati(contract))
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()

@@ -11,7 +11,7 @@
 </div>
 {% endif %}
 
-<form method="post" id="contract-form">
+<form method="post" enctype="multipart/form-data" id="contract-form">
   {% csrf_token %}
 
   {% if form.non_field_errors %}
@@ -67,9 +67,31 @@
   <div class="card">
     <h2 style="margin-top:0">4. Ta'minot (garov)</h2>
     <div class="grid">
-      {% include 'contracts/_field.html' with field=form.garov_number extra_class='garov-field' %}
       {% include 'contracts/_field.html' with field=form.garov_value extra_class='garov-field' %}
     </div>
+
+    <hr class="ajratgich">
+    <p class="ajratgich-nom">Garov suratlari</p>
+    {{ rasmlar.management_form }}
+    <div class="grid">
+      {% for f in rasmlar %}
+        <div class="field">
+          {% for gizli in f.hidden_fields %}{{ gizli }}{% endfor %}
+          {% if f.instance.pk and f.instance.rasm %}
+            <img src="{{ f.instance.rasm.url }}" alt="Garov surati"
+                 style="max-width:100%;border-radius:8px;margin-bottom:6px">
+          {% endif %}
+          {{ f.rasm }}
+          {{ f.izoh }}
+          {% if f.instance.pk %}
+            <label class="help" style="display:flex;gap:6px;align-items:center;margin-top:4px">
+              {{ f.DELETE }} o‘chirish</label>
+          {% endif %}
+          {% if f.errors %}<div class="errors">{{ f.errors|striptags }}</div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="help">Suratlar shartnoma to‘plamining oxirida, muqovadan oldin chiqadi.</div>
 
     <!-- ZARGARLIK -->
     <div id="block-zargarlik" class="collateral-block hidden">

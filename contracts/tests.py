@@ -55,8 +55,7 @@ class HujjatYasashTest(TestCase):
         return c
 
     def zargarlik(self):
-        c = self._shartnoma(Contract.TYPE_ZARGARLIK, garov_value=9_000_000,
-                            garov_number=55)
+        c = self._shartnoma(Contract.TYPE_ZARGARLIK, garov_value=9_000_000)
         JewelryItem.objects.create(contract=c, name='Тилла узук', quantity=1,
                                    weight=3, proba='585', value=4_000_000)
         JewelryItem.objects.create(contract=c, name='Тилла халка', quantity=2,
@@ -64,8 +63,7 @@ class HujjatYasashTest(TestCase):
         return c
 
     def transport(self):
-        c = self._shartnoma(Contract.TYPE_TRANSPORT, garov_value=90_000_000,
-                            garov_number=55)
+        c = self._shartnoma(Contract.TYPE_TRANSPORT, garov_value=90_000_000)
         VehicleInfo.objects.create(
             contract=c, owner='“Test Trans” МЧЖ', owner_head='Азизов Акмал Шухратович',
             state_number='01 A123AA', model='ISUZU NQR', color='ОК',
@@ -162,7 +160,7 @@ class HujjatYasashTest(TestCase):
                 self.assertIn('01137', matn)
                 Contract.objects.all().delete()
 
-    def test_muqova_toplamning_birinchi_sahifasi(self):
+    def test_muqova_toplamning_oxirgi_sahifasi(self):
         c = self.zargarlik()
         matn = hujjat_matni(hujjat_yasa(c, qism='hammasi'))
         self.assertIn('Кредит №', matn)
@@ -170,9 +168,10 @@ class HujjatYasashTest(TestCase):
         self.assertIn('8 000 000,00', matn)
         self.assertIn('Заргарлик буюмлари', matn)
         self.assertIn('Бухоро шаҳри 2026 йил', matn)
-        # Muqova shartnomadan oldin turishi kerak
-        self.assertLess(matn.index('Кредит №'),
-                        matn.index('Микрокарз шартномаси'))
+        # Xaridor talabi (2026-08-14): muqova («Yuzi») eng oxirida
+        self.assertGreater(matn.index('Кредит №'),
+                           matn.index('Микрокарз шартномаси'))
+        self.assertGreater(matn.index('Кредит №'), matn.index('АРИЗА'))
 
     def test_muqovada_garov_turi_yoziladi(self):
         for yasovchi, kutilgan in ((self.zargarlik, 'Заргарлик буюмлари'),
@@ -184,23 +183,14 @@ class HujjatYasashTest(TestCase):
                 self.assertIn(kutilgan, matn)
                 Contract.objects.all().delete()
 
-    def test_garov_shartnomasi_oz_raqamida(self):
-        """Garov shartnomasi alohida raqamda, qolgan hujjatlar asosiy raqamda."""
+    def test_hamma_hujjat_bitta_raqam_bilan(self):
+        """Xaridor qarori: butun to'plam bitta shartnoma raqamida."""
         c = self.zargarlik()
         matn = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='hammasi')))
         for ibora in ('Микрокарз шартномаси №301', '№301-сонли',
-                      'далолатномаси №301', 'БАЁНИ №301', 'ФАРМОЙИШ №301'):
+                      'далолатномаси №301', 'БАЁНИ №301', 'ФАРМОЙИШ №301',
+                      'Гаров шартнома 301'):
             self.assertIn(ibora, matn)
-        self.assertIn('Гаров шартнома 55', matn)
-        self.assertNotIn('Гаров шартнома 301', matn)
-
-    def test_garov_raqami_yoq_bolsa_asosiysi_ishlatiladi(self):
-        """Eski shartnomalarda garov raqami yo'q — hujjat baribir chiqadi."""
-        c = self.zargarlik()
-        Contract.objects.filter(pk=c.pk).update(garov_number=None)
-        c.refresh_from_db()
-        matn = re.sub(r'\s+', ' ', hujjat_matni(hujjat_yasa(c, qism='hammasi')))
-        self.assertIn('Гаров шартнома 301', matn)
 
     def test_zargarlik_jadvali_barcha_buyumni_chiqaradi(self):
         c = self.zargarlik()
@@ -428,11 +418,9 @@ class FormaSahifasiTest(TestCase):
     def test_raqamni_qolda_kiritish(self):
         malumot = self._malumot()
         malumot['number'] = '777'
-        malumot['garov_number'] = '42'
         self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
         c = Contract.objects.get()
         self.assertEqual(c.number, 777)
-        self.assertEqual(c.garov_number, 42)
 
     def test_band_raqam_xato_beradi(self):
         self.client.post('/shartnoma/yangi/', self._malumot())
@@ -451,21 +439,9 @@ class FormaSahifasiTest(TestCase):
             self.assertEqual(
                 self.client.post('/shartnoma/yangi/', self._malumot()).status_code, 302)
         raqamlar = list(Contract.objects.order_by('number')
-                        .values_list('number', 'garov_number'))
-        self.assertEqual(raqamlar, [(settings.CONTRACT_START_NUMBER,
-                                     settings.GAROV_START_NUMBER),
-                                    (settings.CONTRACT_START_NUMBER + 1,
-                                     settings.GAROV_START_NUMBER + 1)])
-
-    def test_kafillikda_garov_raqami_bolmaydi(self):
-        malumot = {k: v for k, v in self._malumot().items()
-                   if not k.startswith('jewelry')}
-        malumot['collateral_type'] = Contract.TYPE_KAFILLIK
-        malumot['garov_number'] = '42'
-        malumot.update({'guarantor-fio': 'Салимов Жасур Анварович',
-                        'guarantor-amount': '6 000 000'})
-        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
-        self.assertIsNone(Contract.objects.get().garov_number)
+                        .values_list('number', flat=True))
+        self.assertEqual(raqamlar, [settings.CONTRACT_START_NUMBER,
+                                    settings.CONTRACT_START_NUMBER + 1])
 
     # ------------------------------------------------------ garovga qo'yuvchi
 
