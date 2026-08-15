@@ -407,7 +407,11 @@ input[readonly],.avto-maydon{
 .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 /* Jadval qatoridagi tugmalar o'ngga tekislanadi va o'ralganda bir-biriga
    yopishib turadi (aks holda ular qator bo'yi bo'ylab yoyilib ketadi) */
-td.actions{justify-content:flex-end;align-content:center}
+/* `nowrap` majburiy: «Zamonaviy» mavzuda chapda yon panel bor, ustun torayadi
+   va tugmalar pastga tushib ketardi — qator ikki barobar balandlashardi.
+   Jadval `.table-wrap` ichida gorizontal suriladi, shuning uchun juda tor
+   ekranda ham sahifa buzilmaydi. */
+td.actions{justify-content:flex-end;flex-wrap:nowrap}
 
 /* Ro'yxat qatoridagi tugmalar — yumshoq ohangda: fon yengil tusda, matn
    rangli. Jadvalda o'nlab qator turadi, to'q rangli tugmalar ko'zni
