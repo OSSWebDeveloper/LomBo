@@ -7,6 +7,7 @@ Alohida modulda turibdi, chunki ikki joyda kerak: shablon yasashda
 loyihaning boshqa modullariga ham bog'liq emas.
 """
 import copy
+import re
 
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -17,18 +18,31 @@ QORA = '000000'
 OQ = 'FFFFFF'
 
 
-def _sarlavhami(p_el):
-    """Xatboshi sarlavhami? Asl shartnomada sarlavhalar markazga tekislangan.
+# Sarlavha ostidagi «05.08.2026 йил ... Бухоро шахри» qatori ham markazda
+# turadi, lekin u band emas — sana va shahar oddiy matnda qoladi.
+SANA_NAQSHI = re.compile(r'\d{1,2}\.\d{1,2}\.\d{4}')
+SHAHAR_NAQSHI = re.compile(r'^[\w\s]{0,20}шах[ар|ри]\w*$', re.UNICODE)
 
-    Band nomlari («1.Шартноманинг предмети.»), hujjat nomlari («АРИЗА»,
-    «Гаров шартнома 301») va jadval ustun nomlari — hammasi markazda.
-    Oddiy matn esa eniga tekislangan yoki chapda.
+
+def _sarlavhami(p_el):
+    """Xatboshi band sarlavhasimi?
+
+    Asl shartnomada sarlavhalar markazga tekislangan: band nomlari
+    («1.Шартноманинг предмети.»), hujjat nomlari («АРИЗА», «Гаров шартнома
+    301») va jadval ustun nomlari. Oddiy matn eniga tekislangan yoki chapda.
+
+    Istisno — sana/shahar qatori: u ham markazda, ammo band emas.
     """
     pPr = p_el.find(qn('w:pPr'))
     if pPr is None:
         return False
     jc = pPr.find(qn('w:jc'))
-    return jc is not None and jc.get(qn('w:val')) in ('center', 'centre')
+    if jc is None or jc.get(qn('w:val')) not in ('center', 'centre'):
+        return False
+    matn = ''.join(t.text or '' for t in p_el.iter(qn('w:t'))).strip()
+    if SANA_NAQSHI.search(matn) or SHAHAR_NAQSHI.match(matn):
+        return False
+    return True
 
 
 def matnni_oddiy_qil(doc):
