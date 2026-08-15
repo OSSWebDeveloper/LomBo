@@ -17,18 +17,31 @@ QORA = '000000'
 OQ = 'FFFFFF'
 
 
+def _sarlavhami(p_el):
+    """Xatboshi sarlavhami? Asl shartnomada sarlavhalar markazga tekislangan.
+
+    Band nomlari («1.Шартноманинг предмети.»), hujjat nomlari («АРИЗА»,
+    «Гаров шартнома 301») va jadval ustun nomlari — hammasi markazda.
+    Oddiy matn esa eniga tekislangan yoki chapda.
+    """
+    pPr = p_el.find(qn('w:pPr'))
+    if pPr is None:
+        return False
+    jc = pPr.find(qn('w:jc'))
+    return jc is not None and jc.get(qn('w:val')) in ('center', 'centre')
+
+
 def matnni_oddiy_qil(doc):
-    """Ajratib ko'rsatilgan joylarni oddiy ko'rinishga keltiradi.
+    """Shartnoma matnini bir xil ko'rinishga keltiradi.
 
-    Asl shartnoma fayllarida o'zgaruvchan joylar (ism, summa, sana) qizil
-    rangda, ko'pincha qalin/kursiv/tagchiziqli yozilgan edi. Xaridor talabiga
-    ko'ra tayyor hujjatda ular boshqa matndan farq qilmasligi kerak:
-      * 2026-08-14 — hamma harf qora bo'lsin;
-      * 2026-08-15 — qalin, kursiv va tagchiziq ham olib tashlansin.
+    Xaridor talabi: hujjatdagi barcha matn bir xil uslubda bo'lsin, faqat
+    bandlar sarlavhasi ajralib tursin.
+      * 2026-08-14 — hamma harf qora (asl faylda o'zgaruvchan joylar qizil edi);
+      * 2026-08-15 — qalin, kursiv va tagchiziq olib tashlanadi.
 
-    Aynan **rangi bo'lgan** run'largina oddiylashtiriladi. Sarlavhalar va
-    «Қарз олувчи» kabi atamalar asl faylda qora holda qalin — ular o'z
-    ko'rinishida qoladi, aks holda hujjat tuzilishi yo'qolardi.
+    Sarlavhalarga tegilmaydi: ular markazga tekislangani bilan tanib olinadi
+    (band nomlari, hujjat nomlari, jadval ustun nomlari). Aks holda hujjatning
+    tuzilishi yo'qolib, bandlar bir-biridan ajralmay qolardi.
 
     Oq rangga tegilmaydi: asl faylda u ko'rinmas to'ldirgich sifatida
     ishlatilgan, qora qilinsa hujjatda avval bo'lmagan chiziq paydo bo'lardi.
@@ -37,28 +50,27 @@ def matnni_oddiy_qil(doc):
     """
     ozgardi = 0
     for qism in _rang_beriladigan_qismlar(doc):
-        for el in qism.iter(qn('w:r')):
-            if not el.findall(qn('w:t')):
-                continue                      # matnsiz run (rasm, uzilish)
-            run = Run(el, None)
-            try:
-                joriy = run.font.color.rgb
-            except (AttributeError, TypeError, ValueError):
-                joriy = None
-            if joriy is not None and str(joriy).upper() == OQ:
-                continue
-            ajratilgan = joriy is not None and str(joriy).upper() != QORA
-            run.font.color.rgb = RGBColor(0, 0, 0)
-            # Mavzu rangi (themeColor) qo'yilgan bo'lsa w:val'dan ustun turadi
-            rang = el.find(qn('w:rPr')).find(qn('w:color'))
-            for atr in ('w:themeColor', 'w:themeTint', 'w:themeShade'):
-                rang.attrib.pop(qn(atr), None)
-            if ajratilgan:
-                run.font.bold = False
-                run.font.italic = False
-                run.font.underline = False
-                ozgardi += 1
-            elif joriy is None:
+        for p_el in qism.iter(qn('w:p')):
+            sarlavha = _sarlavhami(p_el)
+            for el in p_el.iter(qn('w:r')):
+                if not el.findall(qn('w:t')):
+                    continue                  # matnsiz run (rasm, uzilish)
+                run = Run(el, None)
+                try:
+                    joriy = run.font.color.rgb
+                except (AttributeError, TypeError, ValueError):
+                    joriy = None
+                if joriy is not None and str(joriy).upper() == OQ:
+                    continue
+                run.font.color.rgb = RGBColor(0, 0, 0)
+                # Mavzu rangi (themeColor) qo'yilgan bo'lsa w:val'dan ustun turadi
+                rang = el.find(qn('w:rPr')).find(qn('w:color'))
+                for atr in ('w:themeColor', 'w:themeTint', 'w:themeShade'):
+                    rang.attrib.pop(qn(atr), None)
+                if not sarlavha:
+                    run.font.bold = False
+                    run.font.italic = False
+                    run.font.underline = False
                 ozgardi += 1
     return ozgardi
 
