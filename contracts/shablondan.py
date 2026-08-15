@@ -227,65 +227,89 @@ def transport_konteksti(c):
 
 # --------------------------------------------------------------- to'lov jadvali
 
+JADVAL_SARLAVHALARI = ['№', 'Тулов санаси', 'Кредит қолдиги',
+                       'Асосий карзни қайтариш', 'Фоиз тўловларини қайтариш',
+                       'Туловнинг умумий суммаси']
+
+# Jadval ostidagi o'zgarmas eslatmalar — xaridor namunasidan (2026-08-14)
+JADVAL_ESLATMALARI = [
+    'Кредитга хисобланган фоизлар миқдори кредитнинг хақиқатда чиққан ва '
+    'қайтариш санасига қараб ўзгариши мумкин.',
+    'Кредит фоизларини ва узини уз вактида кайтаришни унутманг.',
+    'Хар бир кечиктирилган кун учун 0,3% микдорда жарима ундирилади.',
+]
+
+
+def _summa_tiyin(qiymat):
+    """«664 246,56» — namunadagidek: minglar bo'shliq, tiyin vergul bilan."""
+    butun, _, kasr = f'{qiymat:.2f}'.partition('.')
+    return f'{int(butun):,}'.replace(',', ' ') + ',' + kasr
+
+
 def tolov_jadvalini_qosh(doc, contract, qatorlar):
-    """Shablon oxiriga «1-илова» — to'lov jadvalini qo'shadi."""
+    """Shartnoma oxiriga «1-сонли илова» — to'lov jadvalini qo'shadi.
+
+    Ko'rinishi xaridor bergan namunaga qarab tuzilgan (2026-08-14):
+    ustunlar tartibi, summalar tiyingacha, ostidagi imzo va eslatmalar.
+    """
+    from django.conf import settings
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt
 
-    def sarlavha(matn, olcham=12, qalin=True):
+    org = settings.LOMBARD_ORG
+
+    def qator(matn, *, markaz=False, qalin=False, olcham=11):
         p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        r = p.add_run(matn)
-        r.bold = qalin
-        r.font.size = Pt(olcham)
-        r.font.name = 'Times New Roman'
+        if markaz:
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_after = Pt(2)
+        if matn:
+            r = p.add_run(matn)
+            r.bold = qalin
+            r.font.size = Pt(olcham)
+            r.font.name = 'Times New Roman'
         return p
 
     doc.add_page_break()
-    sarlavha(f'Микрокарз шартномаси №{contract.number}га 1-илова')
-    sarlavha('Кредит фоизларини тўлаш ва асосий қарз суммасини қайтариш ЖАДВАЛИ')
-
-    p = doc.add_paragraph()
-    r = p.add_run(f'Қарз олувчи: {contract.borrower_fio}. '
-                  f'Кредит суммаси: {_pul(contract.amount)} сўм. '
-                  f'Муддат: {contract.term_months} ой. '
-                  f'Йиллик фоиз: {contract.interest_rate}%.')
-    r.font.size = Pt(12)
-    r.font.name = 'Times New Roman'
+    qator(contract.borrower_fio, markaz=True, qalin=True, olcham=12)
+    qator(f'{org["name"]}нинг {sana_sozlar(contract.date)}-йилдаги '
+          f'№{contract.number}-сонли микрокарз шартномасига 1-сонли илова',
+          markaz=True, olcham=11)
+    qator('')
 
     jadval = doc.add_table(rows=len(qatorlar) + 2, cols=6)
     jadval.style = 'Table Grid'
-    sarlavhalar = ['№', 'Тўлов санаси', 'Асосий қарз (сўм)', 'Фоиз (сўм)',
-                   'Жами тўлов (сўм)', 'Қолдиқ (сўм)']
-    for j, h in enumerate(sarlavhalar):
+    for j, h in enumerate(JADVAL_SARLAVHALARI):
         _katakka_yoz(jadval.cell(0, j), h)
         jadval.cell(0, j).paragraphs[0].runs[0].bold = True
 
     j_asosiy = j_foiz = j_jami = 0
-    for i, (n, sana, asosiy, foiz, jami, qoldiq) in enumerate(qatorlar, start=1):
-        qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _raqam(asosiy),
-                     _raqam(foiz), _raqam(jami), _raqam(qoldiq)]
+    for i, (n, sana, qoldiq, asosiy, foiz, jami) in enumerate(qatorlar, start=1):
+        qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _summa_tiyin(qoldiq),
+                     _summa_tiyin(asosiy), _summa_tiyin(foiz), _summa_tiyin(jami)]
         for j, q in enumerate(qiymatlar):
             _katakka_yoz(jadval.cell(i, j), q)
         j_asosiy += asosiy
         j_foiz += foiz
         j_jami += jami
 
+    # «Жами» qatorida qoldiq ustuni bo'sh qoladi — namunada ham shunday
     oxirgi = len(qatorlar) + 1
-    for j, q in [(1, 'Жами'), (2, _raqam(j_asosiy)), (3, _raqam(j_foiz)),
-                 (4, _raqam(j_jami))]:
+    for j, q in [(0, 'Жами'), (3, _summa_tiyin(j_asosiy)),
+                 (4, _summa_tiyin(j_foiz)), (5, _summa_tiyin(j_jami))]:
         _katakka_yoz(jadval.cell(oxirgi, j), q)
         jadval.cell(oxirgi, j).paragraphs[0].runs[0].bold = True
 
-    doc.add_paragraph()
-    from django.conf import settings
-    org = settings.LOMBARD_ORG
-    for matn in [f'«Микромолия ташкилоти»: ___________ {org["director_short"]}',
-                 f'«Қарз олувчи»: ___________ {contract.borrower_fio}']:
-        p = doc.add_paragraph()
-        r = p.add_run(matn)
-        r.font.size = Pt(12)
-        r.font.name = 'Times New Roman'
+    qator('')
+    qator(f'Ижрочи директор :\t\t\t{org["director_short"]}')
+    qator('')
+    qator(f'Кредит олувчи:\t\t\t{contract.borrower_fio}')
+    qator('Илованинг бир нусхасини олдим    ____________________')
+    qator(f'Мурожаат учун Тел: {org.get("phone_jadval", org["phone"])}')
+    qator('')
+    qator('Хурматли кредитор!', qalin=True)
+    for eslatma in JADVAL_ESLATMALARI:
+        qator(eslatma, olcham=10)
 
 
 def shablondan_yasa(shablon_nomi, ctx, contract=None, jadval_qatorlari=None):

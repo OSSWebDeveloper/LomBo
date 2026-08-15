@@ -130,6 +130,11 @@ class Contract(models.Model):
     term_months = models.PositiveIntegerField('Muddat (oy)', default=12)
     interest_rate = models.PositiveIntegerField('Yillik foiz (%)', default=60)
     end_date = models.DateField('Tugash sanasi')
+    # To'lov jadvali shu sanadan boshlanadi va keyin har oy shu kunda davom
+    # etadi. Xaridor talabi (2026-08-14): sana qo'ldan belgilanishi kerak —
+    # mijoz bilan kelishilgan kun har doim ham «shartnoma + 1 oy» bo'lmaydi.
+    # Bo'sh qolsa shartnoma sanasidan bir oy keyin olinadi.
+    payment_start_date = models.DateField("Birinchi to'lov sanasi", null=True, blank=True)
 
     # Garov umumiy
     # Garov shartnomasining raqami asosiy shartnomanikidan mustaqil (mijoz
@@ -204,6 +209,12 @@ class Contract(models.Model):
                     and getattr(user, 'is_ishchi', False)
                     and self.created_by_id == user.id
                     and self.status == self.STATUS_ACTIVE)
+
+    @property
+    def tolov_boshlanishi(self):
+        """Birinchi to'lov sanasi — belgilanmagan bo'lsa shartnomadan bir oy keyin."""
+        from .docgen import add_months
+        return self.payment_start_date or add_months(self.date, 1)
 
     @property
     def passport_full(self):

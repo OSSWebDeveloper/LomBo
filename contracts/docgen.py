@@ -8,8 +8,10 @@ Paket tarkibi ta'minot turiga qarab:
 
 Matn asl namunalardan («196 тилло», «199микрокарз») olingan, kirill-o'zbek tilida.
 """
+import calendar
 import io
 from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from docx import Document
@@ -733,23 +735,53 @@ def _dalolatnoma(doc, contract, ctx):
 # ------------------------------------------------------------------ 4-hujjat: to'lov jadvali (1-ilova)
 
 def payment_schedule(contract):
-    """Differensial usul: asosiy qarz teng bo'linadi, foiz qoldiqqa hisoblanadi.
-    Qaytaradi: [(n, sana, asosiy, foiz, jami, qoldiq), ...]"""
-    amount = int(contract.amount)
-    months = contract.term_months
-    monthly_rate = contract.interest_rate / 100 / 12
-    principal_part = amount // months
-    rows = []
-    remaining = amount
-    for n in range(1, months + 1):
-        # Oxirgi to'lov shartnoma tugash sanasiga to'g'ri keladi
-        pay_date = contract.end_date if n == months else add_months(contract.date, n)
-        principal = principal_part if n < months else remaining
-        interest = round(remaining * monthly_rate)
-        total = principal + interest
-        remaining -= principal
-        rows.append((n, pay_date, principal, interest, total, remaining))
-    return rows
+    """To'lov jadvali — xaridor bergan namunadagidek (2026-08-14).
+
+    Asosiy qarz oylarga teng bo'linadi, foiz esa qoldiqqa **kunlab** hisoblanadi:
+        kunlik = yaxlit(qoldiq × yillik_foiz/100 / yildagi_kunlar, 2 xona)
+        foiz   = kunlik × oradagi_kunlar
+    Ikki nozik joy bor, ikkalasi ham namunadan aniqlangan:
+      * kunlik foiz avval yaxlitlanadi, keyin ko'paytiriladi (to'g'ridan-to'g'ri
+        hisoblansa tiyinlar farq qiladi: 414 246,56 emas, 414 246,58 chiqadi);
+      * kabisa yilida bo'luvchi 365 emas, 366 (namunada 2028-yilga tushgan
+        o'n ikki davr aynan shu bilan farq qilgan edi).
+
+    Birinchi davr shartnoma sanasidan birinchi to'lov sanasigacha, keyingilari
+    to'lovdan to'lovgacha. Shuning uchun teng summalar chiqmaydi — oy 28, 30
+    yoki 31 kun bo'lishiga qarab foiz ham o'zgaradi (namunada ham shunday).
+
+    Qaytaradi: [(n, sana, qoldiq, asosiy, foiz, jami), ...] — ustunlar tartibi
+    hujjatdagi jadval bilan bir xil.
+    """
+    summa = Decimal(contract.amount)
+    oylar = contract.term_months
+    yillik = Decimal(contract.interest_rate) / 100
+
+    # Asosiy qarz butun so'mga yaxlitlanadi (pastga), qoldiq tiyinlar oxirgi
+    # to'lovga qo'shiladi — aks holda qoldiq ustunida «7 333 333,33» kabi
+    # ko'rimsiz raqamlar chiqadi. Namunada ham qoldiqlar butun.
+    asosiy_ulush = Decimal(int(summa / oylar))
+    qatorlar = []
+    qoldiq = summa
+    oldingi_sana = contract.date
+    boshlanish = contract.tolov_boshlanishi
+    for n in range(1, oylar + 1):
+        sana = add_months(boshlanish, n - 1)
+        kunlar = (sana - oldingi_sana).days
+        # Oxirgi to'lovda qoldiq to'liq yopiladi — bo'linishdan qolgan tiyinlar
+        # ham shu yerga qo'shiladi
+        asosiy = asosiy_ulush if n < oylar else qoldiq
+        yildagi = 366 if calendar.isleap(sana.year) else 365
+        foiz = _tiyin(qoldiq * yillik / yildagi) * kunlar
+        qatorlar.append((n, sana, qoldiq, asosiy, foiz, asosiy + foiz))
+        qoldiq -= asosiy
+        oldingi_sana = sana
+    return qatorlar
+
+
+def _tiyin(qiymat):
+    """Tiyingacha yaxlitlash — jadvalda summalar «664 246,56» ko'rinishida."""
+    return Decimal(qiymat).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
 def _jadval(doc, contract, ctx):

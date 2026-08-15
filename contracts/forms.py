@@ -87,6 +87,7 @@ class ContractForm(forms.ModelForm):
             'borrower_phone', 'borrower_phone2', 'borrower_phone3',
             'borrower_workplace', 'monthly_income',
             'amount', 'term_months', 'interest_rate', 'end_date',
+            'payment_start_date',
             'garov_number', 'garov_value',
             'pledgor_other', 'pledgor_fio', 'pledgor_passport_type',
             'pledgor_passport_region', 'pledgor_passport_org',
@@ -101,6 +102,7 @@ class ContractForm(forms.ModelForm):
             'borrower_phone2': TelefonInput(),
             'borrower_phone3': TelefonInput(),
             'borrower_workplace': forms.TextInput(),
+            'payment_start_date': DateInput(),
             'pledgor_passport_date': DateInput(),
             'pledgor_address': forms.TextInput(),
         }
@@ -137,6 +139,13 @@ class ContractForm(forms.ModelForm):
             self.fields['garov_number'].initial = next_garov_number()
 
         self.fields['garov_value'].required = False
+
+        # To'lov jadvali shu sanadan boshlanadi (xaridor talabi, 2026-08-14).
+        # Bo'sh qoldirilsa shartnoma sanasidan bir oy keyin olinadi.
+        self.fields['payment_start_date'].required = False
+        self.fields['payment_start_date'].help_text = (
+            'Jadval shu sanadan boshlanadi va har oy shu kunda davom etadi. '
+            'Bo‘sh qoldirsangiz — shartnoma sanasidan bir oy keyin.')
 
         # Hujjat turi (ID karta / biometrik pasport) — hujjat matnidagi ibora
         # shunga qarab yoziladi.

@@ -63,10 +63,10 @@ GAROV_START_NUMBER = 1
 ISHCHI_TAHRIR_DAQIQA = 60
 
 # To'lov jadvali («1-илова») Word hujjatga qo'shilsinmi?
-# Asl shartnoma fayllarida bu ilova yo'q edi — shuning uchun hozircha o'chirilgan.
-# Kerak bo'lsa True qiling, kodning qolgan qismi o'zgarmaydi.
+# 2026-07-30 da vaqtincha o'chirilgan edi; 2026-08-14 da xaridor «Grafik» deb
+# aynan shuni so'ragani aniqlandi va qaytarildi.
 # Eslatma: shartnoma matnida ilovaga havola bor («1-иловасидаги ... Жадвали»да).
-TOLOV_JADVALI_QOSHILSIN = False
+TOLOV_JADVALI_QOSHILSIN = True
 
 # Tashkilot rekvizitlari — Word hujjatlarga shu yerdan qo'yiladi.
 LOMBARD_ORG = {
@@ -90,6 +90,8 @@ LOMBARD_ORG = {
     'garov_bank_code': '01137',
     'address': 'Бухоро шахар Б.Накшбанд кўчаси 153-уй',
     'phone': '55 310 00 87, 91 415-00-87',
+    # To'lov jadvalining pastidagi murojaat raqamlari (xaridor namunasidan)
+    'phone_jadval': '55-310-00-87   91-415-00-87  93-685-21-10',
     'city': 'Бухоро шаҳри',
 }
 
