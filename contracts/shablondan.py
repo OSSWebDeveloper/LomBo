@@ -227,9 +227,11 @@ def transport_konteksti(c):
 
 # --------------------------------------------------------------- to'lov jadvali
 
-JADVAL_SARLAVHALARI = ['№', 'Тулов санаси', 'Кредит қолдиги',
-                       'Асосий карзни қайтариш', 'Фоиз тўловларини қайтариш',
-                       'Туловнинг умумий суммаси']
+# Ustunlar xaridorning «зур график» namunasidagi tartibda (2026-08-15):
+# jami to'lov oldinda, kredit qoldig'i esa oxirida va to'lovdan KEYINGI holat.
+JADVAL_SARLAVHALARI = ['№', 'Тулов санаси', 'Туловнинг умумий суммаси',
+                       'График буйича асосий карз тулови',
+                       'График буйича фоиз карз тулови', 'Кредит колдиги']
 
 # Jadval ostidagi o'zgarmas eslatmalar — xaridor namunasidan (2026-08-14)
 JADVAL_ESLATMALARI = [
@@ -284,9 +286,9 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar):
         jadval.cell(0, j).paragraphs[0].runs[0].bold = True
 
     j_asosiy = j_foiz = j_jami = 0
-    for i, (n, sana, qoldiq, asosiy, foiz, jami) in enumerate(qatorlar, start=1):
-        qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _summa_tiyin(qoldiq),
-                     _summa_tiyin(asosiy), _summa_tiyin(foiz), _summa_tiyin(jami)]
+    for i, (n, sana, jami, asosiy, foiz, qoldiq) in enumerate(qatorlar, start=1):
+        qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _summa_tiyin(jami),
+                     _summa_tiyin(asosiy), _summa_tiyin(foiz), _summa_tiyin(qoldiq)]
         for j, q in enumerate(qiymatlar):
             _katakka_yoz(jadval.cell(i, j), q)
         j_asosiy += asosiy
@@ -295,8 +297,8 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar):
 
     # «Жами» qatorida qoldiq ustuni bo'sh qoladi — namunada ham shunday
     oxirgi = len(qatorlar) + 1
-    for j, q in [(0, 'Жами'), (3, _summa_tiyin(j_asosiy)),
-                 (4, _summa_tiyin(j_foiz)), (5, _summa_tiyin(j_jami))]:
+    for j, q in [(1, 'Жами'), (2, _summa_tiyin(j_jami)),
+                 (3, _summa_tiyin(j_asosiy)), (4, _summa_tiyin(j_foiz))]:
         _katakka_yoz(jadval.cell(oxirgi, j), q)
         jadval.cell(oxirgi, j).paragraphs[0].runs[0].bold = True
 

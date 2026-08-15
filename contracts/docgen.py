@@ -750,7 +750,7 @@ def payment_schedule(contract):
     to'lovdan to'lovgacha. Shuning uchun teng summalar chiqmaydi — oy 28, 30
     yoki 31 kun bo'lishiga qarab foiz ham o'zgaradi (namunada ham shunday).
 
-    Qaytaradi: [(n, sana, qoldiq, asosiy, foiz, jami), ...] — ustunlar tartibi
+    Qaytaradi: [(n, sana, jami, asosiy, foiz, qoldiq), ...] — ustunlar tartibi
     hujjatdagi jadval bilan bir xil.
     """
     summa = Decimal(contract.amount)
@@ -767,14 +767,21 @@ def payment_schedule(contract):
     boshlanish = contract.tolov_boshlanishi
     for n in range(1, oylar + 1):
         sana = add_months(boshlanish, n - 1)
+        # Oxirgi to'lov shartnomaning tugash sanasiga tushadi — xaridor
+        # namunasida ham shunday (shartnoma 10.12.2024, 36 oy -> oxirgi
+        # to'lov 09.12.2027, ya'ni har oyning 10-sanasi emas).
+        if n == oylar and contract.end_date and contract.end_date < sana:
+            sana = contract.end_date
         kunlar = (sana - oldingi_sana).days
         # Oxirgi to'lovda qoldiq to'liq yopiladi — bo'linishdan qolgan tiyinlar
         # ham shu yerga qo'shiladi
         asosiy = asosiy_ulush if n < oylar else qoldiq
         yildagi = 366 if calendar.isleap(sana.year) else 365
         foiz = _tiyin(qoldiq * yillik / yildagi) * kunlar
-        qatorlar.append((n, sana, qoldiq, asosiy, foiz, asosiy + foiz))
         qoldiq -= asosiy
+        # «Кредит колдиги» — to'lovdan KEYINGI qoldiq: oxirgi qatorda 0 chiqadi
+        # (xaridorning «зур график» namunasi shunday).
+        qatorlar.append((n, sana, asosiy + foiz, asosiy, foiz, qoldiq))
         oldingi_sana = sana
     return qatorlar
 
@@ -797,17 +804,18 @@ def _jadval(doc, contract, ctx):
     rows = payment_schedule(contract)
     table = doc.add_table(rows=len(rows) + 2, cols=6)
     table.style = 'Table Grid'
-    headers = ['№', 'Тўлов санаси', 'Асосий қарз (сўм)', 'Фоиз (сўм)',
-               'Жами тўлов (сўм)', 'Қолдиқ (сўм)']
+    headers = ['№', 'Тулов санаси', 'Туловнинг умумий суммаси',
+               'График буйича асосий карз тулови',
+               'График буйича фоиз карз тулови', 'Кредит колдиги']
     for j, h in enumerate(headers):
         _table_cell(table.cell(0, j), h, bold=True)
     t_principal = t_interest = t_total = 0
-    for i, (n, d, principal, interest, total, remaining) in enumerate(rows, start=1):
+    for i, (n, d, total, principal, interest, remaining) in enumerate(rows, start=1):
         _table_cell(table.cell(i, 0), n)
         _table_cell(table.cell(i, 1), _sana(d))
-        _table_cell(table.cell(i, 2), summa_formatlangan(principal))
-        _table_cell(table.cell(i, 3), summa_formatlangan(interest))
-        _table_cell(table.cell(i, 4), summa_formatlangan(total))
+        _table_cell(table.cell(i, 2), summa_formatlangan(total))
+        _table_cell(table.cell(i, 3), summa_formatlangan(principal))
+        _table_cell(table.cell(i, 4), summa_formatlangan(interest))
         _table_cell(table.cell(i, 5), summa_formatlangan(remaining))
         t_principal += principal
         t_interest += interest

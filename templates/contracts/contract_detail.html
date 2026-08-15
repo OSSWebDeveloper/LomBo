@@ -148,17 +148,17 @@
 <div class="card">
   <h2 style="margin-top:0">To‘lov jadvali (1-ilova)</h2>
   <table>
-    <tr><th>№</th><th>Sana</th><th class="num">Kredit qoldig‘i</th>
+    <tr><th>№</th><th>Sana</th><th class="num">Jami to‘lov</th>
         <th class="num">Asosiy qarz</th><th class="num">Foiz</th>
-        <th class="num">Jami to‘lov</th></tr>
-    {% for n, d, remaining, principal, interest, total in schedule %}
+        <th class="num">Kredit qoldig‘i</th></tr>
+    {% for n, d, total, principal, interest, remaining in schedule %}
     <tr>
       <td>{{ n }}</td>
       <td>{{ d|date:'d.m.Y' }}</td>
-      <td class="num">{{ remaining|pul }}</td>
+      <td class="num"><b>{{ total|pul }}</b></td>
       <td class="num">{{ principal|pul }}</td>
       <td class="num">{{ interest|pul }}</td>
-      <td class="num"><b>{{ total|pul }}</b></td>
+      <td class="num">{{ remaining|pul }}</td>
     </tr>
     {% endfor %}
   </table>
