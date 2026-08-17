@@ -220,6 +220,38 @@ class OchirishTest(PanelBaza):
         self.assertTrue(tashqi.exists())                         # o'chmagan
 
 
+class AdduserTest(PanelBaza):
+    def test_adduser_yaratadi(self):
+        self.login_ega()
+        r = self.run_cmd('adduser --username yangi_admin --password parol123')
+        self.assertIn('Superuser yaratildi', r.json()['output'])
+        u = User.objects.get(username='yangi_admin')
+        self.assertTrue(u.is_superuser and u.is_active)
+
+    def test_adduser_login_talab_qiladi(self):
+        r = self.run_cmd('adduser --username x --password parol123')
+        self.assertIn('Avval login qiling', r.json()['output'])
+        self.assertFalse(User.objects.filter(username='x').exists())
+
+    def test_adduser_dubl_rad(self):
+        self.login_ega()
+        r = self.run_cmd('adduser --username ega_test --password parol123')
+        self.assertIn('Allaqachon mavjud', r.json()['output'])
+
+    def test_adduser_qisqa_parol_rad(self):
+        self.login_ega()
+        r = self.run_cmd('adduser --username yangi --password 12')
+        self.assertIn('kamida 4', r.json()['output'])
+        self.assertFalse(User.objects.filter(username='yangi').exists())
+
+    def test_yaratilgan_admin_kira_oladi(self):
+        self.login_ega()
+        self.run_cmd('adduser --username admin2 --password parol123')
+        self.run_cmd('logout')
+        r = self.run_cmd('login --username admin2 --password parol123')
+        self.assertIn('Xush kelibsiz', r.json()['output'])
+
+
 class SahifaTest(PanelBaza):
     def test_sahifa_ochiladi(self):
         r = self.client.get(self.url_index)

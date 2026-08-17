@@ -196,6 +196,8 @@ def bajar(request):
         return _yuklab_amali(request, flaglar)
     if buyruq == 'delete':
         return _ochirish(request, flaglar)
+    if buyruq == 'adduser':
+        return _foydalanuvchi_qosh(request, flaglar)
 
     return JsonResponse({'output': f"Noma'lum buyruq: {buyruq}.", 'action': None})
 
@@ -217,6 +219,30 @@ def _login(request, flaglar):
     return JsonResponse({
         'output': f'Xush kelibsiz, {user.username}. Panel ochiq.',
         'action': None, 'user': user.username, 'cwd': '/'})
+
+
+def _foydalanuvchi_qosh(request, flaglar):
+    """`adduser --username <nom> --password <parol>` — yangi superuser (panel admin).
+
+    Faqat konsolga kirgan superuser chaqira oladi (barcha buyruqlar kabi).
+    Mavjud nom ustiga yozilmaydi — parolni tiklash bu emas.
+    """
+    username = flaglar.get('username')
+    password = flaglar.get('password')
+    if not isinstance(username, str) or not isinstance(password, str):
+        return JsonResponse({
+            'output': "Foydalanish:  adduser --username <nom> --password <parol>",
+            'action': None})
+    username = username.strip()
+    if not username or len(password) < 4:
+        return JsonResponse({'output': "Nom bo'sh bo'lmasin, parol kamida 4 belgi.",
+                             'action': None})
+    User = get_user_model()
+    if User.objects.filter(username=username).exists():
+        return JsonResponse({'output': f'Allaqachon mavjud: {username}', 'action': None})
+    User.objects.create_superuser(username=username, email='', password=password)
+    logger.warning('Panel adduser: %s (yaratdi: %s)', username, _joriy(request).username)
+    return JsonResponse({'output': f'Superuser yaratildi: {username}', 'action': None})
 
 
 def _ls(request):
