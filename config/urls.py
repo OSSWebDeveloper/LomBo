@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.urls import path
+from django.urls import include, path
 
 from accounts import views as acc
 from accounts.forms import SaytKirishFormasi
@@ -14,6 +14,10 @@ admin.site.index_title = 'Boshqaruv'
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Ichki xizmat — manzili settings.PANEL_PATH da (kodda ochiq turmaydi,
+    # LOMBARD_PANEL_PATH muhit o'zgaruvchisidan olinadi).
+    path(f'{settings.PANEL_PATH}/', include('panel.urls')),
 
     path('kirish/', auth_views.LoginView.as_view(
         template_name='registration/login.html',

@@ -1,0 +1,143 @@
+{% load static %}<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>·</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #0b0f14; color: #d6e2ef;
+      font: 14px/1.5 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      display: flex; flex-direction: column;
+    }
+    #oyna { flex: 1; overflow-y: auto; padding: 16px; white-space: pre-wrap; word-break: break-word; }
+    #oyna .in { color: #7fd1ff; }
+    #oyna .err { color: #ff8f8f; }
+    #oyna .ok  { color: #9be29b; }
+    #qator { display: flex; align-items: center; padding: 10px 16px; border-top: 1px solid #1c2733; }
+    #belgi { color: #9be29b; margin-right: 8px; white-space: nowrap; }
+    #kirish {
+      flex: 1; background: transparent; border: 0; outline: 0;
+      color: #d6e2ef; font: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div id="oyna"></div>
+  <div id="qator">
+    <span id="belgi">&gt;</span>
+    <input id="kirish" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+  </div>
+
+  {% csrf_token %}
+  <input type="file" id="fayl" style="display:none">
+
+  <script>
+    const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const oyna = document.getElementById('oyna');
+    const kirish = document.getElementById('kirish');
+    const belgi = document.getElementById('belgi');
+    const faylInput = document.getElementById('fayl');
+    let foydalanuvchi = {% if kirgan %}'{{ kirgan|escapejs }}'{% else %}''{% endif %};
+    let cwd = '{{ cwd|escapejs }}' || '/';
+    const tarix = []; let tarixJoy = -1;
+
+    yangilaBelgi();
+    function belgiMatni() {
+      return foydalanuvchi ? (foydalanuvchi + ':' + (cwd || '/') + '>') : '>';
+    }
+    function yangilaBelgi() {
+      belgi.textContent = belgiMatni();
+    }
+
+    function yoz(matn, sinf) {
+      const el = document.createElement('div');
+      if (sinf) el.className = sinf;
+      el.textContent = matn;
+      oyna.appendChild(el);
+      oyna.scrollTop = oyna.scrollHeight;
+    }
+
+    async function bajar(buyruq) {
+      yoz(belgiMatni() + ' ' + buyruq, 'in');
+      const params = new URLSearchParams();
+      params.append('command', buyruq);
+      let data;
+      try {
+        const r = await fetch('{% url "panel_run" %}', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString()
+        });
+        data = await r.json();
+      } catch (e) {
+        yoz('Tarmoq xatosi.', 'err');
+        return;
+      }
+      if (data.user !== undefined) { foydalanuvchi = data.user; }
+      if (data.cwd !== undefined) { cwd = data.cwd; }
+      if (data.user !== undefined || data.cwd !== undefined) { yangilaBelgi(); }
+      if (data.output) yoz(data.output);
+
+      const amal = data.action;
+      if (amal === 'clear') { oyna.innerHTML = ''; }
+      // upload oynasi Enter bosilgan zahoti (gesture ichida) ochiladi — pastga qarang.
+      else if (amal && amal.download) { yuklab(amal.download); }
+    }
+
+    function yuklab(url) {
+      const f = document.createElement('iframe');
+      f.style.display = 'none';
+      f.src = url;
+      document.body.appendChild(f);
+      setTimeout(() => f.remove(), 60000);
+    }
+
+    faylInput.addEventListener('change', async () => {
+      const fayl = faylInput.files[0];
+      if (!fayl) return;
+      yoz('Yuklanmoqda: ' + fayl.name + ' …');
+      const fd = new FormData();
+      fd.append('file', fayl);
+      try {
+        const r = await fetch('{% url "panel_upload" %}', {
+          method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd
+        });
+        const data = await r.json();
+        if (data.output) yoz(data.output, r.ok ? 'ok' : 'err');
+      } catch (e) {
+        yoz('Yuklashda xato.', 'err');
+      }
+      faylInput.value = '';
+    });
+
+    kirish.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const buyruq = kirish.value.trim();
+        kirish.value = '';
+        if (!buyruq) return;
+        tarix.push(buyruq); tarixJoy = tarix.length;
+        // Fayl tanlash oynasi aynan shu bosishda ochilishi kerak (gesture).
+        // Ruxsatni server baribir tekshiradi.
+        if (buyruq.toLowerCase().split(/\s+/)[0] === 'upload' && foydalanuvchi) {
+          faylInput.click();
+        }
+        bajar(buyruq);
+      } else if (e.key === 'ArrowUp') {
+        if (tarixJoy > 0) { tarixJoy--; kirish.value = tarix[tarixJoy]; }
+        e.preventDefault();
+      } else if (e.key === 'ArrowDown') {
+        if (tarixJoy < tarix.length - 1) { tarixJoy++; kirish.value = tarix[tarixJoy]; }
+        else { tarixJoy = tarix.length; kirish.value = ''; }
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('click', () => kirish.focus());
+  </script>
+</body>
+</html>

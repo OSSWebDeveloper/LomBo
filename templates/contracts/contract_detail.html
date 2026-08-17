@@ -53,7 +53,8 @@
       <tr><th style="width:40%">F.I.Sh.</th><td>{{ contract.borrower_fio }}</td></tr>
       <tr><th>Hujjat</th><td>{{ contract.passport_number }}
         <span class="muted">({{ contract.get_passport_type_display }})</span></td></tr>
-      <tr><th>Berilgan</th><td>{% if contract.passport_org %}{{ contract.passport_org }}
+      <tr><th>Berilgan</th><td>{% if contract.passport_org %}{{ contract.passport_org }}-сонли
+        {% elif contract.passport_district %}{{ contract.passport_district }}
         {% endif %}ИИВ, {{ contract.passport_date|date:'d.m.Y' }}</td></tr>
       <tr><th>Manzil</th><td>{{ contract.borrower_address }}</td></tr>
       <tr><th>Telefon</th><td>{% if contract.borrower_phone %}{{ contract.borrower_phone }}{% if contract.borrower_phone2 %}, {{ contract.borrower_phone2 }}{% endif %}{% if contract.borrower_phone3 %}, {{ contract.borrower_phone3 }}{% endif %}{% else %}—{% endif %}</td></tr>
@@ -84,7 +85,8 @@
       <tr><th style="width:40%">Garovga qo‘yuvchi</th><td>{{ contract.pledgor_fio }}</td></tr>
       <tr><th>Hujjat</th><td>{{ contract.pledgor_passport_number }}
         <span class="muted">({{ contract.get_pledgor_passport_type_display }})</span></td></tr>
-      <tr><th>Berilgan</th><td>{% if contract.pledgor_passport_org %}{{ contract.pledgor_passport_org }}
+      <tr><th>Berilgan</th><td>{% if contract.pledgor_passport_org %}{{ contract.pledgor_passport_org }}-сонли
+        {% elif contract.pledgor_passport_district %}{{ contract.pledgor_passport_district }}
         {% endif %}ИИВ, {{ contract.pledgor_passport_date|date:'d.m.Y' }}</td></tr>
       <tr><th>Manzil</th><td>{{ contract.pledgor_address }}</td></tr>
     </table>
@@ -148,17 +150,17 @@
 <div class="card">
   <h2 style="margin-top:0">To‘lov jadvali (1-ilova)</h2>
   <table>
-    <tr><th>№</th><th>Sana</th><th class="num">Jami to‘lov</th>
+    <tr><th>№</th><th>Sana</th><th class="num">Kredit qoldig‘i</th>
         <th class="num">Asosiy qarz</th><th class="num">Foiz</th>
-        <th class="num">Kredit qoldig‘i</th></tr>
+        <th class="num">Jami to‘lov</th></tr>
     {% for n, d, total, principal, interest, remaining in schedule %}
     <tr>
       <td>{{ n }}</td>
       <td>{{ d|date:'d.m.Y' }}</td>
-      <td class="num"><b>{{ total|pul }}</b></td>
-      <td class="num">{{ principal|pul }}</td>
-      <td class="num">{{ interest|pul }}</td>
-      <td class="num">{{ remaining|pul }}</td>
+      <td class="num">{{ remaining|pul_tiyin }}</td>
+      <td class="num">{{ principal|pul_tiyin }}</td>
+      <td class="num">{{ interest|pul_tiyin }}</td>
+      <td class="num"><b>{{ total|pul_tiyin }}</b></td>
     </tr>
     {% endfor %}
   </table>

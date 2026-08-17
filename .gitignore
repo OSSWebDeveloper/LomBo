@@ -15,6 +15,9 @@ staticfiles/
 media/
 *.log
 
+# Ichki panelga yuklangan fayllar
+panel_files/
+
 # Shablon zaxiralari (saytdan tahrirlashda avtomatik yasaladi)
 contracts/shablonlar/zaxira/
 

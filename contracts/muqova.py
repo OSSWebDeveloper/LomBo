@@ -195,9 +195,9 @@ def muqova_hujjati(contract):
     _p(doc, org['title_latin'], olcham=SARLAVHA_PT, qalin=True,
        soya=True, oraliq=1.0, keyin=0)
 
-    # Qarz oluvchi ismi — muqovadagi ikkinchi yirik yozuv
+    # Qarz oluvchi ismi — muqovadagi ikkinchi yirik yozuv, qalin (2026-08-17)
     _bosh_joy(doc, 3.6)
-    _p(doc, contract.borrower_fio, olcham=ISM_PT, keyin=0)
+    _p(doc, contract.borrower_fio, olcham=ISM_PT, qalin=True, keyin=0)
 
     _bosh_joy(doc, 0.5)
     _bezak_chizigi(doc, en=11.0, keyin=8)

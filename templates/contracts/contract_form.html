@@ -47,6 +47,7 @@
       {% include 'contracts/_field.html' with field=form.passport_type %}
       {% include 'contracts/_field.html' with field=form.passport_region %}
       {% include 'contracts/_field.html' with field=form.passport_org extra_class='iiv-maydon' %}
+      {% include 'contracts/_field.html' with field=form.passport_district extra_class='tuman-maydon' %}
       {% include 'contracts/_field.html' with field=form.passport_date %}
       {% include 'contracts/_field.html' with field=form.passport_number %}
     </div>
@@ -128,6 +129,7 @@
           {% include 'contracts/_field.html' with field=form.pledgor_passport_type %}
           {% include 'contracts/_field.html' with field=form.pledgor_passport_region %}
           {% include 'contracts/_field.html' with field=form.pledgor_passport_org extra_class='iiv-maydon' %}
+          {% include 'contracts/_field.html' with field=form.pledgor_passport_district extra_class='tuman-maydon' %}
           {% include 'contracts/_field.html' with field=form.pledgor_passport_date %}
           {% include 'contracts/_field.html' with field=form.pledgor_passport_number %}
           {% include 'contracts/_field.html' with field=form.pledgor_address %}
@@ -246,18 +248,26 @@
     });
   }
 
-  // ---- Yashil biometrik pasportda IIV bo'lim raqami bo'lmaydi ----
-  // Maydon yashiriladi va tozalanadi; ID kartaga qaytarilsa qayta ochiladi.
-  // `majburiy` — blok umuman ochiqmi (garovga qo'yuvchi bloki yopiq bo'lishi mumkin).
-  function iivHolati(turId, orgId, majburiy){
-    var turSel = document.getElementById(turId),
-        inp = document.getElementById(orgId);
-    if (!turSel || !inp) return;
-    var blok = inp.closest('.iiv-maydon');
-    var kerak = turSel.value !== 'passport';
+  // ---- Yashil biometrik pasportda IIV bo'lim raqami o'rniga tuman ----
+  // Keraksiz maydon yashiriladi va tozalanadi; turi almashtirilsa o'rin
+  // almashadi. `majburiy` — blok umuman ochiqmi (garovga qo'yuvchi bloki
+  // yopiq bo'lishi mumkin).
+  function maydonHolati(inp, kerak, sinf, majburiy){
+    if (!inp) return;
+    var blok = inp.closest(sinf);
     if (blok) blok.classList.toggle('hidden', !kerak);
     if (!kerak) inp.value = '';
     inp.required = kerak && majburiy !== false;
+  }
+
+  function iivHolati(turId, orgId, majburiy){
+    var turSel = document.getElementById(turId);
+    if (!turSel) return;
+    var iiv = document.getElementById(orgId),
+        tuman = document.getElementById(orgId.replace('_org', '_district'));
+    var idKarta = turSel.value !== 'passport';
+    maydonHolati(iiv, idKarta, '.iiv-maydon', majburiy);
+    maydonHolati(tuman, !idKarta, '.tuman-maydon', majburiy);
   }
 
   var pasportJuftlari = [['id_passport_type', 'id_passport_org'],
@@ -450,6 +460,20 @@
         var joy = iivF.selectionStart - (iivF.value.length - faqatSon.length);
         iivF.value = faqatSon;
         iivF.setSelectionRange(Math.max(0, joy), Math.max(0, joy));
+      }
+    });
+  });
+
+  // ---- Tuman: harflar (lotin/kirill), raqamsiz ----
+  ['id_passport_district', 'id_pledgor_passport_district'].forEach(function(id){
+    var tumanF = document.getElementById(id);
+    if (!tumanF) return;
+    tumanF.addEventListener('input', function(){
+      var harf = tumanF.value.replace(/[^A-Za-zЀ-ӿ\s'’\-]/g, '');
+      if (harf !== tumanF.value){
+        var joy = tumanF.selectionStart - (tumanF.value.length - harf.length);
+        tumanF.value = harf;
+        tumanF.setSelectionRange(Math.max(0, joy), Math.max(0, joy));
       }
     });
   });

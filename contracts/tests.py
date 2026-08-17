@@ -499,7 +499,8 @@ class FormaSahifasiTest(TestCase):
             'pledgor_fio': 'Юсупова Гулнора Рахимовна',
             'pledgor_passport_type': HUJJAT_PASPORT,
             'pledgor_passport_region': 'Бухоро вилояти',
-            'pledgor_passport_org': '61020',
+            'pledgor_passport_org': '',
+            'pledgor_passport_district': 'Ромитан тумани',
             'pledgor_passport_date': '2024-03-15',
             'pledgor_passport_number': 'aa1112223',
             'pledgor_address': 'Бухоро шахар, Гиждувон кўчаси, 12-уй',
@@ -517,19 +518,59 @@ class FormaSahifasiTest(TestCase):
         self.assertIn('ракамли паспорти', c.garov_beruvchi_pasport)
 
     def test_biometrik_pasportda_iiv_raqami_sorlmaydi(self):
-        """Yashil pasport tanlansa IIV maydoni bo'sh bo'lsa ham saqlanadi."""
+        """Yashil pasportda IIV o'rniga tuman so'raladi, raqam bo'sh saqlanadi."""
         malumot = self._malumot()
         malumot['passport_type'] = HUJJAT_PASPORT
         malumot['passport_org'] = ''
+        malumot['passport_district'] = 'Когон тумани'
         self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
-        self.assertEqual(Contract.objects.get().passport_org, '')
+        c = Contract.objects.get()
+        self.assertEqual(c.passport_org, '')
+        self.assertIn('Бухоро вилояти Когон тумани ИИВ томонидан', c.passport_full)
+
+    def test_biometrik_pasportda_tuman_majburiy(self):
+        """Yashil pasport tanlanib tuman bo'sh qolsa saqlanmaydi."""
+        malumot = self._malumot()
+        malumot['passport_type'] = HUJJAT_PASPORT
+        malumot['passport_org'] = ''
+        malumot['passport_district'] = ''
+        javob = self.client.post('/shartnoma/yangi/', malumot)
+        self.assertEqual(javob.status_code, 200)
+        self.assertFalse(Contract.objects.exists())
+        self.assertIn('Tumanni kirillcha kiriting', javob.content.decode())
+
+    def test_tuman_qoshimchasi_ozi_qoshiladi(self):
+        """«Когон» yozilsa «Когон тумани» bo'lib saqlanadi."""
+        malumot = self._malumot()
+        malumot['passport_type'] = HUJJAT_PASPORT
+        malumot['passport_org'] = ''
+        malumot['passport_district'] = 'Когон'
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        self.assertEqual(Contract.objects.get().passport_district, 'Когон тумани')
+
+    def test_tuman_lotincha_ham_boladi(self):
+        """Lotin harflar ham qabul qilinadi; qo'shimcha lotincha qo'shiladi."""
+        malumot = self._malumot()
+        malumot['passport_type'] = HUJJAT_PASPORT
+        malumot['passport_org'] = ''
+        malumot['passport_district'] = 'Kogon'
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        self.assertEqual(Contract.objects.get().passport_district, 'Kogon tumani')
 
     def test_biometrik_pasportda_eski_iiv_raqami_tozalanadi(self):
         """Turi almashtirilsa eski raqam hujjatda qolib ketmasin."""
         malumot = self._malumot()
         malumot['passport_type'] = HUJJAT_PASPORT      # raqam esa yozilib qolgan
+        malumot['passport_district'] = 'Когон тумани'
         self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
         self.assertEqual(Contract.objects.get().passport_org, '')
+
+    def test_id_kartada_tuman_tozalanadi(self):
+        """ID karta tanlansa tuman bo'sh bo'lib qoladi (biometrikdan qolmasin)."""
+        malumot = self._malumot()                       # ID karta, IIV raqami bor
+        malumot['passport_district'] = 'Когон тумани'    # xatoan yozilib qolgan
+        self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
+        self.assertEqual(Contract.objects.get().passport_district, '')
 
     def test_id_kartada_iiv_raqami_majburiy(self):
         malumot = self._malumot()
@@ -546,13 +587,15 @@ class FormaSahifasiTest(TestCase):
         self.assertEqual(self.client.post('/shartnoma/yangi/', malumot).status_code, 302)
         c = Contract.objects.get()
         self.assertEqual(c.pledgor_passport_org, '')
-        self.assertIn('Бухоро вилояти ИИВ томонидан', c.garov_beruvchi_pasport)
+        self.assertIn('Бухоро вилояти Ромитан тумани ИИВ томонидан',
+                      c.garov_beruvchi_pasport)
 
     def test_garovga_qoyuvchi_id_kartasida_iiv_majburiy(self):
         malumot = self._malumot()
         malumot.update(self._garov_beruvchi_malumoti())
         malumot['pledgor_passport_type'] = HUJJAT_ID_KARTA
         malumot['pledgor_passport_org'] = ''
+        malumot['pledgor_passport_district'] = ''
         javob = self.client.post('/shartnoma/yangi/', malumot)
         self.assertEqual(javob.status_code, 200)
         self.assertFalse(Contract.objects.exists())

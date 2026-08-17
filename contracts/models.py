@@ -43,18 +43,38 @@ HUJJAT_IBORASI = {
 }
 
 
-def pasport_matni(viloyat, bolim, sana, raqam, turi):
+# Yashil biometrik pasportda IIV bo'lim raqami o'rniga tuman (yoki shahar)
+# nomi turadi: «Бухоро вилояти Когон тумани ИИВ». Harflar bilan yoziladi —
+# lotin va kirill ikkalasi ham bo'ladi (xaridor talabi, 2026-08-17); faqat
+# raqam va begona belgilar rad etiladi.
+TUMAN_VALIDATORI = RegexValidator(
+    r'^[A-Za-zЀ-ӿ\s\'’\-]*$',
+    'Tuman nomini harflar bilan yozing (raqam va belgilarsiz).')
+
+
+def pasport_hududi(viloyat, tuman=''):
+    """«Бухоро вилояти Когон тумани» — hujjat berilgan hudud.
+
+    Tuman faqat biometrik pasportda to'ldiriladi; ID kartada uning o'rniga
+    IIV bo'lim raqami yoziladi.
+    """
+    return ' '.join(q for q in (viloyat or '', tuman or '') if q)
+
+
+def pasport_matni(viloyat, bolim, sana, raqam, turi, tuman=''):
     """«Бухоро вилояти, 61013-сонли ИИВ томонидан 23.04.2025-йилда берилган
     АE№2437494 ракамли шахс гувохномаси»
 
     Qarz oluvchi uchun ham, garovga qo'yuvchi uchun ham shu funksiya ishlaydi.
-    Yashil biometrik pasportda IIV bo'lim raqami bo'lmaydi — u holda
-    «Бухоро вилояти ИИВ томонидан ...» deb, raqamsiz yoziladi.
+    Yashil biometrik pasportda IIV bo'lim raqami bo'lmaydi — uning o'rniga
+    tuman nomi yoziladi: «Бухоро вилояти Когон тумани ИИВ томонидан ...».
     Ma'lumot to'liq bo'lmasa bo'sh matn qaytadi.
     """
     if not (sana and raqam):
         return ''
-    hudud = (f'{viloyat}, ' if bolim else f'{viloyat} ') if viloyat else ''
+    hudud = pasport_hududi(viloyat, tuman)
+    if hudud:
+        hudud += ', ' if bolim else ' '
     bolim_matni = f'{bolim}-сонли ' if bolim else ''
     ibora = HUJJAT_IBORASI.get(turi) or HUJJAT_IBORASI[HUJJAT_ID_KARTA]
     return (f'{hudud}{bolim_matni}ИИВ томонидан '
@@ -119,6 +139,10 @@ class Contract(models.Model):
                                     validators=[RegexValidator(
                                         r'^\d*$', 'Faqat raqam kiriting.')],
                                     help_text='Faqat raqam. Masalan: 61013')
+    # Biometrik pasportda IIV raqami o'rniga shu maydon to'ldiriladi.
+    passport_district = models.CharField('Tuman (kirillcha)', max_length=100, blank=True,
+                                         validators=[TUMAN_VALIDATORI],
+                                         help_text='Masalan: Когон тумани')
     passport_date = models.DateField('Hujjat berilgan sana')
     passport_number = models.CharField('Hujjat seriya-raqami', max_length=30,
                                        help_text='Masalan: АE№2437494')
@@ -174,6 +198,10 @@ class Contract(models.Model):
     pledgor_passport_org = models.CharField('IIV bo\'lim raqami', max_length=50, blank=True,
                                             validators=[RegexValidator(
                                                 r'^\d*$', 'Faqat raqam kiriting.')])
+    pledgor_passport_district = models.CharField('Tuman (kirillcha)', max_length=100,
+                                                 blank=True,
+                                                 validators=[TUMAN_VALIDATORI],
+                                                 help_text='Masalan: Когон тумани')
     pledgor_passport_date = models.DateField('Hujjat berilgan sana', null=True, blank=True)
     pledgor_passport_number = models.CharField('Hujjat seriya-raqami', max_length=30, blank=True)
     pledgor_address = models.CharField('Manzil (kirillda)', max_length=300, blank=True)
@@ -235,7 +263,7 @@ class Contract(models.Model):
         """«Бухоро вилояти, 61013-сонли ИИВ томонидан 23.04.2025-йилда берилган АE№2437494 ...»"""
         return pasport_matni(self.passport_region, self.passport_org,
                              self.passport_date, self.passport_number,
-                             self.passport_type)
+                             self.passport_type, self.passport_district)
 
     # --------------------------------------------------- garovga qo'yuvchi
     # Alohida shaxs kiritilmagan bo'lsa hamma joyda qarz oluvchining o'zi
@@ -255,7 +283,7 @@ class Contract(models.Model):
             return self.passport_full
         return pasport_matni(self.pledgor_passport_region, self.pledgor_passport_org,
                              self.pledgor_passport_date, self.pledgor_passport_number,
-                             self.pledgor_passport_type)
+                             self.pledgor_passport_type, self.pledgor_passport_district)
 
     @property
     def garov_beruvchi_manzil(self):

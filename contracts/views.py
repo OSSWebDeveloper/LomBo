@@ -603,7 +603,7 @@ def _sinov_konteksti():
               'pasport_viloyat', 'pasport_bolim',
               'telefon', 'telefon2', 'telefon3', 'ish_joyi', 'daromad', 'sana_soz',
               'pasport_seriya', 'pasport_soni', 'pasport_sana',
-              'pasport_viloyat', 'pasport_bolim', 'pasport_bergan',
+              'pasport_viloyat', 'pasport_bolim', 'pasport_tuman', 'pasport_bergan',
               'garov_baho', 'garov_baho_raqam', 'jami_soni', 'jami_ogirligi',
               'garov_fio', 'garov_pasport', 'garov_manzil', 'dalolatnoma_taraflar',
               'ariza_taminot', 'garov_mulki_egalik',

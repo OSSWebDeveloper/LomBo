@@ -5,7 +5,7 @@ from django import forms
 from django.forms import inlineformset_factory
 
 from .docgen import contract_end_date
-from .formatlash import hujjat_raqami, pul_matn, pul_son
+from .formatlash import hujjat_raqami, pul_matn, pul_son, tuman_matni
 from .models import (HUJJAT_PASPORT, HUJJAT_TURLARI, VILOYATLAR, Contract,
                      GarovRasm, GuarantorInfo, JewelryItem, VehicleInfo,
                      next_contract_number)
@@ -74,15 +74,20 @@ class ContractForm(forms.ModelForm):
     # «Garovga qo'yuvchi boshqa shaxs» belgisi qo'yilsa shular to'ldiriladi
     GAROV_BERUVCHI_MAYDONLARI = (
         'pledgor_fio', 'pledgor_passport_type', 'pledgor_passport_region',
-        'pledgor_passport_org', 'pledgor_passport_date',
-        'pledgor_passport_number', 'pledgor_address',
+        'pledgor_passport_org', 'pledgor_passport_district',
+        'pledgor_passport_date', 'pledgor_passport_number', 'pledgor_address',
     )
+
+    # Bularning majburiyligi pasport turiga bog'liq — IIV raqami ID kartada,
+    # tuman esa biometrik pasportda so'raladi (`_hujjat_organini_tekshir`).
+    TURIGA_BOGLIQ_MAYDONLAR = ('pledgor_passport_org', 'pledgor_passport_district')
 
     class Meta:
         model = Contract
         fields = [
             'number', 'date', 'collateral_type',
             'borrower_fio', 'passport_type', 'passport_region', 'passport_org',
+            'passport_district',
             'passport_date', 'passport_number', 'borrower_address',
             'borrower_phone', 'borrower_phone2', 'borrower_phone3',
             'borrower_workplace', 'monthly_income',
@@ -91,6 +96,7 @@ class ContractForm(forms.ModelForm):
             'garov_value',
             'pledgor_other', 'pledgor_fio', 'pledgor_passport_type',
             'pledgor_passport_region', 'pledgor_passport_org',
+            'pledgor_passport_district',
             'pledgor_passport_date', 'pledgor_passport_number', 'pledgor_address',
         ]
         widgets = {
@@ -158,6 +164,7 @@ class ContractForm(forms.ModelForm):
             'maxlength': 10, 'class': 'form-control hujjat-raqami'})
         self.fields['pledgor_passport_org'].widget.attrs.update({
             'inputmode': 'numeric', 'pattern': '[0-9]*', 'placeholder': '61013'})
+        self.fields['pledgor_passport_district'].widget.attrs['placeholder'] = 'Когон тумани'
 
         # Telefon va oylik daromad arizaga tushadi — to'ldirish majburiy.
         # Arizada uchta raqam so'ralgani uchun uchalasi ham majburiy.
@@ -182,6 +189,11 @@ class ContractForm(forms.ModelForm):
             'placeholder': '61013',
         })
 
+        # Tuman — aksincha, faqat biometrik pasportda so'raladi (xaridor
+        # talabi, 2026-08-17). Kirillcha yoziladi, tekshiruv clean()da.
+        self.fields['passport_district'].required = False
+        self.fields['passport_district'].widget.attrs['placeholder'] = 'Когон тумани'
+
         # Viloyat — ro'yxatdan tanlanadi, to'ldirish majburiy
         self.fields['passport_region'].required = True
         self.fields['passport_region'].choices = (
@@ -196,8 +208,15 @@ class ContractForm(forms.ModelForm):
         """«ae5862145» -> «AE№5862145» (seriya va raqam avtomatik ajratiladi)."""
         return hujjat_raqami(self.cleaned_data.get('passport_number', ''))
 
+    def clean_passport_district(self):
+        """«Когон» -> «Когон тумани» (shahar bo'lsa o'zgarishsiz qoladi)."""
+        return tuman_matni(self.cleaned_data.get('passport_district'))
+
     def clean_pledgor_passport_org(self):
         return re.sub(r'\D', '', (self.cleaned_data.get('pledgor_passport_org') or '').strip())
+
+    def clean_pledgor_passport_district(self):
+        return tuman_matni(self.cleaned_data.get('pledgor_passport_district'))
 
     def clean_pledgor_passport_number(self):
         return hujjat_raqami(self.cleaned_data.get('pledgor_passport_number', ''))
@@ -226,17 +245,23 @@ class ContractForm(forms.ModelForm):
             self.add_error(nom, f'{atama} №{qiymat} allaqachon mavjud. '
                                 f'Bo‘sh raqam: {keyingisi()}.')
 
-    def _iiv_raqamini_tekshir(self, data, tur_maydoni, org_maydoni):
-        """IIV bo'lim raqami ID kartada bor, yashil biometrik pasportda yo'q.
+    def _hujjat_organini_tekshir(self, data, tur_maydoni, org_maydoni, tuman_maydoni):
+        """Hujjatni bergan organ pasport turiga qarab boshqacha yoziladi.
 
-        Biometrik pasport tanlansa maydon tozalanadi — turi almashtirilganda
-        eski raqam hujjatda qolib ketmasligi kerak.
+        ID kartada — IIV bo'lim raqami («61013-сонли ИИВ»), yashil biometrik
+        pasportda esa tuman nomi («Когон тумани ИИВ»). Keraksizi tozalanadi:
+        turi almashtirilganda eski qiymat hujjatda qolib ketmasligi kerak.
         """
         if data.get(tur_maydoni) == HUJJAT_PASPORT:
             data[org_maydoni] = ''
-        elif not data.get(org_maydoni) and not self.errors.get(org_maydoni):
-            self.add_error(org_maydoni,
-                           'IIV bo‘lim raqamini kiriting (faqat son).')
+            if not data.get(tuman_maydoni) and not self.errors.get(tuman_maydoni):
+                self.add_error(tuman_maydoni,
+                               'Tumanni kirillcha kiriting. Masalan: Когон тумани')
+        else:
+            data[tuman_maydoni] = ''
+            if not data.get(org_maydoni) and not self.errors.get(org_maydoni):
+                self.add_error(org_maydoni,
+                               'IIV bo‘lim raqamini kiriting (faqat son).')
 
     def _garov_beruvchini_tekshir(self, data, tur):
         """Garovga qo'yuvchi boshqa shaxs bo'lsa — ma'lumotlari to'liq bo'lsin.
@@ -252,12 +277,13 @@ class ContractForm(forms.ModelForm):
             return
 
         for nom in self.GAROV_BERUVCHI_MAYDONLARI:
-            if nom == 'pledgor_passport_org':
+            if nom in self.TURIGA_BOGLIQ_MAYDONLAR:
                 continue                    # turiga bog'liq, pastda tekshiriladi
             if not data.get(nom) and not self.errors.get(nom):
                 self.add_error(nom, 'Garovga qo‘yuvchi ma’lumotini to‘ldiring.')
-        self._iiv_raqamini_tekshir(data, 'pledgor_passport_type',
-                                   'pledgor_passport_org')
+        self._hujjat_organini_tekshir(data, 'pledgor_passport_type',
+                                      'pledgor_passport_org',
+                                      'pledgor_passport_district')
 
     def clean(self):
         data = super().clean()
@@ -271,7 +297,8 @@ class ContractForm(forms.ModelForm):
         self._raqam_bandligini_tekshir('number', data.get('number'),
                                        next_contract_number, 'Shartnoma')
 
-        self._iiv_raqamini_tekshir(data, 'passport_type', 'passport_org')
+        self._hujjat_organini_tekshir(data, 'passport_type', 'passport_org',
+                                      'passport_district')
 
         # Tugash sanasi har doim sana va muddatdan qayta hisoblanadi
         if data.get('date') and data.get('term_months'):

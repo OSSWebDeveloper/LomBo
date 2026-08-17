@@ -48,6 +48,32 @@ def hujjat_raqami(qiymat: str) -> str:
     return asl
 
 
+# --------------------------------------------------------------- tuman nomi
+
+# Biometrik pasportda hujjat berilgan joy tuman (yoki shahar) nomi bilan
+# yoziladi. Xodim shoshib faqat nomni yozib qo'yishi mumkin — «тумани»
+# qo'shimchasi o'zi qo'shiladi, shahar/tayyor qo'shimchali nom bo'lsa tegilmaydi.
+# Lotin va kirill qo'shimchalari ham hisobga olinadi.
+TUMAN_QOSHIMCHALARI = ('тумани', 'туман', 'шаҳри', 'шахри', 'шаҳар', 'шахар',
+                       'шаҳарча', 'шахарча', 'республикаси',
+                       'tumani', 'tuman', 'shahri', 'shahar', 'shaharcha',
+                       'respublikasi')
+
+
+def tuman_matni(qiymat):
+    """«Когон» -> «Когон тумани», «Kogon» -> «Kogon tumani».
+    Shahar yoki tayyor qo'shimchali nom o'zgarishsiz qoladi."""
+    tuman = re.sub(r'\s+', ' ', (qiymat or '').strip())
+    if not tuman:
+        return ''
+    pastda = tuman.lower()
+    if any(pastda.endswith(q) for q in TUMAN_QOSHIMCHALARI):
+        return tuman
+    # Yozuv turini aniqlaymiz: faqat lotin bo'lsa lotincha qo'shimcha qo'shiladi.
+    lotincha = bool(re.search(r'[A-Za-z]', tuman)) and not re.search(r'[Ѐ-ӿ]', tuman)
+    return f'{tuman} tumani' if lotincha else f'{tuman} тумани'
+
+
 # --------------------------------------------------------------- pul summasi
 
 # Foydalanuvchi ham, brauzer ham turli bo'shliqlarni yozib qo'yishi mumkin:
@@ -86,3 +112,19 @@ def pul_matn(qiymat):
         return qiymat
     butun = int(son.to_integral_value(rounding=ROUND_HALF_UP))
     return f'{butun:,}'.replace(',', ' ')
+
+
+def pul_tiyin_matn(qiymat):
+    """664246.56 -> «664 246,56».
+
+    To'lov jadvali tiyingacha ko'rsatiladi (xaridor talabi, 2026-08-17):
+    hujjatdagi jadval bilan saytdagi jadval bir xil bo'lishi kerak.
+    """
+    if qiymat is None or qiymat == '':
+        return qiymat
+    try:
+        son = Decimal(pul_son(str(qiymat)))
+    except (InvalidOperation, ValueError):
+        return qiymat
+    butun, _, kasr = f'{son.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP):f}'.partition('.')
+    return f'{int(butun):,}'.replace(',', ' ') + ',' + kasr

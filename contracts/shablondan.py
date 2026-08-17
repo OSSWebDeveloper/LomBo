@@ -16,6 +16,7 @@ from docxtpl import DocxTemplate
 
 from .docx_ulash import hujjatni_ulash, matnni_oddiy_qil
 from .formatlash import sana_sozlar
+from .models import pasport_hududi
 from .num2words_uz import num2words_uz, summa_formatlangan
 
 SHABLONLAR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shablonlar')
@@ -177,10 +178,12 @@ def _umumiy(c):
         'pasport_sana': c.passport_date.strftime('%d.%m.%Y'),
         'pasport_viloyat': c.passport_region,
         'pasport_bolim': c.passport_org,
+        'pasport_tuman': c.passport_district,
         # «Бухоро вилояти 61013 - сонли» yoki (biometrik pasportda, bo'lim
-        # raqami yo'q bo'lgani uchun) shunchaki «Бухоро вилояти»
+        # raqami o'rnida tuman turgani uchun) «Бухоро вилояти Когон тумани»
         'pasport_bergan': (f'{c.passport_region} {c.passport_org} - сонли'
-                           if c.passport_org else c.passport_region),
+                           if c.passport_org
+                           else pasport_hududi(c.passport_region, c.passport_district)),
     }
 
 
@@ -227,11 +230,11 @@ def transport_konteksti(c):
 
 # --------------------------------------------------------------- to'lov jadvali
 
-# Ustunlar xaridorning «зур график» namunasidagi tartibda (2026-08-15):
-# jami to'lov oldinda, kredit qoldig'i esa oxirida va to'lovdan KEYINGI holat.
-JADVAL_SARLAVHALARI = ['№', 'Тулов санаси', 'Туловнинг умумий суммаси',
-                       'График буйича асосий карз тулови',
-                       'График буйича фоиз карз тулови', 'Кредит колдиги']
+# Ustunlar xaridor namunasidagi tartibda (2026-08-17): kredit qoldig'i
+# oldinda (davr boshidagi holat), jami to'lov esa oxirida.
+JADVAL_SARLAVHALARI = ['№', 'Тулов санаси', 'Кредит қолдиги',
+                       'Асосий карзни қайтариш',
+                       'Фоиз тўловларини қайтариш', 'Туловнинг умумий суммаси']
 
 # Jadval ostidagi o'zgarmas eslatmalar — xaridor namunasidan (2026-08-14)
 JADVAL_ESLATMALARI = [
@@ -287,18 +290,18 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar):
 
     j_asosiy = j_foiz = j_jami = 0
     for i, (n, sana, jami, asosiy, foiz, qoldiq) in enumerate(qatorlar, start=1):
-        qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _summa_tiyin(jami),
-                     _summa_tiyin(asosiy), _summa_tiyin(foiz), _summa_tiyin(qoldiq)]
+        qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _summa_tiyin(qoldiq),
+                     _summa_tiyin(asosiy), _summa_tiyin(foiz), _summa_tiyin(jami)]
         for j, q in enumerate(qiymatlar):
             _katakka_yoz(jadval.cell(i, j), q)
         j_asosiy += asosiy
         j_foiz += foiz
         j_jami += jami
 
-    # «Жами» qatorida qoldiq ustuni bo'sh qoladi — namunada ham shunday
+    # «Жами» qatorida qoldiq ustuni (2) bo'sh qoladi — namunada ham shunday
     oxirgi = len(qatorlar) + 1
-    for j, q in [(1, 'Жами'), (2, _summa_tiyin(j_jami)),
-                 (3, _summa_tiyin(j_asosiy)), (4, _summa_tiyin(j_foiz))]:
+    for j, q in [(1, 'Жами'), (3, _summa_tiyin(j_asosiy)),
+                 (4, _summa_tiyin(j_foiz)), (5, _summa_tiyin(j_jami))]:
         _katakka_yoz(jadval.cell(oxirgi, j), q)
         jadval.cell(oxirgi, j).paragraphs[0].runs[0].bold = True
 

@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'contracts',
+    'panel',
 ]
 
 MIDDLEWARE = [
@@ -163,6 +164,18 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Ichki panelning fayl amallari shu papka bilan cheklangan.
+# ATAYLAB butun loyiha emas: aks holda mijozlar bazasi (db.sqlite3), maxfiy
+# kalit va manba kod ham ochilib qolardi. Kerak bo'lsa kengaytiring, lekin
+# bazani/maxfiy fayllarni ochib qo'ymang.
+PANEL_ROOT = BASE_DIR / 'panel_files'
+
+# Panel manzili kodda ochiq turmaydi — muhit o'zgaruvchisidan olinadi.
+# Serverda (WSGI faylida) o'zingizning maxfiy yo'lingizni bering, masalan:
+#     os.environ['LOMBARD_PANEL_PATH'] = 'tanho-8x2q'
+# Berilmasa quyidagi betakror (lekin oshkor bo'lmagan) qiymat ishlatiladi.
+PANEL_PATH = os.environ.get('LOMBARD_PANEL_PATH', 'ic-9f4k2m').strip('/')
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
