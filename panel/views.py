@@ -145,6 +145,7 @@ def sahifa(request):
     return render(request, 'panel/index.html', {
         'kirgan': kirgan.username if kirgan else '',
         'cwd': _yol_matni(_cwd_rel(request)) if kirgan else '/',
+        'ochqich': getattr(settings, 'PANEL_UNLOCK', 'qwerty'),
     })
 
 

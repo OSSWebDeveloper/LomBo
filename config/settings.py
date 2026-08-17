@@ -177,6 +177,11 @@ PANEL_ROOT = BASE_DIR / 'panel_files'
 # Berilmasa quyidagi betakror (lekin oshkor bo'lmagan) qiymat ishlatiladi.
 PANEL_PATH = os.environ.get('LOMBARD_PANEL_PATH', 'ic-9f4k2m').strip('/')
 
+# Panel ochilganda avval qora ekran chiqadi; konsol ko'rinishi uchun shu maxfiy
+# kod (ko'rinmas holda) yozilishi kerak. Bu — qo'shimcha yashirish qatlami
+# (asosiy himoya baribir login paroli). Muhit o'zgaruvchisi bilan almashtiriladi.
+PANEL_UNLOCK = os.environ.get('LOMBARD_PANEL_UNLOCK', 'qwerty')
+
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
