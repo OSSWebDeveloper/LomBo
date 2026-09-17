@@ -72,8 +72,13 @@
     </div>
 
     <hr class="ajratgich">
-    <p class="ajratgich-nom">Garov suratlari</p>
+    <p class="ajratgich-nom">Garov suratlari <span class="majburiy">*</span></p>
     {{ rasmlar.management_form }}
+    {% comment %}Kamida bitta surat shart — xato formset darajasida chiqadi
+    (GarovRasmBaseFormSet.clean), shuning uchun qatorlar ustida ko'rsatiladi.{% endcomment %}
+    {% if rasmlar.non_form_errors %}
+      <div class="errors">{{ rasmlar.non_form_errors|striptags }}</div>
+    {% endif %}
     <div class="grid">
       {% for f in rasmlar %}
         <div class="field">
@@ -91,7 +96,8 @@
         </div>
       {% endfor %}
     </div>
-    <div class="help">Suratlar shartnoma to‘plamining oxirida, muqovadan oldin chiqadi.</div>
+    <div class="help">Kamida bitta surat majburiy. Suratlar shartnoma
+      to‘plamining oxirida, muqovadan oldin chiqadi.</div>
 
     <!-- ZARGARLIK -->
     <div id="block-zargarlik" class="collateral-block hidden">
@@ -118,11 +124,24 @@
       </div>
 
       <h3 style="margin-top:18px">Garovga qo‘yuvchi</h3>
-      <label class="field" style="display:flex; gap:8px; align-items:center">
-        {{ form.pledgor_other }}
-        <span>{{ form.pledgor_other.label }}</span>
-      </label>
-      <div class="help">Belgilamasangiz garovga qo‘yuvchi qarz oluvchining o‘zi bo‘ladi.</div>
+      <div class="almashtirgich" id="pledgor-tanlov">
+        <label>
+          <input type="radio" name="pledgor-tanlov" value="oz">
+          <span class="matn">
+            <span class="nom">Qarz oluvchiniki</span>
+            <span class="izoh">Buyum mijozning o‘ziniki</span>
+          </span>
+        </label>
+        <label>
+          <input type="radio" name="pledgor-tanlov" value="boshqa">
+          <span class="matn">
+            <span class="nom">Boshqa shaxsniki</span>
+            <span class="izoh">Egasining ma’lumoti so‘raladi</span>
+          </span>
+        </label>
+      </div>
+      {# Haqiqiy maydon — almashtirgich shuni belgilaydi #}
+      <div class="hidden">{{ form.pledgor_other }}</div>
       <div id="block-pledgor" class="hidden" style="margin-top:12px">
         <div class="grid">
           {% include 'contracts/_field.html' with field=form.pledgor_fio %}
@@ -141,8 +160,42 @@
     <!-- TRANSPORT -->
     <div id="block-transport" class="collateral-block hidden">
       <h3>Transport vositasi</h3>
+      <div class="almashtirgich" id="egasi-tanlov">
+        {% for tanlov in vehicle.egasi_turi %}
+        <label>
+          {{ tanlov.tag }}
+          <span class="matn">
+            <span class="nom">{{ tanlov.choice_label }}</span>
+            <span class="izoh">
+              {% if tanlov.data.value == 'oz' %}mashina mijoz nomida
+              {% elif tanlov.data.value == 'shaxs' %}ishonchnoma asosida
+              {% else %}rahbari imzolaydi{% endif %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% comment %}Egasi qarz oluvchining o'zi bo'lsa hech narsa so'ralmaydi —
+      «Egasi» maydoniga saqlashda qarz oluvchining ismi yoziladi{% endcomment %}
+      <div class="grid hidden" id="egasi-nomi">
+        {% include 'contracts/_field.html' with field=vehicle.owner %}
+        <div class="field hidden" id="egasi-rahbari">
+          <label for="{{ vehicle.owner_head.id_for_label }}">{{ vehicle.owner_head.label }}</label>
+          {{ vehicle.owner_head }}
+          {% if vehicle.owner_head.errors %}<div class="errors">{{ vehicle.owner_head.errors|striptags }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="grid hidden" id="egasi-hujjati">
+        {% include 'contracts/_field.html' with field=vehicle.owner_passport_type %}
+        {% include 'contracts/_field.html' with field=vehicle.owner_passport_region %}
+        {% include 'contracts/_field.html' with field=vehicle.owner_passport_org extra_class='iiv-maydon' %}
+        {% include 'contracts/_field.html' with field=vehicle.owner_passport_district extra_class='tuman-maydon' %}
+        {% include 'contracts/_field.html' with field=vehicle.owner_passport_date %}
+        {% include 'contracts/_field.html' with field=vehicle.owner_passport_number %}
+        {% include 'contracts/_field.html' with field=vehicle.owner_address %}
+      </div>
       <div class="grid">
-        {% for f in vehicle %}
+        {% for f in vehicle.mashina_maydonlari %}
         <div class="field">
           <label for="{{ f.id_for_label }}">{{ f.label }}</label>
           {{ f }}
@@ -178,39 +231,9 @@
 
 <script>
 (function(){
-  // ---- Pul maydonlari: yozayotganda har 3 raqamdan keyin bo'shliq ----
-  // «7000000» -> «7 000 000». Barcha bo'shliq turlari (oddiy, uzilmas)
-  // tashlab yuboriladi, serverga baribir toza son boradi.
-  function pulRaqam(matn){
-    return String(matn == null ? '' : matn).replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '');
-  }
-  function pulFormat(matn){
-    return pulRaqam(matn).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  }
-  function pulSon(matn){
-    var r = pulRaqam(matn);
-    return r ? parseInt(r, 10) : 0;
-  }
-  function pulMaydon(inp){
-    var eski = inp.value;
-    var yangi = pulFormat(eski);
-    if (yangi === eski) return;
-    // Kursordan oldingi raqamlar sonini eslab qolamiz — qayta yozgach o'sha joyga qaytaramiz
-    var kursor = inp.selectionStart;
-    var oldingiRaqam = kursor === null ? -1 : (eski.slice(0, kursor).match(/\d/g) || []).length;
-    inp.value = yangi;
-    if (oldingiRaqam < 0) return;
-    var joy = 0, sanoq = 0;
-    while (joy < yangi.length && sanoq < oldingiRaqam){
-      if (yangi.charCodeAt(joy) >= 48 && yangi.charCodeAt(joy) <= 57) sanoq++;
-      joy++;
-    }
-    try { inp.setSelectionRange(joy, joy); } catch (e){}
-  }
-  document.addEventListener('input', function(e){
-    if (e.target.classList && e.target.classList.contains('pul')) pulMaydon(e.target);
-  });
-  document.querySelectorAll('.pul').forEach(pulMaydon);
+  // Pul maydonlarining formatlanishi `static/js/pul.js` da — u `base.html`
+  // orqali hamma sahifada ulanadi. Bu yerda faqat `pul.son`/`pul.format`
+  // ishlatiladi (garov bahosini yig'ishda).
 
   // ---- Grafik boshlanish sanasi: keyingi oyning 10-sanasi ----
   // Xodim o'zi kiritgan bo'lsa tegilmaydi (qo'lda o'zgartirish ustun turadi).
@@ -271,7 +294,9 @@
   }
 
   var pasportJuftlari = [['id_passport_type', 'id_passport_org'],
-                         ['id_pledgor_passport_type', 'id_pledgor_passport_org']];
+                         ['id_pledgor_passport_type', 'id_pledgor_passport_org'],
+                         ['id_vehicle-owner_passport_type',
+                          'id_vehicle-owner_passport_org']];
 
   // ---- Garovga qo'yuvchi boshqa shaxs bo'lsa ----
   // Belgi qo'yilmagan bo'lsa maydonlar o'chiriladi: eski qiymatlar
@@ -291,6 +316,75 @@
     iivHolati('id_pledgor_passport_type', 'id_pledgor_passport_org', ochiq);
   }
 
+  // ---- Almashtirgichlar: «kimniki?» degan tanlov ----
+  // Radiolar faqat ko'rinish uchun. Haqiqiy qiymat zargarlikda
+  // «pledgor_other» belgisida, transportda esa «Egasi» maydonida turadi.
+  // `ozgardi(boshqa, qoldan)` — `qoldan` faqat xodim o'zi bosganda rost.
+  function almashtirgich(id, ozgardi){
+    var blok = document.getElementById(id);
+    if (!blok) return function(){};
+    var tugmalar = [].slice.call(blok.querySelectorAll('input[type=radio]'));
+    tugmalar.forEach(function(t){
+      t.addEventListener('change', function(){
+        if (t.checked) ozgardi(t.value === 'boshqa', true);
+      });
+    });
+    return function(boshqa){          // boshlang'ich holatni qo'yish
+      tugmalar[boshqa ? 1 : 0].checked = true;
+      ozgardi(boshqa, false);
+    };
+  }
+
+  // Zargarlik: buyum qarz oluvchinikimi yoki boshqa shaxsnikimi
+  var pledgorQoy = almashtirgich('pledgor-tanlov', function(boshqa){
+    if (!pledgorChk) return;
+    pledgorChk.checked = boshqa;
+    garovBeruvchiHolati();
+  });
+  pledgorQoy(!!(pledgorChk && pledgorChk.checked));
+
+  // Transport: mashina kimniki — `VehicleInfo.egasi_turi` maydoni.
+  //   oz        — hech narsa so'ralmaydi, «Egasi»ga qarz oluvchining ismi
+  //               saqlashda o'zi yoziladi (VehicleInfo.save);
+  //   shaxs     — egasining ismi, hujjati va manzili so'raladi, hujjat
+  //               ishonchnoma asosida chiqadi;
+  //   tashkilot — tashkilot nomi va rahbari so'raladi.
+  var egasiNomi = document.getElementById('egasi-nomi');
+  var egasiRahbari = document.getElementById('egasi-rahbari');
+  var egasiHujjati = document.getElementById('egasi-hujjati');
+  var egasiTugmalari = [].slice.call(
+    document.querySelectorAll('#egasi-tanlov input[type=radio]'));
+
+  function egasiTuri(){
+    for (var i = 0; i < egasiTugmalari.length; i++)
+      if (egasiTugmalari[i].checked) return egasiTugmalari[i].value;
+    return 'oz';
+  }
+
+  // Yopiq blokdagi maydonlar o'chiriladi: eski qiymat yuborilmasin va
+  // ko'rinmaydigan «required» maydon formani jimgina bloklab qo'ymasin.
+  function blokHolati(blok, ochiq){
+    if (!blok) return;
+    blok.classList.toggle('hidden', !ochiq);
+    blok.querySelectorAll('input, select').forEach(function(inp){
+      inp.disabled = !ochiq;
+      inp.required = ochiq;
+    });
+  }
+
+  function egasiHolati(){
+    var turi = egasiTuri(), transportmi = sel.value === 'transport';
+    blokHolati(egasiNomi, transportmi && turi !== 'oz');
+    blokHolati(egasiRahbari, transportmi && turi === 'tashkilot');
+    blokHolati(egasiHujjati, transportmi && turi === 'shaxs');
+    // IIV bo'lim raqami / tuman — egasining hujjat turiga qarab
+    iivHolati('id_vehicle-owner_passport_type', 'id_vehicle-owner_passport_org',
+              transportmi && turi === 'shaxs');
+  }
+  egasiTugmalari.forEach(function(t){
+    t.addEventListener('change', egasiHolati);
+  });
+
   function toggle(){
     var v = sel.value;
     for (var k in blocks){
@@ -301,17 +395,21 @@
     // Kafillikda garov raqami/bahosi kerak emas
     garovFields.forEach(function(el){ el.classList.toggle('hidden', v === 'kafillik'); });
     garovBeruvchiHolati();     // zargarlik bloki ochilgach holatini tiklaymiz
+    egasiHolati();             // transportda ham — egasi turiga qarab
   }
   sel.addEventListener('change', toggle);
-  if (pledgorChk) pledgorChk.addEventListener('change', garovBeruvchiHolati);
   pasportJuftlari.forEach(function(juft){
     var turSel = document.getElementById(juft[0]);
     if (!turSel) return;
     turSel.addEventListener('change', function(){
-      // Garovga qo'yuvchining maydoni bloki ochiq bo'lsagina majburiy
-      var ichkarida = turSel.id.indexOf('pledgor') > -1;
-      iivHolati(juft[0], juft[1],
-                !ichkarida || (pledgorChk && pledgorChk.checked));
+      // Bloki ochiq bo'lsagina majburiy: garovga qo'yuvchi zargarlikda,
+      // mashina egasi esa «Boshqa (jismoniy shaxs)» tanlanganda so'raladi.
+      var majburiy = true;
+      if (turSel.id.indexOf('pledgor') > -1)
+        majburiy = !!(pledgorChk && pledgorChk.checked);
+      else if (turSel.id.indexOf('vehicle') > -1)
+        majburiy = egasiTuri() === 'shaxs';
+      iivHolati(juft[0], juft[1], majburiy);
     });
   });
   iivHolati('id_passport_type', 'id_passport_org', true);
@@ -345,9 +443,9 @@
     if (!garovValue || sel.value !== 'zargarlik') return;
     var total = 0;
     document.querySelectorAll('#jewelry-table input[name$="-value"]').forEach(function(i){
-      total += pulSon(i.value);
+      total += pul.son(i.value);
     });
-    garovValue.value = total > 0 ? pulFormat(String(total)) : '';
+    garovValue.value = total > 0 ? pul.format(String(total)) : '';
   }
 
   function garovBahoHolati(){
@@ -450,8 +548,9 @@
     return m[2] ? m[1] + '№' + m[2] : m[1];
   }
   // ---- IIV bo'lim raqami: faqat son ----
-  // Qarz oluvchi va garovga qo'yuvchi maydonlari bir xil ishlaydi
-  ['id_passport_org', 'id_pledgor_passport_org'].forEach(function(id){
+  // Qarz oluvchi, garovga qo'yuvchi va mashina egasi bir xil ishlaydi
+  ['id_passport_org', 'id_pledgor_passport_org',
+   'id_vehicle-owner_passport_org'].forEach(function(id){
     var iivF = document.getElementById(id);
     if (!iivF) return;
     iivF.addEventListener('input', function(){
@@ -465,7 +564,8 @@
   });
 
   // ---- Tuman: harflar (lotin/kirill), raqamsiz ----
-  ['id_passport_district', 'id_pledgor_passport_district'].forEach(function(id){
+  ['id_passport_district', 'id_pledgor_passport_district',
+   'id_vehicle-owner_passport_district'].forEach(function(id){
     var tumanF = document.getElementById(id);
     if (!tumanF) return;
     tumanF.addEventListener('input', function(){
@@ -478,7 +578,8 @@
     });
   });
 
-  ['id_passport_number', 'id_pledgor_passport_number'].forEach(function(id){
+  ['id_passport_number', 'id_pledgor_passport_number',
+   'id_vehicle-owner_passport_number'].forEach(function(id){
     var hujjatF = document.getElementById(id);
     if (!hujjatF) return;
     hujjatF.addEventListener('input', function(){

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}{% load pul %}
+{% block title %}To‘lov grafigi — Lombard{% endblock %}
+{% block content %}
+
+<h1>To‘lov grafigi</h1>
+<p class="muted" style="margin-top:-8px">
+  Shartnoma tuzmasdan jadvalni hisoblash. Hisob shartnomadagi bilan bir xil —
+  natija bosma 1-ilova bilan tiyingacha mos keladi.</p>
+
+<div class="card grafik-forma">
+  <form method="get" action="{% url 'grafik' %}">
+    {% if form.non_field_errors %}
+      <div class="errors">{{ form.non_field_errors|striptags }}</div>
+    {% endif %}
+
+    <div class="grid">
+      {% include 'contracts/_field.html' with field=form.amount %}
+      {% include 'contracts/_field.html' with field=form.interest_rate %}
+      {% include 'contracts/_field.html' with field=form.date %}
+      {% include 'contracts/_field.html' with field=form.term_months %}
+    </div>
+
+    <details class="grafik-qoshimcha" {% if form.payment_start_date.errors or form.end_date.errors %}open{% endif %}>
+      <summary>Qo‘shimcha (ixtiyoriy)</summary>
+      <div class="grid" style="margin-top:12px">
+        {% include 'contracts/_field.html' with field=form.payment_start_date %}
+        {% include 'contracts/_field.html' with field=form.end_date %}
+        {% include 'contracts/_field.html' with field=form.borrower_fio %}
+        {% include 'contracts/_field.html' with field=form.number %}
+      </div>
+    </details>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Hisoblash</button>
+      <a class="btn btn-secondary" href="{% url 'grafik' %}">Tozalash</a>
+    </div>
+  </form>
+</div>
+
+{% if natija %}
+<div class="card">
+  <div class="section-title">
+    <h2 style="margin:0">To‘lov jadvali</h2>
+    <div class="actions" style="margin:0">
+      <a class="btn btn-secondary btn-sm"
+         href="{% url 'grafik_download' %}?{{ query }}">Word</a>
+      <button class="btn btn-secondary btn-sm" type="button"
+              onclick="window.print()">Chop etish</button>
+    </div>
+  </div>
+
+  <div class="muted grafik-shart">
+    {{ natija.contract.amount|pul }} so‘m ·
+    {{ natija.contract.term_months }} oy ·
+    yillik {{ natija.contract.interest_rate }}% ·
+    shartnoma {{ natija.contract.date|date:'d.m.Y' }} ·
+    1-to‘lov {{ natija.contract.payment_start_date|date:'d.m.Y' }} ·
+    tugash {{ natija.contract.end_date|date:'d.m.Y' }}
+  </div>
+
+  <table>
+    <tr><th>№</th><th>Sana</th><th class="num">Kredit qoldig‘i</th>
+        <th class="num">Asosiy qarz</th><th class="num">Foiz</th>
+        <th class="num">Jami to‘lov</th></tr>
+    {% for n, d, total, principal, interest, remaining in natija.qatorlar %}
+    <tr>
+      <td>{{ n }}</td>
+      <td>{{ d|date:'d.m.Y' }}</td>
+      <td class="num">{{ remaining|pul_tiyin }}</td>
+      <td class="num">{{ principal|pul_tiyin }}</td>
+      <td class="num">{{ interest|pul_tiyin }}</td>
+      <td class="num"><b>{{ total|pul_tiyin }}</b></td>
+    </tr>
+    {% endfor %}
+    <tr class="jami-qator">
+      <td></td><td><b>Jami</b></td><td class="num"></td>
+      <td class="num">{{ natija.jami_asosiy|pul_tiyin }}</td>
+      <td class="num">{{ natija.jami_foiz|pul_tiyin }}</td>
+      <td class="num"><b>{{ natija.jami|pul_tiyin }}</b></td>
+    </tr>
+  </table>
+</div>
+{% elif query %}
+<div class="card">
+  <div class="empty"><span class="icon">⚠️</span>
+    Jadval hisoblanmadi — yuqoridagi maydonlarni tekshiring.</div>
+</div>
+{% endif %}
+
+{% endblock %}

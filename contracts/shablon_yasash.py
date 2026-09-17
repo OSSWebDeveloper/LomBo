@@ -144,6 +144,20 @@ def naqsh_bilan_almashtir(doc, naqsh, yasovchi):
     return almashdi
 
 
+def katakka_yoz(katak, matn):
+    """Katak matnini almashtiradi, birinchi run formatlashini saqlab."""
+    p = katak.paragraphs[0]
+    if p.runs:
+        p.runs[0].text = matn
+        for r in p.runs[1:]:
+            r.text = ''
+    else:
+        p.add_run(matn)
+    for qoshimcha in katak.paragraphs[1:]:
+        for r in qoshimcha.runs:
+            r.text = ''
+
+
 def natijani_chop(sarlavha, hisob):
     """Har bir juftlik nechta joyda ishlaganini ko'rsatadi."""
     print(f'  {sarlavha}:')
@@ -525,8 +539,35 @@ KAFILLIK_TAMINOT = (
     'Жураев Азизбек Носировичнинг  10 000 000 (ўн миллион) сўмлик '
     'иш хакки кафиллиги  такдим килинади.')
 KAFILLIK_YANGI = '{{ kafil }}нинг {{ kafillik_summa }} сўмлик иш хакки кафиллиги такдим килинади.'
-TRANSPORT_YANGI = ('{{ garov_egasi }}га тегишли, давлат раками {{ davlat_raqami }} бўлган, '
-                   '{{ rusumi }} русумли транспорт воситаси гаровга қўйилади.')
+# Transport ta'minoti butunlay kontekstdan keladi: avtomobil egasi boshqa
+# kishi bo'lsa jumla oxiriga qarz oluvchining kafilligi qo'shiladi
+# (qarang: shablondan.transport_konteksti).
+TRANSPORT_YANGI = '{{ taminot }}'
+
+# Garov shartnomasi va dalolatnomada «гаровга қўювчи» goh tashkilot rahbari,
+# goh — avtomobil egasi boshqa kishi bo'lganda — ishonchnoma asosida qarz
+# oluvchining o'zi bo'ladi. Shuning uchun bu joylar butun jumlasi bilan
+# kontekstdan keladi. Juftlar umumiylaridan oldin turishi shart, aks holda
+# ichidagi ism va tashkilot nomi boshqa belgilarga bo'linib ketadi.
+TRANSPORT_GAROVGA_QOYUVCHI = [
+    # Garov shartnomasining kirish xatboshisi
+    ('хамда гаровга кўювчи: “Express Alligator Bukhara” МЧЖ номидан буйрук '
+     'асосида фаолиятини амалга оширувчи, жамият рахбари Бахшиллоева Дилноза '
+     'Бахтиёровна иккинчи томондан',
+     'хамда {{ garovga_qoyuvchi }} иккинчи томондан'),
+    # Baholash dalolatnomasidagi ishtirokchilar
+    ('қарз олувчи Бахшиллоева Нозима Бахтиёровна (Бухоро шахар 6206-сонли ИИВ '
+     'томонидан 08.04.2021 йилда берилган АD 0301390 ракамли шахсни тасдикловчи '
+     'хужжат, манзили: Бухоро шахар, Шайхон кучаси, 156 – уй) хамда гаровга '
+     'қўювчи “Express Alligator Bukhara” МЧЖ рахбари Бахшиллоева Дилноза '
+     'Бахтиёровна', '{{ dalolatnoma_taraflar }}'),
+    # Dalolatnomaning imzo qatori
+    ('“Express Alligator Bukhara” МЧЖ рахбари :    ___________     '
+     'Бахшиллоева Дилноза Бахтиёровна', '{{ garov_dalolat_imzo }}'),
+    # 8-banddagi rekvizit bloki: sarlavha, nomi va imzo qatori
+    ('Гаровга  қўювчи:', '{{ garov_imzo_sarlavha }}'),
+    ('директори:_________________Д.Б.Бахшиллоева', '{{ garov_imzo_qator }}'),
+]
 
 # Garov shartnomasi va dalolatnomadagi transport qiymatlari
 TRANSPORT_JUFTLAR = [
@@ -535,17 +576,16 @@ TRANSPORT_JUFTLAR = [
     ('“Express Alligator Bukhara” МЧЖга тегишли, давлат раками 80 9511 АA бўлган, '
      'KRONE SDR27 русумли YARIM TIRKAMA REFRIJERATOR', '{{ garov_mulki }}'),
     ('70 000 000 (етмиш миллион)', '{{ garov_baho }}'),
+    # Dalolatnomada qavsdan oldin bo'shliq yo'q — alohida juft kerak, aks
+    # holda namunadagi 70 000 000 hujjatda qolib ketadi.
+    ('70 000 000(етмиш миллион)', '{{ garov_baho }}'),
     ('50 000 000(эллик миллион)', '{{ summa_raqam_soz }}'),
     ('Гаров шартнома 34', 'Гаров шартнома {{ garov_raqam }}'),
     ('№34-сонли', '№{{ raqam }}-сонли'),
     ('04.04.2025', '{{ sana }}'),
     ('Бахшиллоева Нозима Бахтиёровна', '{{ fio }}'),
-    ('Бахшиллоева Дилноза Бахтиёровна', '{{ garov_rahbari }}'),
-    ('Д.Б.Бахшиллоева', '{{ garov_rahbari_qisqa }}'),   # imzo qatoridagi qisqartma
-    ('“Express Alligator Bukhara” МЧЖ', '{{ garov_egasi }}'),
-    ('Бухоро шахар 6206-сонли ИИВ томонидан 08.04.2021 йилда берилган '
-     'АD 0301390 ракамли шахсни тасдикловчи хужжат', '{{ pasport }}'),
-    ('Бухоро шахар, Шайхон кучаси, 156 – уй', '{{ manzil }}'),
+    # 8-banddagi rekvizit blokidagi nomi (qolgan joylari yuqorida almashdi)
+    ('“Express Alligator Bukhara” МЧЖ', '{{ garov_imzo_ism }}'),
     ('80 9511 АА', '{{ davlat_raqami }}'),
     ('KRONE SDR27', '{{ rusumi }}'),
     ('QORA CHERNIY', '{{ rangi }}'),
@@ -553,6 +593,28 @@ TRANSPORT_JUFTLAR = [
     ('2016-yil', '{{ yili }}'),
     ('AAG 0949387 / 14.02.2023 йил', '{{ texpasport }}'),
 ]
+
+
+def transport_jadvalini_shablonla(doc):
+    """Dalolatnoma jadvalidagi kuzov va dvigatel kataklarini belgiga bog'laydi.
+
+    Namunadagi yarim tirkamada kuzov ham, dvigatel raqami ham yo'q edi
+    («-»), shuning uchun ular shablonga tushmay qolgan. Formada esa ikkala
+    maydon ham to'ldiriladi — hujjatda o'sha raqamlar turishi kerak.
+    """
+    juftlar = [('Кузов', '{{ kuzov }} / {{ shassi }}'),
+               ('Дивигател', '{{ dvigatel }}')]
+    topildi = 0
+    for t in jadvallar(doc):
+        if len(t.columns) != 2:
+            continue
+        for qator in t.rows:
+            belgi = next((y for x, y in juftlar if x in qator.cells[0].text), None)
+            if belgi is None:
+                continue
+            katakka_yoz(qator.cells[1], belgi)
+            topildi += 1
+    return topildi
 
 
 def _garov_qismini_ochir(doc):
@@ -587,7 +649,8 @@ def _yakunla(doc, tur, nomi, ok, qoldiq_sozlari):
     return bool(ok and ariza_ok and bayon_ok and toza)
 
 
-def _m199_shabloni(nomi, tur, juftlar, taminot_yangi, garovni_ochir=False):
+def _m199_shabloni(nomi, tur, juftlar, taminot_yangi, garovni_ochir=False,
+                   keyingi=None):
     doc = Document(os.path.join(PAPKA, 'm199.docx'))
 
     if garovni_ochir:
@@ -606,6 +669,11 @@ def _m199_shabloni(nomi, tur, juftlar, taminot_yangi, garovni_ochir=False):
             print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: {naqsh.pattern[:52]}")
             ok = ok and bool(n)
 
+    if keyingi is not None:
+        n = keyingi(doc)
+        print(f"    [{'OK ' if n else 'YO`Q'}] {n:2} marta: dalolatnoma jadvali")
+        ok = ok and bool(n)
+
     qoldiq = ['Содиков', 'Работикалмок', '2751664']
     if not garovni_ochir:
         qoldiq += ['Бахшиллоева', 'Express Alligator', 'KRONE']
@@ -619,7 +687,9 @@ def kafillik_shabloni():
 
 def transport_shabloni():
     return _m199_shabloni('transport.docx', TRANSPORT,
-                          list(Q199_UMUMIY) + TRANSPORT_JUFTLAR, TRANSPORT_YANGI)
+                          list(Q199_UMUMIY) + TRANSPORT_GAROVGA_QOYUVCHI
+                          + TRANSPORT_JUFTLAR, TRANSPORT_YANGI,
+                          keyingi=transport_jadvalini_shablonla)
 
 
 if __name__ == '__main__':

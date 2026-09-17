@@ -10,6 +10,7 @@ import io
 import logging
 import shlex
 import shutil
+import time
 import zipfile
 from pathlib import Path
 from urllib.parse import quote
@@ -25,10 +26,11 @@ from django.views.decorators.http import require_GET, require_POST
 
 logger = logging.getLogger('panel')
 
-# Kim kirgani va joriy papka (ildizdan nisbiy) shu sessiya kalitlarida turadi —
-# asosiy sayt sessiyasidan mustaqil.
+# Kim kirgani, joriy papka va oxirgi faoliyat vaqti shu sessiya kalitlarida
+# turadi — asosiy sayt sessiyasidan mustaqil.
 SESSIYA_KALIT = 'p_uid'
 CWD_KALIT = 'p_cwd'
+SEEN_KALIT = 'p_seen'      # oxirgi faoliyat vaqti (harakatsizlik timeout uchun)
 
 
 def _ildiz() -> Path:
@@ -47,12 +49,24 @@ def _joriy(request):
     uid = request.session.get(SESSIYA_KALIT)
     if not uid:
         return None
+    # Harakatsizlik timeout — oxirgi faoliyatdan beri PANEL_IDLE_TIMEOUT soniya
+    # o'tgan bo'lsa, panel sessiyasi tugaydi (qayta login so'raladi).
+    timeout = getattr(settings, 'PANEL_IDLE_TIMEOUT', 300)
+    endi = time.time()
+    korilgan = request.session.get(SEEN_KALIT, 0)
+    if timeout and korilgan and (endi - korilgan) > timeout:
+        for k in (SESSIYA_KALIT, SEEN_KALIT, CWD_KALIT):
+            request.session.pop(k, None)
+        return None
     User = get_user_model()
     try:
         u = User.objects.get(pk=uid)
     except User.DoesNotExist:
         return None
-    return u if (u.is_active and u.is_superuser) else None
+    if not (u.is_active and u.is_superuser):
+        return None
+    request.session[SEEN_KALIT] = endi        # faoliyat — timerni yangilash
+    return u
 
 
 def _root_ichida(nisbiy):
@@ -172,15 +186,16 @@ def bajar(request):
     if buyruq == 'login':
         return _login(request, flaglar)
     if buyruq == 'logout':
-        request.session.pop(SESSIYA_KALIT, None)
-        request.session.pop(CWD_KALIT, None)
-        return JsonResponse({'output': 'Chiqildi.', 'action': None, 'user': ''})
+        for k in (SESSIYA_KALIT, SEEN_KALIT, CWD_KALIT):
+            request.session.pop(k, None)
+        return JsonResponse({'output': 'Chiqildi.', 'action': None, 'user': '', 'cwd': '/'})
 
-    # Bundan keyin — faqat login qilingandan so'ng
+    # Bundan keyin — faqat login qilingandan so'ng. `kirgan` None bo'lsa, sessiya
+    # umuman yo'q yoki harakatsizlikdan tugagan — prompt ham tiklanadi.
     if not kirgan:
         return JsonResponse({
             'output': "Avval login qiling:  login --username <...> --password <...>",
-            'action': None})
+            'action': None, 'user': '', 'cwd': '/'})
 
     if buyruq == 'whoami':
         return JsonResponse({'output': kirgan.username, 'action': None})
@@ -215,6 +230,7 @@ def _login(request, flaglar):
         return JsonResponse({'output': "Login yoki parol noto'g'ri.", 'action': None})
     request.session[SESSIYA_KALIT] = user.pk
     request.session[CWD_KALIT] = ''          # har login ildizdan boshlanadi
+    request.session[SEEN_KALIT] = time.time()
     logger.info('Panel login: %s ip=%s', user.username, _ip(request))
     return JsonResponse({
         'output': f'Xush kelibsiz, {user.username}. Panel ochiq.',

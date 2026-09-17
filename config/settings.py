@@ -46,6 +46,14 @@ if not DEBUG:
     CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h != '*']
 
 # ============ LOMBARD SOZLAMALARI ============
+
+# Dastur versiyasi — yagona manba `versiya.txt` fayli. Uni qo'lda
+# tahrirlash shart emas: `python versiya.py 1.2.0 "izoh"` yangilaydi.
+# O'rnatuvchi (ORNATISH.bat) ham xuddi shu faylga qaraydi.
+_versiya_fayl = BASE_DIR / 'versiya.txt'
+VERSIYA = (_versiya_fayl.read_text(encoding='utf-8').strip()
+           if _versiya_fayl.exists() else '0.0.0')
+
 # Shartnoma avtomatik raqamlash shu raqamdan boshlanadi.
 # Bazada bundan katta raqam bo'lsa, eng kattasidan davom etadi.
 CONTRACT_START_NUMBER = 200
@@ -130,6 +138,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'config.kontekst.versiya',
             ],
         },
     },
@@ -165,22 +174,18 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# Ichki panelning fayl amallari shu papka bilan cheklangan.
-# ATAYLAB butun loyiha emas: aks holda mijozlar bazasi (db.sqlite3), maxfiy
-# kalit va manba kod ham ochilib qolardi. Kerak bo'lsa kengaytiring, lekin
-# bazani/maxfiy fayllarni ochib qo'ymang.
-PANEL_ROOT = BASE_DIR / 'panel_files'
 
-# Panel manzili kodda ochiq turmaydi — muhit o'zgaruvchisidan olinadi.
-# Serverda (WSGI faylida) o'zingizning maxfiy yo'lingizni bering, masalan:
-#     os.environ['LOMBARD_PANEL_PATH'] = 'tanho-8x2q'
-# Berilmasa quyidagi betakror (lekin oshkor bo'lmagan) qiymat ishlatiladi.
+PANEL_ROOT = BASE_DIR 
+
+
 PANEL_PATH = os.environ.get('LOMBARD_PANEL_PATH', 'ic-9f4k2m').strip('/')
 
-# Panel ochilganda avval qora ekran chiqadi; konsol ko'rinishi uchun shu maxfiy
-# kod (ko'rinmas holda) yozilishi kerak. Bu — qo'shimcha yashirish qatlami
-# (asosiy himoya baribir login paroli). Muhit o'zgaruvchisi bilan almashtiriladi.
+
 PANEL_UNLOCK = os.environ.get('LOMBARD_PANEL_UNLOCK', 'qwerty')
+
+# Panelда shuncha soniya harakatsizlikdan keyin avtomatik chiqadi (qayta login
+# so'raydi). Faqat panelга ta'sir qiladi. 0 — timeout yo'q. Default: 5 daqiqa.
+PANEL_IDLE_TIMEOUT = int(os.environ.get('LOMBARD_PANEL_IDLE', '300'))
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'

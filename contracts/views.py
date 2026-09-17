@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db.models import Count, F, Q, Sum
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,11 +18,12 @@ from accounts.models import User
 
 from docx import Document
 
-from .docgen import build_contract_docx, build_garov_docx, payment_schedule
+from .docgen import (build_contract_docx, build_garov_docx, build_grafik_docx,
+                     payment_schedule)
 from .pdf import PdfImkoniYoq, docx_dan_pdf, pdf_imkoni_bor
 from .shablondan import SHABLONLAR, garovi_bormi
-from .forms import (GarovRasmFormSet, ContractForm, ContractSearchForm, DeleteRequestForm, GuarantorForm,
-                    JewelryFormSet, VehicleForm)
+from .forms import (GarovRasmFormSet, ContractForm, ContractSearchForm, DeleteRequestForm,
+                    GrafikFormasi, GuarantorForm, JewelryFormSet, VehicleForm)
 from .models import Amal, Contract, DeleteRequest, amal_yoz
 
 
@@ -116,6 +118,10 @@ def dashboard(request):
 
 # --------------------------------------------------------------- ro'yxat
 
+# Bir sahifada nechta shartnoma ko'rsatiladi (xaridor talabi, 2026-08-18)
+SAHIFADAGI_SHARTNOMALAR = 10
+
+
 @login_required
 def contract_list(request):
     user = request.user
@@ -143,8 +149,23 @@ def contract_list(request):
         if form.cleaned_data.get('created_by'):
             qs = qs.filter(created_by_id=form.cleaned_data['created_by'])
 
+    # Ro'yxat sahifalarga bo'linadi. Tartib Contract.Meta'da — `-number`,
+    # ya'ni eng yangi shartnoma birinchi sahifaning tepasida turadi.
+    jami = qs.count()
+    sahifalar = Paginator(qs, SAHIFADAGI_SHARTNOMALAR)
+    sahifa = sahifalar.get_page(request.GET.get('page'))
+
+    # Sahifa havolalarida qidiruv shartlari yo'qolmasligi kerak
+    sorov = request.GET.copy()
+    sorov.pop('page', None)
+    sorov = sorov.urlencode()
+
     return render(request, 'contracts/contract_list.html', {
-        'contracts': qs, 'form': form, 'total': qs.count(),
+        'contracts': sahifa, 'page_obj': sahifa, 'sorov': sorov,
+        'sahifa_raqamlari': list(sahifalar.get_elided_page_range(
+            sahifa.number, on_each_side=2, on_ends=1)),
+        'nuqtalar': Paginator.ELLIPSIS,
+        'form': form, 'total': jami,
     })
 
 
@@ -182,8 +203,11 @@ def contract_create(request):
             extra_ok = vehicle.is_valid()
         elif tur == Contract.TYPE_KAFILLIK:
             extra_ok = guarantor.is_valid()
+        # Surat majburiy — shartnoma saqlanishidan OLDIN tekshiriladi,
+        # aks holda suratsiz shartnoma bazada qolib ketardi.
+        rasm_ok = rasmlar.is_valid()
 
-        if ok and extra_ok:
+        if ok and extra_ok and rasm_ok:
             contract = form.save(commit=False)
             contract.end_date = form.cleaned_data['end_date']
             contract.created_by = request.user
@@ -205,8 +229,7 @@ def contract_create(request):
                 g.save()
 
             rasmlar.instance = contract
-            if rasmlar.is_valid():
-                rasmlar.save()
+            rasmlar.save()
 
             User.objects.filter(pk=request.user.pk).update(
                 contracts_added=F('contracts_added') + 1)
@@ -248,8 +271,9 @@ def contract_edit(request, pk):
             extra_ok = vehicle.is_valid()
         elif tur == Contract.TYPE_KAFILLIK:
             extra_ok = guarantor.is_valid()
+        rasm_ok = rasmlar.is_valid()
 
-        if ok and extra_ok:
+        if ok and extra_ok and rasm_ok:
             contract = form.save(commit=False)
             contract.end_date = form.cleaned_data['end_date']
             contract.save()
@@ -276,8 +300,7 @@ def contract_edit(request, pk):
                 g.save()
 
             rasmlar.instance = contract
-            if rasmlar.is_valid():
-                rasmlar.save()
+            rasmlar.save()
 
             # Logda faqat o'zgargan qismlar soni saqlanadi
             soni = len(form.changed_data)
@@ -353,6 +376,60 @@ def contract_download(request, pk):
     resp = HttpResponse(
         data, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     resp['Content-Disposition'] = f'attachment; filename="shartnoma_{contract.number}.docx"'
+    return resp
+
+
+# --------------------------------------------------------- to'lov jadvali (grafik)
+
+# Shartnoma tuzmasdan grafikni ko'rish — mijozga «qancha to'layman?» degan
+# savolga darrov javob berish uchun. Hisob shartnomadagi bilan bitta funksiya
+# (`payment_schedule`) orqali yuritiladi, shuning uchun natija bosma ilova
+# bilan tiyingacha bir xil bo'ladi.
+
+def _grafik_natijasi(form):
+    """Formadan hisoblangan jadval va yakuniy summalar."""
+    contract = form.contract()
+    qatorlar = payment_schedule(contract)
+    return {
+        'contract': contract,
+        'qatorlar': qatorlar,
+        # Jadval oxiridagi «Jami» qatori uchun — hujjatdagidek
+        'jami_asosiy': sum(q[3] for q in qatorlar),
+        'jami_foiz': sum(q[4] for q in qatorlar),
+        'jami': sum(q[2] for q in qatorlar),
+    }
+
+
+@login_required
+def grafik(request):
+    """To'lov jadvali kalkulyatori.
+
+    Ma'lumot GET orqali yuriladi: sahifani yangilash yoki havolani ulashish
+    natijani yo'qotmaydi.
+    """
+    # GET bo'sh bo'lsa forma bog'lanmaydi — `is_valid()` False qaytaradi va
+    # sahifa faqat bo'sh forma bilan ochiladi.
+    form = GrafikFormasi(request.GET or None)
+    natija = _grafik_natijasi(form) if form.is_valid() else None
+    return render(request, 'contracts/grafik.html', {
+        'form': form, 'natija': natija,
+        'query': request.GET.urlencode(),
+    })
+
+
+@login_required
+def grafik_download(request):
+    """Hisoblangan jadvalni Word hujjati sifatida yuklab olish."""
+    form = GrafikFormasi(request.GET or None)
+    if not form.is_valid():
+        messages.error(request, "Grafik ma'lumotlari to'liq emas.")
+        return redirect('grafik')
+    contract = form.contract()
+    data = build_grafik_docx(contract)
+    resp = HttpResponse(
+        data, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    nom = f'grafik_{contract.number}.docx' if contract.number else 'grafik.docx'
+    resp['Content-Disposition'] = f'attachment; filename="{nom}"'
     return resp
 
 
@@ -609,7 +686,11 @@ def _sinov_konteksti():
               'ariza_taminot', 'garov_mulki_egalik',
               'kafil', 'kafillik_summa', 'garov_mulki', 'garov_egasi',
               'garov_rahbari', 'garov_rahbari_qisqa', 'summa_raqam_soz',
-              'davlat_raqami', 'rusumi', 'rangi', 'shassi', 'yili', 'texpasport']
+              'davlat_raqami', 'rusumi', 'rangi', 'kuzov', 'shassi', 'dvigatel',
+              'yili', 'texpasport',
+              # transport: garovga qo'yuvchi (tashkilot / ishonchnoma)
+              'taminot', 'garovga_qoyuvchi', 'garov_imzo_sarlavha',
+              'garov_imzo_ism', 'garov_imzo_qator', 'garov_dalolat_imzo']
     return {n: 'X' for n in nomlar}
 
 

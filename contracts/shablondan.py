@@ -204,15 +204,69 @@ def _qisqa_ism(toliq):
     return toliq
 
 
-def transport_konteksti(c):
-    v = c.vehicle
+def _transport_garovi(c, v):
+    """Transport garovida «гаровга қўювчи» kim va qanday imzolaydi.
+
+    Uch xil holat `VehicleInfo.egasi_turi` da turadi:
+      tashkilot    — mashina tashkilotniki, uni rahbari buyruq asosida qo'yadi;
+      qarz oluvchi — mashina o'zining nomida;
+      shaxs        — mashina boshqa kishiniki, uni qarz oluvchi ishonchnoma
+                     asosida garovga qo'yadi. Egasi hujjatni imzolamaydi,
+                     ismi faqat «... га тегишли» degan joyda turadi
+                     (xaridor namunasi: «Давронов Хумоюн — matiz», 2026-08-25).
+    """
     mulk = (f'{v.owner}га тегишли, давлат раками {v.state_number} бўлган, '
             f'{v.model} русумли транспорт воситаси')
+    tashkilot = v.egasi_turi == v.EGASI_TASHKILOT
+    ishonchnoma = v.egasi_turi == v.EGASI_SHAXS
+    qarz_oluvchi = (f'{c.borrower_fio} ({c.passport_full}, '
+                    f'Манзил: {c.borrower_address})')
+
+    if tashkilot:
+        return {
+            'garov_mulki': mulk,
+            'taminot': f'{mulk} гаровга қўйилади.',
+            'garovga_qoyuvchi': (
+                f'гаровга кўювчи: {v.owner} номидан буйрук асосида фаолиятини '
+                f'амалга оширувчи, жамият рахбари {v.owner_head}'),
+            'garov_imzo_sarlavha': 'Гаровга  қўювчи:',
+            'garov_imzo_ism': v.owner,
+            'garov_imzo_qator': f'директори:_________________{_qisqa_ism(v.owner_head)}',
+            'dalolatnoma_taraflar': (
+                f'қарз олувчи {c.borrower_fio} ({c.passport_full}, манзили: '
+                f'{c.borrower_address}) хамда гаровга қўювчи {v.owner} '
+                f'рахбари {v.owner_head}'),
+            'garov_dalolat_imzo': f'{v.owner} рахбари :    ___________     {v.owner_head}',
+        }
+
+    # Garovga qo'yuvchi — qarz oluvchining o'zi. Mashina boshqa kishiniki
+    # bo'lsa u buni ishonchnoma asosida qiladi va shartnoma summasi
+    # miqdorida kafillik ham beradi.
+    return {
+        'garov_mulki': mulk,
+        'taminot': (f'{mulk} гарови хамда {c.borrower_fio}нинг {_pul(c.amount)} '
+                    'сумлик кафиллиги такдим этилади.'
+                    if ishonchnoma else f'{mulk} гаровга қўйилади.'),
+        'garovga_qoyuvchi': ('Ишончнома асосида гаровга кўювчи: ' if ishonchnoma
+                             else 'гаровга кўювчи: ') + qarz_oluvchi,
+        'garov_imzo_sarlavha': ('Ишончнома асосида гаровга  қўювчи:' if ishonchnoma
+                                else 'Гаровга  қўювчи:'),
+        # Rekvizit blokida uch qator: ism, pasport, manzil
+        'garov_imzo_ism': (f'{c.borrower_fio}\n{c.passport_full}\n'
+                           f'Манзил: {c.borrower_address}'),
+        'garov_imzo_qator': '___________',
+        'dalolatnoma_taraflar': f'қарз олувчи ва гаровга куювчи {qarz_oluvchi}',
+        'garov_dalolat_imzo': f'___________     {c.borrower_fio}',
+    }
+
+
+def transport_konteksti(c):
+    v = c.vehicle
     ctx = _umumiy(c)
     ctx.update({
         # Butun to'plam bitta raqam bilan yuritiladi
         'garov_raqam': str(c.number),
-        'garov_mulki': mulk,
+        # Eski belgilar: saytdan yuklangan shablonlarda uchrashi mumkin
         'garov_egasi': v.owner,
         'garov_rahbari': v.owner_head or v.owner,
         'garov_rahbari_qisqa': _qisqa_ism(v.owner_head) if v.owner_head else v.owner,
@@ -221,10 +275,13 @@ def transport_konteksti(c):
         'davlat_raqami': v.state_number,
         'rusumi': v.model,
         'rangi': v.color,
-        'shassi': v.chassis_number,
+        'kuzov': v.body_number or '-',
+        'shassi': v.chassis_number or '-',
+        'dvigatel': v.engine_number or '-',
         'yili': v.year,
         'texpasport': v.techpassport,
     })
+    ctx.update(_transport_garovi(c, v))
     return ctx
 
 
@@ -251,19 +308,42 @@ def _summa_tiyin(qiymat):
     return f'{int(butun):,}'.replace(',', ' ') + ',' + kasr
 
 
-def tolov_jadvalini_qosh(doc, contract, qatorlar):
+# Ilovadagi ustun enlari (sm) — xaridor tahrirlagan `shartnoma_168.docx` dan
+# aynan olingan. Jami 16,9 sm — A4 matn maydoniga (17 sm) sig'adi.
+JADVAL_USTUN_ENLARI = [0.81, 3.16, 3.19, 3.19, 3.36, 3.19]
+
+ILOVA_MATN_PT = 12     # xatboshilar, sarlavha, «№» va sana ustunlari
+ILOVA_SUMMA_PT = 11    # FAQAT pul summalari (2–5-ustunlar)
+
+# Pul summalari turadigan ustunlar: qoldiq, asosiy qarz, foiz, umumiy summa.
+# Faqat shular 11 pt — qolgan hamma narsa 12 pt (xaridor talabi, 2026-08-18).
+SUMMA_USTUNLARI = (2, 3, 4, 5)
+
+
+def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
     """Shartnoma oxiriga «1-сонли илова» — to'lov jadvalini qo'shadi.
 
-    Ko'rinishi xaridor bergan namunaga qarab tuzilgan (2026-08-14):
-    ustunlar tartibi, summalar tiyingacha, ostidagi imzo va eslatmalar.
+    Ko'rinishi xaridor tahrirlab qaytargan namunadan olingan (2026-08-18,
+    `shartnoma_168.docx`) — 2026-08-14 namunasini almashtiradi:
+      * ilovadagi BARCHA yozuvlar qalin va 12 pt (eslatmalar ham);
+      * sarlavha ikki qatorga bo'lingan — tashkilot/sana, keyin shartnoma raqami;
+      * jadval kataklari gorizontal va vertikal markazda; FAQAT pul summalari
+        11 pt (SUMMA_USTUNLARI), qolgani 12 pt — sarlavha qatori, «№» va sana
+        ustunlari, «Жами» so'zi;
+      * ustun enlari qat'iy (JADVAL_USTUN_ENLARI), teng bo'linmaydi;
+      * «Жами» qatorida faqat «Жами» so'zi qalin — summalar oddiy.
+
+    `yangi_sahifa=False` — ilova alohida hujjat bo'lganda (grafik
+    kalkulyatorining Word yuklamasi): oldiga bo'sh sahifa qo'yilmaydi.
     """
     from django.conf import settings
+    from docx.enum.table import WD_ALIGN_VERTICAL
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt
+    from docx.shared import Cm, Pt
 
     org = settings.LOMBARD_ORG
 
-    def qator(matn, *, markaz=False, qalin=False, olcham=11):
+    def qator(matn, *, markaz=False, qalin=True, olcham=ILOVA_MATN_PT):
         p = doc.add_paragraph()
         if markaz:
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -275,46 +355,68 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar):
             r.font.name = 'Times New Roman'
         return p
 
-    doc.add_page_break()
-    qator(contract.borrower_fio, markaz=True, qalin=True, olcham=12)
-    qator(f'{org["name"]}нинг {sana_sozlar(contract.date)}-йилдаги '
-          f'№{contract.number}-сонли микрокарз шартномасига 1-сонли илова',
-          markaz=True, olcham=11)
+    def katak(i, j, matn, *, qalin=False, olcham=ILOVA_MATN_PT):
+        """Jadval katagi — gorizontal va vertikal markazda."""
+        yacheyka = jadval.cell(i, j)
+        yacheyka.width = Cm(JADVAL_USTUN_ENLARI[j])
+        yacheyka.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        _katakka_yoz(yacheyka, matn)
+        p = yacheyka.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.runs[0]
+        r.bold = qalin
+        r.font.size = Pt(olcham)
+        r.font.name = 'Times New Roman'
+
+    if yangi_sahifa:
+        doc.add_page_break()
+    qator(contract.borrower_fio, markaz=True)
+    # Sarlavha ikki qatorda — xaridor hujjatidagidek: birinchi qator tashkilot
+    # va sana bilan tugaydi (oxiridagi bo'sh joy ham o'sha yerdan).
+    qator(f'{org["name"]}нинг {sana_sozlar(contract.date)}-йилдаги ', markaz=True)
+    qator(f'№{contract.number}-сонли микрокарз шартномасига 1-сонли илова',
+          markaz=True)
     qator('')
 
     jadval = doc.add_table(rows=len(qatorlar) + 2, cols=6)
     jadval.style = 'Table Grid'
+    jadval.autofit = False
     for j, h in enumerate(JADVAL_SARLAVHALARI):
-        _katakka_yoz(jadval.cell(0, j), h)
-        jadval.cell(0, j).paragraphs[0].runs[0].bold = True
+        katak(0, j, h, qalin=True)
 
     j_asosiy = j_foiz = j_jami = 0
     for i, (n, sana, jami, asosiy, foiz, qoldiq) in enumerate(qatorlar, start=1):
         qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _summa_tiyin(qoldiq),
                      _summa_tiyin(asosiy), _summa_tiyin(foiz), _summa_tiyin(jami)]
         for j, q in enumerate(qiymatlar):
-            _katakka_yoz(jadval.cell(i, j), q)
+            katak(i, j, q, qalin=(j == 0),      # «№» ustuni qalin
+                  olcham=ILOVA_SUMMA_PT if j in SUMMA_USTUNLARI else ILOVA_MATN_PT)
         j_asosiy += asosiy
         j_foiz += foiz
         j_jami += jami
 
-    # «Жами» qatorida qoldiq ustuni (2) bo'sh qoladi — namunada ham shunday
+    # «Жами» qatorida qoldiq ustuni (2) bo'sh qoladi — namunada ham shunday.
+    # Faqat «Жами» so'zi qalin, summalar oddiy (xaridor namunasi, 2026-08-18).
     oxirgi = len(qatorlar) + 1
-    for j, q in [(1, 'Жами'), (3, _summa_tiyin(j_asosiy)),
-                 (4, _summa_tiyin(j_foiz)), (5, _summa_tiyin(j_jami))]:
-        _katakka_yoz(jadval.cell(oxirgi, j), q)
-        jadval.cell(oxirgi, j).paragraphs[0].runs[0].bold = True
+    jami_qatori = [(0, ''), (1, 'Жами'), (2, ''),
+                   (3, _summa_tiyin(j_asosiy)), (4, _summa_tiyin(j_foiz)),
+                   (5, _summa_tiyin(j_jami))]
+    for j, q in jami_qatori:
+        # 2-ustun «Жами» qatorida bo'sh — summa emas, shuning uchun 12 pt
+        summami = j in SUMMA_USTUNLARI and q
+        katak(oxirgi, j, q, qalin=(j == 1),
+              olcham=ILOVA_SUMMA_PT if summami else ILOVA_MATN_PT)
 
     qator('')
-    qator(f'Ижрочи директор :\t\t\t{org["director_short"]}')
+    qator(f'Ижрочи директор :\t\t\t\t\t\t{org["director_short"]}')
     qator('')
-    qator(f'Кредит олувчи:\t\t\t{contract.borrower_fio}')
-    qator('Илованинг бир нусхасини олдим    ____________________')
+    qator(f'Кредит олувчи:\t\t\t\t\t\t{contract.borrower_fio}')
+    qator('Илованинг бир нусхасини олдим   \t\t\t ____________________')
     qator(f'Мурожаат учун Тел: {org.get("phone_jadval", org["phone"])}')
     qator('')
-    qator('Хурматли кредитор!', qalin=True)
+    qator('Хурматли кредитор!')
     for eslatma in JADVAL_ESLATMALARI:
-        qator(eslatma, olcham=10)
+        qator(eslatma)
 
 
 def shablondan_yasa(shablon_nomi, ctx, contract=None, jadval_qatorlari=None):

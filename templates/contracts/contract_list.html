@@ -30,6 +30,7 @@
   <tr>
     <th>№</th><th>Sana</th><th>Mijoz</th><th>Ta’minot</th>
     <th class="num">Summa</th><th class="num">Muddat</th>
+    <th>Kiritilgan</th>
     {% if user.is_boshliq %}<th>Kim kiritgan</th>{% endif %}
     <th>Holat</th><th></th>
   </tr>
@@ -41,6 +42,7 @@
     <td class="muted">{{ c.get_collateral_type_display }}</td>
     <td class="num">{{ c.amount|pul }}</td>
     <td class="num">{{ c.term_months }} oy</td>
+    <td class="muted">{{ c.created_at|date:'d.m.Y H:i' }}</td>
     {% if user.is_boshliq %}<td class="muted">{{ c.created_by|default:'—' }}</td>{% endif %}
     <td>
       {% if c.status == 'pending_delete' %}
@@ -70,5 +72,32 @@
   <div class="empty"><span class="icon">🔎</span>Shartnoma topilmadi.</div>
 {% endif %}
 </div>
+
+{% comment %}Har sahifada 10 tadan shartnoma (xaridor talabi, 2026-08-18).
+Havolalarda qidiruv shartlari saqlanadi — `sorov` shu uchun kerak.{% endcomment %}
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="sahifalar actions" aria-label="Sahifalar">
+  {% if page_obj.has_previous %}
+    <a class="btn btn-secondary btn-sm" rel="prev"
+       href="?{% if sorov %}{{ sorov }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">&lsaquo; Oldingi</a>
+  {% endif %}
+
+  {% for p in sahifa_raqamlari %}
+    {% if p == nuqtalar %}
+      <span class="muted">{{ p }}</span>
+    {% elif p == page_obj.number %}
+      <span class="btn btn-primary btn-sm" aria-current="page">{{ p }}</span>
+    {% else %}
+      <a class="btn btn-secondary btn-sm"
+         href="?{% if sorov %}{{ sorov }}&amp;{% endif %}page={{ p }}">{{ p }}</a>
+    {% endif %}
+  {% endfor %}
+
+  {% if page_obj.has_next %}
+    <a class="btn btn-secondary btn-sm" rel="next"
+       href="?{% if sorov %}{{ sorov }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Keyingi &rsaquo;</a>
+  {% endif %}
+</nav>
+{% endif %}
 
 {% endblock %}

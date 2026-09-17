@@ -38,6 +38,10 @@ urlpatterns = [
     path('shartnoma/<int:pk>/garov-pdf/', con.contract_download_garov_pdf, name='contract_download_garov_pdf'),
     path('shartnoma/<int:pk>/ochirish/', con.contract_delete, name='contract_delete'),
 
+    # To'lov jadvali kalkulyatori — shartnoma tuzmasdan grafik hisoblash
+    path('grafik/', con.grafik, name='grafik'),
+    path('grafik/word/', con.grafik_download, name='grafik_download'),
+
     # O'chirish so'rovlari
     path('sorovlar/', con.delete_requests, name='delete_requests'),
     path('sorov/<int:pk>/<str:action>/', con.delete_request_decide,

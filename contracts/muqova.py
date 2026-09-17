@@ -29,7 +29,7 @@ from docx.shared import Cm, Pt, RGBColor
 SHRIFT = 'Times New Roman'
 
 SARLAVHA_PT = 30       # tashkilot nomi
-ISM_PT = 26            # qarz oluvchi
+ISM_PT = 32            # qarz oluvchi (mijoz talabi, 2026-08-18)
 MATN_PT = 12
 BELGI_PT = 12          # quti ichidagi yozuvlar
 

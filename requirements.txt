@@ -12,6 +12,10 @@ python-docx>=1.1.0
 # Jinja2 va lxml shu paket bilan birga avtomatik o'rnatiladi.
 docxtpl>=0.19.0
 
+# Garov suratlari uchun. Django'ning ImageField'i Pillow'siz ishlamaydi
+# (toza kompyuterda `migrate` shu sababli to'xtab qolardi).
+Pillow>=10.0
+
 # ---------------------------------------------------------------------------
 # PDF haqida: pip paketi kerak emas. PDF Word faylidan aylantiriladi va buning
 # uchun tizimda quyidagilardan biri bo'lishi kifoya:

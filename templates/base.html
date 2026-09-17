@@ -40,6 +40,7 @@
     <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="on"{% endif %}>Bosh sahifa</a>
     <a href="{% url 'contract_list' %}" {% if request.resolver_match.url_name == 'contract_list' %}class="on"{% endif %}>Shartnomalar</a>
     <a href="{% url 'contract_create' %}" {% if request.resolver_match.url_name == 'contract_create' %}class="on"{% endif %}>+ Yangi</a>
+    <a href="{% url 'grafik' %}" {% if request.resolver_match.url_name == 'grafik' %}class="on"{% endif %}>Grafik</a>
     {% if user.is_boshliq %}
       <a href="{% url 'worker_list' %}" {% if request.resolver_match.url_name == 'worker_list' %}class="on"{% endif %}>Ishchilar</a>
       <a href="{% url 'delete_requests' %}" {% if request.resolver_match.url_name == 'delete_requests' %}class="on"{% endif %}>So‘rovlar</a>
@@ -79,6 +80,12 @@
     {% block content %}{% endblock %}
   </div>
 </main>
+
+<footer class="sahifa-past">
+  <div class="container">
+    <span>Lombard <b>v{{ versiya }}</b></span>
+  </div>
+</footer>
 </div>
 
 <script>
@@ -151,6 +158,7 @@
   };
 })();
 </script>
+<script src="{% statik 'js/pul.js' %}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

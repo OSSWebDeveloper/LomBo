@@ -33,6 +33,152 @@ admin panel yoki saytdan, superuser parolini
 `seed_demo.py` fayli eskirgan (u boshqa hisoblar yaratadi va yangi rol tizimiga
 mos emas) — ishlatmang yoki o'chirib tashlang.
 
+## Mijoz kompyuteriga o'rnatish (ORNATISH.bat)
+
+Mijozda Python ham, Git ham bo'lishi shart emas — `ORNATISH.bat` ni ikki marta
+bosish kifoya. U administrator huquqini o'zi so'raydi va ketma-ket to'qqiz ishni
+bajaradi:
+
+| # | Bosqich | Nima qiladi |
+|---|---|---|
+| 1 | Python | 3.12+ bormi tekshiradi; bo'lmasa python.org dan yuklab, jimgina o'rnatadi |
+| 2 | Server | Ishlab turgan eski serverni to'xtatadi (fayllar band bo'lmasin) |
+| 3 | Yuklash | GitHub'dan yangi nusxani oladi; internet yoki ombor yopiq bo'lsa — `.bat` turgan papkadagi nusxani ishlatadi |
+| 4 | Fayllar | `C:\lombard` ga ko'chiradi; bazadan zaxira oladi |
+| 5 | Kutubxonalar | `.venv` yasab, `requirements.txt` ni o'rnatadi |
+| 6 | Ma'lumotlar | **Birinchi o'rnatishda** saytdagi baza va garov suratlarini ko'chirib oladi |
+| 7 | Baza | `migrate` va `boshlangich` (maxfiy kalit + kerak bo'lsa birinchi hisob) |
+| 8 | Yorliqlar | Ish stoliga ikkita yorliq qo'yadi |
+| 9 | Hujjatlar | Word shablonlari joyidami, PDF uchun Word/LibreOffice bormi — tekshiradi |
+
+Oxirida sayt fon rejimida ishga tushadi va Chrome o'zi ochiladi.
+
+**Manzil:** `http://127.0.0.1:8010/` — sayt faqat shu kompyuterda ochiladi,
+tarmoqqa chiqarilmaydi.
+
+### Ish stolidagi yorliqlar
+
+| Yorliq | Nima qiladi |
+|---|---|
+| **Lombard** | Serverni oynasiz ishga tushiradi va Chrome'da saytni ochadi |
+| **Lombardni to'xtatish** | Ishlab turgan serverni to'xtatadi |
+
+Server ishlayotganda soat yonida (treyda) oltin belgi turadi: chap tugma —
+saytni ochadi, o'ng tugma — «Dasturni yangilash» va «Serverni to'xtatish».
+Server to'xtasa belgi o'zi yo'qoladi.
+
+### Birinchi o'rnatishda ma'lumotlar saytdan keladi
+
+Yangi kompyuterda baza bo'm-bo'sh bo'lsa, o'rnatuvchi jonli saytdagi
+ma'lumotlarni shu yerga ko'chirib oladi:
+
+```
+https://mrclayd.pythonanywhere.com/
+```
+
+Ekranda saytning **boshqaruv (superuser) logini va paroli** so'raladi — parol
+yozilayotganda ko'rinmaydi va hech qayerda saqlanmaydi. Enter bosilsa qadam
+o'tkazib yuboriladi va bo'sh bazadan boshlanadi.
+
+Nima ko'chiriladi:
+
+| Nima | Qayerdan | Qayerga |
+|---|---|---|
+| `db.sqlite3` — shartnomalar, hisoblar, tarix | Saytning ichki paneli (`/ic-9f4k2m/`) | `C:\lombard\db.sqlite3` |
+| Garov suratlari | O'sha panel, `media` papkasi (zip) | `C:\lombard\media\` |
+
+Muhim jihatlar:
+
+* Ma'lumot **faqat bir marta**, birinchi o'rnatishda olinadi. Keyingi
+  yangilanishlarda bu qadam o'tkazib yuboriladi — mahalliy bazaning ustiga
+  hech qachon yozilmaydi.
+* Baza kelgach `migrate` ishlaydi, ya'ni saytdagi baza eskiroq bo'lsa ham
+  yangi jadvallar o'z-o'zidan qo'shiladi.
+* Ma'lumot kelgan bo'lsa saytdagi loginlar bilan kiriladi (`boshliq`/`boshliq`
+  hisobi yaratilmaydi).
+* Sayt javob bermasa yoki parol noto'g'ri bo'lsa — o'rnatish to'xtamaydi,
+  shunchaki bo'sh bazadan boshlanadi.
+* Panelga faqat superuser kira oladi, ya'ni bu yo'l saytdagidan ortiq huquq
+  bermaydi. Parol mijozning kompyuterida qolmaydi.
+
+Xohlasangiz qo'lda ham chaqirsa bo'ladi (masalan boshqa saytdan olish uchun):
+
+```bash
+set LOMBARD_SAYT_LOGIN=...
+set LOMBARD_SAYT_PAROL=...
+python bazani_ol.py --manzil https://mrclayd.pythonanywhere.com --nishon C:\lombard --suratlar
+```
+
+**O'rnatishda o'tkazib yuborilgan bo'lsa** (Enter bosilgan yoki parol noto'g'ri
+kiritilgan), qayta o'rnatish shart emas — `C:\lombard\MALUMOTNI_OL.bat` ni ishga
+tushiring. U login/parolni so'raydi, serverni vaqtincha to'xtatadi, eski bazadan
+zaxira oladi (`db_zaxira_oxirgi.sqlite3`), saytdagi ma'lumotni qo'yadi va
+serverni qaytadan ochadi.
+
+Shu ikki o'zgaruvchi `ORNATISH.bat` dan oldin berilsa, o'rnatuvchi hech nima
+so'ramaydi — bir nechta kompyuterga ketma-ket o'rnatishda qulay.
+
+### Birinchi hisob
+
+Saytdan ma'lumot olinmagan bo'lsa (yuqoridagi qadam o'tkazib yuborilgan),
+`boshlangich` buyrug'i bitta boshliq hisobini ochadi:
+login `boshliq`, parol `boshliq` (to'liq tahrirlash va shablon vakolatlari
+bilan). **Saytga kirgach parolni almashtirish shart.** Hisoblar allaqachon bor
+bo'lsa buyruq hech nimaga tegmaydi — yangilashda parollar saqlanib qoladi.
+
+Admin panel (`/admin/`) uchun alohida hisob kerak bo'lsa:
+
+```bash
+python manage.py boshlangich --admin        # faqat bo'sh bazada
+python manage.py panel_admin --username ...  # istalgan vaqtda
+```
+
+### Yangilash
+
+Shu `ORNATISH.bat` ni qayta ishga tushirish kifoya (yoki treydagi belgidan
+«Dasturni yangilash»). Ma'lumotlar bazasi, garov suratlari va saytdan
+yuklangan shablonlar **hech qachon o'chirilmaydi** — yangilanishdan oldin
+bazadan `db_zaxira_oxirgi.sqlite3` nusxasi olinadi.
+
+Ombor (`OSSWebDeveloper/LomBo`) yopiq bo'lgani uchun hozir GitHub'dan yuklash
+ishlamaydi: o'rnatuvchi loyiha papkasining o'zidan nusxa oladi. Ya'ni mijozga
+butun papkani (zip yoki fleshka bilan) berib, ichidagi `ORNATISH.bat` ni
+bostirish kerak. Omborni ochiq qilsangiz — yangilanish internet orqali o'zi
+keladi, boshqa hech nima o'zgartirilmaydi.
+
+### O'rnatuvchi fayllar
+
+| Fayl | Vazifasi |
+|---|---|
+| `ORNATISH.bat` | O'rnatish va yangilash (to'qqiz bosqich) |
+| `Ishga_tushirish.vbs` | Serverni fonda ochadi, Chrome'ni chaqiradi (yorliq shuni bosadi) |
+| `Toxtatish.vbs` | Serverni jimgina to'xtatadi |
+| `Server.bat` | `runserver --noreload`, chiqishini `server.log` ga yozadi |
+| `MALUMOTNI_OL.bat` | Saytdagi ma'lumotlarni keyin ham olib keladi (qayta o'rnatmasdan) |
+| `bazani_ol.py` | Saytdagi baza va suratlarni ko'chirib oladi (birinchi o'rnatish) |
+| `Belgi.ps1` | Treydagi belgi va uning menyusi |
+| `yorliqlar.ps1` | Ish stoli yorliqlarini yasaydi |
+| `Yorliqlarni_tiklash.bat` | Yorliqlar ko'rinmay qolsa — faqat ularni qayta yasaydi |
+| `Tekshirish.bat` | Serverni oynali rejimda ochadi — xato ekranda ko'rinadi |
+| `Toxtatish.bat` | Portni band qilgan jarayonni yopadi (zaxira usul) |
+| `versiya.txt` | O'rnatilgan versiya; yangilashda shu raqam solishtiriladi |
+| `lombard.ico`, `lombard_stop.ico` | Yorliq va trey belgilari |
+
+O'rnatilgan kompyuterda qo'shimcha yasaladigan fayllar: `db.sqlite3`,
+`db_zaxira_oxirgi.sqlite3`, `.secret_key`, `port.txt`, `server.log`,
+`media/garov/…` — ular git'ga tushmaydi va yangilashda ko'chirilmaydi.
+
+### Nimadir ishlamasa
+
+* **Sayt ochilmadi** — `C:\lombard\Tekshirish.bat`: server oynada ishga tushadi
+  va xato ko'rinib turadi. Batafsil yozuv: `C:\lombard\server.log`.
+* **Yorliqlar yo'q** — `C:\lombard\Yorliqlarni_tiklash.bat` (yoki papkadagi
+  tayyor `.lnk` fayllarini qo'lda ish stoliga ko'chiring).
+* **Port band** — `port.txt` dagi raqamni o'zgartiring va `ORNATISH.bat` dagi
+  `set "PORT=8010"` qatorini ham shunga moslang.
+* **PDF tugmasi yo'q** — kompyuterda Microsoft Word ham, LibreOffice ham yo'q.
+  Word hujjat baribir yuklab olinadi.
+
 ## Rollar va huquqlar
 
 ### Admin panel va sayt — alohida kirish
@@ -158,6 +304,45 @@ Summalar avtomatik so'z bilan yoziladi (kirill-o'zbekcha):
 To'lov jadvali differensial usulda hisoblanadi: asosiy qarz oylarga teng bo'linadi,
 foiz qolgan qoldiqqa hisoblanadi.
 
+Ikki nozik qoida bor — ikkalasi ham lombardning bosma grafiklaridan aniqlangan
+va `TolovJadvaliTest` da qat'iy yozib qo'yilgan:
+
+- **Asosiy ulush** eng yaqin butun so'mga yaxlitlanadi (yarmi yuqoriga):
+  `5 000 000 / 12 = 416 666,67` → `416 667,00`. Bo'linishdan qolgani oxirgi
+  to'lovga qo'shiladi (`416 663,00`). Pastga yaxlitlansa butun jadval bir
+  so'mdan surilib ketadi — qoldiq foiz bazasi bo'lgani uchun xato har oyda
+  o'sadi.
+- **Foiz** avval kunlik summaga yaxlitlanadi, keyin kunlarga ko'paytiriladi:
+  `yaxlit(qoldiq × yillik/365, 2 xona) × kunlar`. Kabisa yilida 365 emas, 366.
+
+## Grafik bo'limi — shartnoma tuzmasdan hisoblash
+
+Yuqori menyudagi **Grafik** — to'lov jadvali kalkulyatori (`/grafik/`). Mijoz
+«qancha to'layman?» deb so'raganda shartnoma ochmasdan javob berish uchun.
+
+Majburiy to'rt maydon: qarz summasi, yillik foiz, shartnoma sanasi, muddat.
+«Qo'shimcha» bo'limida to'rttasi ixtiyoriy:
+
+| Maydon | Bo'sh qolsa |
+|---|---|
+| Birinchi to'lov sanasi | Keyingi oyning 10-sanasi |
+| Oxirgi to'lov sanasi | Shartnoma sanasi + muddat − 1 kun |
+| Qarz oluvchi F.I.Sh. | Word hujjatida bo'sh qoladi |
+| Shartnoma № | Word hujjatida bo'sh qoladi |
+
+Hisob shartnomadagi bilan **bitta funksiya** (`payment_schedule`) orqali
+yuritiladi — forma faqat saqlanmaydigan `Contract` yig'ib beradi. Shuning uchun
+kalkulyator natijasi bosma 1-ilova bilan tiyingacha bir xil bo'ladi; buni
+`GrafikSahifasiTest` tekshirib turadi.
+
+Ma'lumot GET orqali yuriladi: sahifani yangilash natijani yo'qotmaydi, havolani
+nusxalab yuborsa ham o'sha jadval ochiladi.
+
+Sahifada faqat jadvalning o'zi chiqadi — xulosa kartalari yo'q (xaridor
+qarori, 2026-08-24). Jadval ustida **Word** (faqat 1-ilovaning o'zi, alohida
+fayl) va **Chop etish** tugmalari. Chop etishda menyu, forma va tugmalar chiqmaydi — faqat jadval
+(`app.css` dagi `@media print`).
+
 ## Ko'rinish: 3 stil × 2 rejim
 
 Yuqori paneldagi ro'yxatdan stil tanlanadi, yonidagi ☀️ / 🌙 tugmasi kunduzgi va
@@ -232,16 +417,38 @@ harflari lotinga o'giriladi, chunki asl shartnomalarda ular aralash yozilgan
 
 ### Garovga qo'yuvchi boshqa shaxs bo'lsa
 
-Zargarlik garovida «Garovga qo'yuvchi boshqa shaxs» belgisi bor: masalan mijoz
-onasining tillasini garovga qo'ysa. Belgi qo'yilganda F.I.Sh., hujjat (turi,
-viloyat, IIV bo'limi, sana, seriya-raqam) va manzil so'raladi.
+Formada «Qarz oluvchiniki | Boshqa shaxsniki» degan almashtirgich turadi
+(ikkita tugma bitta qutida — `static/css/app.css` dagi `.almashtirgich`).
+Zargarlikda «Boshqa shaxsniki» tanlansa — masalan mijoz onasining tillasini
+garovga qo'ysa — F.I.Sh., hujjat (turi, viloyat, IIV bo'limi, sana,
+seriya-raqam) va manzil so'raladi.
 
 Bu ma'lumot faqat **garov shartnomasi** va **baholash dalolatnomasi**ga tushadi —
-mikroqarz shartnomasida qarz oluvchi o'z o'rnida qoladi. Belgi qo'yilmasa hujjat
-avvalgidek, ya'ni garovga qo'yuvchi sifatida qarz oluvchining o'zi chiqadi.
+mikroqarz shartnomasida qarz oluvchi o'z o'rnida qoladi. «Qarz oluvchiniki»
+tanlangan bo'lsa hujjat avvalgidek, ya'ni garovga qo'yuvchi sifatida qarz
+oluvchining o'zi chiqadi.
 
-Transportda bu ish alohida qilinmaydi: u yerda «Egasi (garovga qo'yuvchi)» maydoni
-allaqachon bor va garov hujjatiga o'sha tushadi.
+Transportda almashtirgich **uch tugmali** (`VehicleInfo.egasi_turi`) — mashina
+faqat shu uch holatda bo'ladi:
+
+| Tanlov | Formada so'raladi | Hujjatda garovga qo'yuvchi |
+|---|---|---|
+| **Qarz oluvchiniki** | hech narsa — «Egasi» maydoniga saqlashda qarz oluvchining ismi yoziladi | qarz oluvchi (pasporti va manzili bilan) |
+| **Boshqa (jismoniy shaxs)** | egasining ismi, hujjati (turi, viloyat, IIV bo'limi/tuman, sana, seriya-raqam) va manzili | qarz oluvchi — **ishonchnoma asosida**; egasining ismi «...га тегишли» degan joyda turadi, u hujjatni imzolamaydi |
+| **Boshqa (tashkilot)** | tashkilot nomi va rahbari | tashkilot — buyruq asosida rahbari imzolaydi |
+
+Turi almashtirilsa keraksiz maydonlar tozalanadi — formada ham
+(`VehicleForm.clean`), saqlashda ham (`VehicleInfo.save`), shunda eski
+egasining ma'lumoti bazada ham, hujjatda ham qolib ketmaydi. Eski
+shartnomalarda turi `0018_egasi_turini_aniqlash` migratsiyasi bilan
+«Egasi» maydoniga qarab aniqlangan.
+
+«Boshqa (jismoniy shaxs)» holatida mikroqarz shartnomasining 1.1-bandiga qarz
+oluvchining shartnoma summasi miqdoridagi kafilligi ham qo'shiladi — xaridor
+bergan namuna hujjatdagidek («Давронов Хумоюн — matiz», 2026-08-25).
+
+Shartnoma qachon kiritilgani ro'yxatda «Kiritilgan» ustunida va shartnoma
+sahifasida «Kiritilgan vaqti» qatorida turadi (soati bilan, Toshkent vaqti).
 
 ### Hujjatdagi harflar rangi
 
@@ -343,6 +550,7 @@ lombard_site/
 ├── config/settings.py  # sozlamalar (tashkilot rekvizitlari shu yerda)
 ├── templates/
 ├── static/css/app.css
+├── static/js/pul.js    # pul maydonini yozayotganda «7 000 000» qilib bo'lish
 └── seed_demo.py        # namuna ma'lumotlar
 ```
 

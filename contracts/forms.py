@@ -3,16 +3,30 @@ import re
 
 from django import forms
 from django.forms import inlineformset_factory
+from django.utils import timezone
 
-from .docgen import contract_end_date
+from .docgen import add_months, contract_end_date
 from .formatlash import hujjat_raqami, pul_matn, pul_son, tuman_matni
 from .models import (HUJJAT_PASPORT, HUJJAT_TURLARI, VILOYATLAR, Contract,
                      GarovRasm, GuarantorInfo, JewelryItem, VehicleInfo,
-                     next_contract_number)
+                     grafik_boshlanishi, next_contract_number)
 
 
 class DateInput(forms.DateInput):
+    """Brauzerning sana tanlagichi — qiymati ALBATTA ISO ko'rinishida.
+
+    `LANGUAGE_CODE = 'uz'` bo'lgani uchun Django birinchi format sifatida
+    `%d.%m.%Y` ni oladi va maydonga `24.08.2026` deb yozadi. `<input
+    type="date">` esa faqat `2026-08-24` ni tushunadi — natijada tayyor sana
+    ko'rinmay, maydon bo'sh turadi. Shuning uchun ko'rsatish formati qat'iy
+    ISO. Yuborilgan qiymat baribir `DATE_INPUT_FORMATS` bo'yicha o'qiladi,
+    ya'ni qo'lda `24.08.2026` deb yozilsa ham qabul qilinaveradi.
+    """
+
     input_type = 'date'
+
+    def __init__(self, attrs=None, format='%Y-%m-%d'):
+        super().__init__(attrs, format)
 
 
 class PulInput(forms.TextInput):
@@ -342,14 +356,46 @@ JewelryFormSet = inlineformset_factory(
 
 
 class VehicleForm(forms.ModelForm):
+    """Transport garovi. Mashina egasi kimligiga qarab maydonlar so‘raladi."""
+
+    # Egasi boshqa jismoniy shaxs bo‘lganda to‘ldiriladigan maydonlar
+    EGASI_HUJJATI = ('owner_passport_type', 'owner_passport_region',
+                     'owner_passport_org', 'owner_passport_district',
+                     'owner_passport_date', 'owner_passport_number',
+                     'owner_address')
+
+    # Bularning majburiyligi hujjat turiga bog‘liq (ContractForm dagidek):
+    # IIV raqami ID kartada, tuman esa biometrik pasportda so‘raladi.
+    TURIGA_BOGLIQ = ('owner_passport_org', 'owner_passport_district')
+
+    # Formada egasi bo‘limi alohida, mashinaning o‘zi alohida ko‘rsatiladi
+    EGASI_MAYDONLARI = ('egasi_turi', 'owner', 'owner_head') + EGASI_HUJJATI
+
+    @property
+    def mashina_maydonlari(self):
+        """Egasiga tegishli bo‘lmagan maydonlar — davlat raqami, rusumi..."""
+        return [self[nom] for nom in self.fields
+                if nom not in self.EGASI_MAYDONLARI]
+
     class Meta:
         model = VehicleInfo
         exclude = ['contract']
+        widgets = {'egasi_turi': forms.RadioSelect,
+                   'owner_passport_date': DateInput}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'form-control')
+        # Almashtirgich tugmalari — o‘z uslubi bor
+        self.fields['egasi_turi'].widget.attrs.pop('class', None)
+        for nom in ('owner_passport_type', 'owner_passport_region'):
+            self.fields[nom].widget.attrs['class'] = 'form-select'
+        # Egasi qarz oluvchining o‘zi bo‘lsa bu maydon so‘ralmaydi —
+        # u saqlashda qarz oluvchining ismi bilan to‘ladi (VehicleInfo.save).
+        self.fields['owner'].required = False
+        # Hujjat raqami: AD№1234567 — qarz oluvchinikidek 10 belgi
+        self.fields['owner_passport_number'].widget.attrs['maxlength'] = 10
         # Barcha maydonlar to'ldirilishi shart. Ba'zi transportda kuzov yoki
         # dvigatel raqami bo'lmaydi — o'sha joyga «-» qo'yiladi (asl hujjatdagidek).
         for nom in ('body_number', 'chassis_number', 'engine_number'):
@@ -357,6 +403,56 @@ class VehicleForm(forms.ModelForm):
             if not self.initial.get(nom) and not getattr(self.instance, nom, ''):
                 self.fields[nom].initial = '-'
             self.fields[nom].help_text = 'Bo‘lmasa «-» qoldiring.'
+
+    def clean_owner_passport_org(self):
+        return re.sub(r'\D', '', (self.cleaned_data.get('owner_passport_org') or '').strip())
+
+    def clean_owner_passport_district(self):
+        return tuman_matni(self.cleaned_data.get('owner_passport_district'))
+
+    def clean_owner_passport_number(self):
+        return hujjat_raqami(self.cleaned_data.get('owner_passport_number', ''))
+
+    def clean(self):
+        """Egasi turiga qarab kerakli maydonlarni talab qiladi.
+
+        Keraksizlari tozalanadi: turini almashtirgandan keyin eski egasining
+        ma’lumoti hujjatda qolib ketmasligi kerak.
+        """
+        data = super().clean()
+        turi = data.get('egasi_turi') or VehicleInfo.EGASI_OZI
+        if turi != VehicleInfo.EGASI_TASHKILOT:
+            data['owner_head'] = ''
+        if turi != VehicleInfo.EGASI_SHAXS:
+            for nom in self.EGASI_HUJJATI:
+                data[nom] = None if nom.endswith('_date') else ''
+        if turi == VehicleInfo.EGASI_OZI:
+            data['owner'] = ''            # saqlashda qarz oluvchining ismi yoziladi
+            return data
+
+        if not data.get('owner') and not self.errors.get('owner'):
+            self.add_error('owner', 'Mashina egasini yozing.')
+        if turi == VehicleInfo.EGASI_TASHKILOT:
+            if not data.get('owner_head'):
+                self.add_error('owner_head', 'Tashkilot rahbarini yozing.')
+            return data
+
+        for nom in self.EGASI_HUJJATI:
+            if nom in self.TURIGA_BOGLIQ:
+                continue                  # turiga bog‘liq, pastda tekshiriladi
+            if not data.get(nom) and not self.errors.get(nom):
+                self.add_error(nom, 'Egasining ma’lumotini to‘ldiring.')
+        if data.get('owner_passport_type') == HUJJAT_PASPORT:
+            data['owner_passport_org'] = ''
+            if not data.get('owner_passport_district'):
+                self.add_error('owner_passport_district',
+                               'Tumanni kirillcha kiriting. Masalan: Когон тумани')
+        else:
+            data['owner_passport_district'] = ''
+            if not data.get('owner_passport_org'):
+                self.add_error('owner_passport_org',
+                               'IIV bo‘lim raqamini kiriting (faqat son).')
+        return data
 
 
 class GuarantorForm(forms.ModelForm):
@@ -416,6 +512,119 @@ class GarovRasmForm(forms.ModelForm):
                                                  'accept': 'image/*'})
 
 
+class GarovRasmBaseFormSet(forms.BaseInlineFormSet):
+    """Kamida bitta surat bo'lishi shart (xaridor talabi, 2026-08-18).
+
+    Sanoqqa yangi yuklangani ham, bazada turgani ham kiradi — tahrirlashda
+    suratni qayta yuklash talab qilinmaydi. O'chirish belgisi qo'yilgan
+    qatorlar hisobga olinmaydi: hammasi o'chirilsa forma xato beradi.
+    """
+    KAMIDA = 1
+
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return                      # avval qatordagi xatolar tuzatilsin
+        soni = 0
+        for forma in self.forms:
+            if self.can_delete and self._should_delete_form(forma):
+                continue
+            # Bo'sh qatorda `rasm` bo'lmaydi; o'zgartirilmagan qatorda esa
+            # bazadagi fayl qaytadi (FileField.clean initial'ni qaytaradi).
+            if forma.cleaned_data.get('rasm'):
+                soni += 1
+        if soni < self.KAMIDA:
+            raise forms.ValidationError(
+                f'Kamida {self.KAMIDA} ta garov surati yuklang.')
+
+
 GarovRasmFormSet = inlineformset_factory(
-    Contract, GarovRasm, form=GarovRasmForm, extra=3, can_delete=True,
+    Contract, GarovRasm, form=GarovRasmForm, formset=GarovRasmBaseFormSet,
+    extra=3, can_delete=True,
 )
+
+
+# ------------------------------------------------------ to'lov jadvali kalkulyatori
+
+class GrafikFormasi(forms.Form):
+    """Shartnoma tuzmasdan to'lov jadvalini hisoblash.
+
+    Hisobning o'zi bu yerda emas — `contract()` saqlanmaydigan `Contract`
+    yig'ib beradi, uni `payment_schedule` odatdagidek hisoblaydi. Shu bilan
+    kalkulyator natijasi bosma ilova bilan tiyingacha bir xil bo'ladi.
+    """
+
+    MUDDAT_CHEGARASI = 120        # 10 yil — undan uzog'i lombardda uchramaydi
+
+    amount = PulField(label="Qarz summasi (so'm)", min_value=1,
+                      max_digits=15, decimal_places=0)
+    interest_rate = forms.IntegerField(
+        label='Yillik foiz (%)', min_value=0, max_value=300, initial=60)
+    date = forms.DateField(label='Shartnoma sanasi', widget=DateInput())
+    term_months = forms.IntegerField(
+        label='Muddat (oy)', min_value=1, max_value=MUDDAT_CHEGARASI, initial=12)
+
+    # ---- quyidagilari ixtiyoriy: bo'sh qolsa shartnomadagidek hisoblanadi
+    payment_start_date = forms.DateField(
+        label="Birinchi to'lov sanasi", required=False, widget=DateInput(),
+        help_text="Bo'sh qoldirilsa — keyingi oyning 10-sanasi.")
+    end_date = forms.DateField(
+        label="Oxirgi to'lov sanasi", required=False, widget=DateInput(),
+        help_text="Bo'sh qoldirilsa — shartnoma sanasi + muddat − 1 kun.")
+    borrower_fio = forms.CharField(
+        label='Qarz oluvchi F.I.Sh. (kirillda)', required=False, max_length=200,
+        help_text='Faqat Word hujjatiga tushadi.')
+    number = forms.IntegerField(
+        label='Shartnoma №', required=False, min_value=1,
+        help_text='Faqat Word hujjatiga tushadi.')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['date'].initial = timezone.localdate()
+        for field in self.fields.values():
+            # `PulField` o'z klassini widget'ida belgilab qo'ygan — tegilmaydi
+            field.widget.attrs.setdefault('class', 'form-control')
+
+    def clean(self):
+        data = super().clean()
+        sana = data.get('date')
+        oylar = data.get('term_months')
+        if not sana or not oylar:
+            return data               # majburiy maydon xatosi allaqachon aytilgan
+
+        # Bo'sh qoldirilgan sanalar shartnomadagi qoidalar bo'yicha to'ldiriladi
+        boshlanish = data.get('payment_start_date') or grafik_boshlanishi(sana)
+        tugash = data.get('end_date') or contract_end_date(sana, oylar)
+        data['payment_start_date'] = boshlanish
+        data['end_date'] = tugash
+
+        # Birinchi davr shartnoma sanasidan boshlanadi — teskari bo'lsa foiz
+        # manfiy chiqib ketadi.
+        if boshlanish <= sana:
+            self.add_error('payment_start_date',
+                           "Birinchi to'lov shartnoma sanasidan keyin bo'lishi kerak.")
+            return data
+
+        # Oxirgi to'lov odatdagi oylik sanani almashtiradi — u oldingi
+        # to'lovdan keyinga tushishi shart.
+        oldingi = add_months(boshlanish, oylar - 2) if oylar >= 2 else sana
+        if tugash <= oldingi:
+            self.add_error('end_date',
+                           "Oxirgi to'lov oldingi to'lovdan keyin bo'lishi kerak "
+                           f"({oldingi.strftime('%d.%m.%Y')} dan keyin).")
+        return data
+
+    def contract(self):
+        """Hisob uchun saqlanmaydigan `Contract` — bazaga yozilmaydi."""
+        d = self.cleaned_data
+        return Contract(
+            number=d.get('number') or 0,
+            date=d['date'],
+            end_date=d['end_date'],
+            payment_start_date=d['payment_start_date'],
+            collateral_type=Contract.TYPE_ZARGARLIK,
+            borrower_fio=d.get('borrower_fio') or '',
+            amount=d['amount'],
+            term_months=d['term_months'],
+            interest_rate=d['interest_rate'],
+        )

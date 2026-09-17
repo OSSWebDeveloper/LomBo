@@ -31,3 +31,7 @@ ngrok.exe
 Thumbs.db
 desktop.ini
 ~$*.doc*
+
+# O'rnatilgan kompyuterda yasaladigan fayllar (ORNATISH.bat)
+port.txt
+db_zaxira_oxirgi.sqlite3

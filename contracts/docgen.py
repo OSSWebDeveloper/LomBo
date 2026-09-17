@@ -758,10 +758,18 @@ def payment_schedule(contract):
     oylar = contract.term_months
     yillik = Decimal(contract.interest_rate) / 100
 
-    # Asosiy qarz butun so'mga yaxlitlanadi (pastga), qoldiq tiyinlar oxirgi
-    # to'lovga qo'shiladi — aks holda qoldiq ustunida «7 333 333,33» kabi
-    # ko'rimsiz raqamlar chiqadi. Namunada ham qoldiqlar butun.
-    asosiy_ulush = Decimal(int(summa / oylar))
+    # Asosiy qarz BUTUN so'mga yaxlitlanadi (eng yaqiniga, yarmi yuqoriga),
+    # bo'linishdan qolgani oxirgi to'lovga qo'shiladi. Bir kun tiyinli
+    # bo'linish sinab ko'rilgan edi (583 333,33) — u lombard grafigidan
+    # jami 1,29 so'mga farq qilgani uchun bekor qilindi.
+    #   №169 (2026-08-19): 7 000 000 / 12 = 583 333,33 -> 583 333,00,
+    #     oxirgisi 583 337,00;
+    #   №170 (2026-08-24): 5 000 000 / 12 = 416 666,67 -> 416 667,00,
+    #     oxirgisi 416 663,00.
+    # Avval pastga (int) yaxlitlanardi — №169 da bu farq bermagan
+    # (,33 baribir pastga tushadi), ammo №170 da butun jadvalni surib
+    # yuborgan edi. Tekshiruv: `TolovJadvaliTest`.
+    asosiy_ulush = (summa / oylar).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
     qatorlar = []
     qoldiq = summa
     oldingi_sana = contract.date
@@ -849,6 +857,22 @@ def build_contract_docx(contract) -> bytes:
     """
     from .shablondan import hujjat_yasa
     return hujjat_yasa(contract, qism='hammasi')
+
+
+def build_grafik_docx(contract) -> bytes:
+    """Faqat to'lov jadvali — alohida hujjat (grafik kalkulyatori uchun).
+
+    Shartnoma paketidagi 1-ilovaning aynan o'zi: bir xil ustun enlari,
+    shriftlar va eslatmalar. Farqi — oldida bo'sh sahifa yo'q, chunki
+    hujjat shu jadvaldan iborat.
+    """
+    from .shablondan import tolov_jadvalini_qosh
+    doc = _new_doc()
+    tolov_jadvalini_qosh(doc, contract, payment_schedule(contract),
+                         yangi_sahifa=False)
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
 
 
 def build_garov_docx(contract):

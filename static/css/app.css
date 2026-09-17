@@ -372,6 +372,8 @@ input[readonly],.avto-maydon{
   font-size:12.5px;font-weight:700;color:var(--muted);
   text-transform:uppercase;letter-spacing:.04em;margin:0 0 12px;
 }
+/* Majburiy bo'lim belgisi (garov suratlari) */
+.majburiy{color:var(--danger)}
 .field{margin-bottom:13px}
 .help{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
 .errors{color:var(--danger);font-size:12.5px;margin-top:4px;font-weight:500}
@@ -405,13 +407,19 @@ input[readonly],.avto-maydon{
   font:inherit;font-size:13px;font-weight:600;padding:0;
 }
 .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-/* Jadval qatoridagi tugmalar o'ngga tekislanadi va o'ralganda bir-biriga
-   yopishib turadi (aks holda ular qator bo'yi bo'ylab yoyilib ketadi) */
-/* `nowrap` majburiy: «Zamonaviy» mavzuda chapda yon panel bor, ustun torayadi
-   va tugmalar pastga tushib ketardi — qator ikki barobar balandlashardi.
-   Jadval `.table-wrap` ichida gorizontal suriladi, shuning uchun juda tor
-   ekranda ham sahifa buzilmaydi. */
-td.actions{justify-content:flex-end;flex-wrap:nowrap}
+/* Jadval qatoridagi tugmalar o'ngga tekislanadi va bir qatorda turadi.
+   `display:table-cell` MAJBURIY: `.actions` dagi `display:flex` katakni jadval
+   qatoridan chiqarib yuborardi — natijada qator ostidagi chiziq HOLAT
+   ustunida uzilib qolar, tugmalar esa qatordan tashqarida suzib turardi
+   (xaridor 2026-08-18 da shuni ko'rsatdi). Flex o'rniga oddiy inline oqim:
+   tugmalarning o'zi `inline-flex`, oralig'i `margin` bilan beriladi.
+   `nowrap` ham kerak: «Zamonaviy» mavzuda chapda yon panel bor, ustun
+   torayadi va tugmalar pastga tushib ketardi — qator ikki barobar
+   balandlashardi. Jadval `.table-wrap` ichida gorizontal suriladi, shuning
+   uchun juda tor ekranda ham sahifa buzilmaydi. */
+td.actions{display:table-cell;text-align:right;white-space:nowrap}
+td.actions .btn{vertical-align:middle}
+td.actions .btn + .btn{margin-left:8px}
 
 /* Ro'yxat qatoridagi tugmalar — yumshoq ohangda: fon yengil tusda, matn
    rangli. Jadvalda o'nlab qator turadi, to'q rangli tugmalar ko'zni
@@ -587,3 +595,77 @@ td.actions .btn:hover{filter:none;border-color:currentColor}
   .container{margin:16px auto;padding:0 14px}
   h1{font-size:1.35rem}
 }
+
+/* ---------- sahifa havolalari (shartnomalar ro'yxati) ---------- */
+/* Ro'yxat 10 tadan bo'linadi; havolalar jadval ostida o'rtada turadi. */
+.sahifalar{justify-content:center;margin-top:14px}
+.sahifalar .btn{min-width:34px;justify-content:center}
+
+
+/* ---------- to'lov grafigi (kalkulyator) ---------- */
+/* Kamdan-kam kerak bo'ladigan maydonlar yopiq turadi — asosiy to'rttasi
+   ko'rinib tursin (xato bo'lsa shablon o'zi ochib qo'yadi). */
+.grafik-qoshimcha{margin:4px 0 16px}
+.grafik-qoshimcha summary{
+  cursor:pointer;color:var(--muted);font-size:13.5px;
+  padding:6px 0;user-select:none;
+}
+.grafik-qoshimcha summary:hover{color:var(--ink)}
+.grafik-shart{margin-bottom:12px;line-height:1.7}
+/* Jadval oxiridagi «Jami» qatori — hujjatdagidek ajratib turadi */
+.jami-qator td{border-top:2px solid var(--line);font-weight:600}
+
+/* ---------- almashtirgich (segmentli tanlov) ---------- */
+/* «Kimniki?» degan savol: tugmalar bitta qutida, tanlangani oq bo'lib
+   ko'tarilib turadi (xaridor ko'rsatgan namuna, 2026-08-25). Zargarlikda
+   ikkita, transportda uchta tugma bo'ladi — ular teng bo'linadi. */
+.almashtirgich{
+  display:flex;gap:4px;padding:4px;margin:2px 0 12px;
+  width:100%;max-width:680px;
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:calc(var(--radius-lg) + 8px);
+}
+.almashtirgich label{flex:1 1 0;min-width:0;margin:0;display:flex;cursor:pointer}
+.almashtirgich input{position:absolute;width:1px;height:1px;opacity:0}
+/* Tugmalar bir xil balandlikda tursin — izohi ikki qatorga tushsa ham */
+.almashtirgich .matn{
+  flex:1;display:flex;flex-direction:column;justify-content:center;gap:2px;
+  padding:10px 12px;border-radius:var(--radius-lg);
+  text-align:center;color:var(--muted);line-height:1.25;
+  transition:background .15s,color .15s;
+}
+.almashtirgich .nom{display:block;font-size:14.5px;font-weight:600}
+.almashtirgich .izoh{display:block;font-size:11.5px}
+.almashtirgich label:hover .matn{color:var(--ink)}
+.almashtirgich input:checked + .matn{
+  background:var(--surface);color:var(--ink);box-shadow:var(--shadow);
+}
+.almashtirgich input:focus-visible + .matn{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+@media (max-width:560px){
+  .almashtirgich{flex-direction:column}
+}
+
+/* ---------- chop etish ---------- */
+/* Grafikni qog'ozga chiqarganda faqat jadval qolsin: menyu, forma va
+   tugmalar kerak emas. */
+@media print{
+  .nav,.toasts,.actions,.grafik-forma,.btn{display:none !important}
+  .shell{display:block}
+  .main,.container{margin:0;padding:0;max-width:none}
+  .card{border:none;box-shadow:none;padding:0;margin:0}
+  .table-wrap{overflow:visible}
+  table{font-size:11px}
+  a{text-decoration:none;color:inherit}
+}
+
+/* ------------------------------------------------------------
+   SAHIFA PASTI — dastur versiyasi
+   ------------------------------------------------------------ */
+.sahifa-past{
+  margin-top:28px;padding:14px 0 18px;
+  border-top:1px solid var(--line);
+  color:var(--muted);font-size:12px;text-align:right;
+}
+.sahifa-past b{font-weight:600}

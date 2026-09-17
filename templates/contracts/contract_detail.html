@@ -71,8 +71,11 @@
       <tr><th>Yillik foiz</th><td>{{ contract.interest_rate }}%</td></tr>
       <tr><th>Sanalar</th><td>{{ contract.date|date:'d.m.Y' }} —
         {{ contract.end_date|date:'d.m.Y' }}</td></tr>
-      <tr><th>Kim kiritgan</th><td>{{ contract.created_by|default:'—' }}
-        <span class="muted">({{ contract.created_at|date:'d.m.Y H:i' }})</span></td></tr>
+      <tr><th>Kim kiritgan</th><td>{{ contract.created_by|default:'—' }}</td></tr>
+      <tr><th>Kiritilgan vaqti</th><td>{{ contract.created_at|date:'d.m.Y, H:i' }}
+        {% if contract.updated_at and contract.updated_at|date:'YmdHi' != contract.created_at|date:'YmdHi' %}
+        <span class="muted">(oxirgi tuzatish: {{ contract.updated_at|date:'d.m.Y, H:i' }})</span>
+        {% endif %}</td></tr>
     </table>
   </div>
 </div>
@@ -113,9 +116,14 @@
 
   {% elif contract.collateral_type == 'transport' %}
     <table>
-      <tr><th style="width:40%">Egasi</th><td>{{ contract.vehicle.owner }}</td></tr>
+      <tr><th style="width:40%">Egasi</th><td>{{ contract.vehicle.owner }}
+        <span class="muted">({{ contract.vehicle.get_egasi_turi_display|lower }})</span></td></tr>
       {% if contract.vehicle.owner_head %}
       <tr><th>Rahbari</th><td>{{ contract.vehicle.owner_head }}</td></tr>{% endif %}
+      {% if contract.vehicle.egasi_pasporti %}
+      <tr><th>Egasining hujjati</th><td>{{ contract.vehicle.owner_passport_number }}
+        <span class="muted">({{ contract.vehicle.get_owner_passport_type_display }})</span></td></tr>
+      <tr><th>Egasining manzili</th><td>{{ contract.vehicle.owner_address|default:'—' }}</td></tr>{% endif %}
       <tr><th>Davlat raqami</th><td>{{ contract.vehicle.state_number }}</td></tr>
       <tr><th>Rusumi</th><td>{{ contract.vehicle.model }}</td></tr>
       <tr><th>Rangi</th><td>{{ contract.vehicle.color }}</td></tr>

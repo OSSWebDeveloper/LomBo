@@ -138,21 +138,18 @@ class Contract(models.Model):
     passport_org = models.CharField('IIV bo\'lim raqami', max_length=50, blank=True,
                                     validators=[RegexValidator(
                                         r'^\d*$', 'Faqat raqam kiriting.')],
-                                    help_text='Faqat raqam. Masalan: 61013')
+                                    help_text='Faqat raqam.')
     # Biometrik pasportda IIV raqami o'rniga shu maydon to'ldiriladi.
     passport_district = models.CharField('Tuman (kirillcha)', max_length=100, blank=True,
-                                         validators=[TUMAN_VALIDATORI],
-                                         help_text='Masalan: Когон тумани')
+                                         validators=[TUMAN_VALIDATORI])
     passport_date = models.DateField('Hujjat berilgan sana')
-    passport_number = models.CharField('Hujjat seriya-raqami', max_length=30,
-                                       help_text='Masalan: АE№2437494')
+    passport_number = models.CharField('Hujjat seriya-raqami', max_length=30)
     borrower_address = models.CharField('Manzil (kirillda)', max_length=300)
     # Arizada uchta telefon raqami so'raladi. Birinchisi shartnomaning
     # «Қарз олувчи» rekvizitlariga ham tushadi.
     # Eski shartnomalarda bo'lmagani uchun bazada bo'sh bo'lishi mumkin — yangisida
     # uchalasini ham to'ldirish majburiy (qarang: ContractForm).
-    borrower_phone = models.CharField('Telefon raqami 1', max_length=25, blank=True,
-                                      help_text='Masalan: 12 345-67-89')
+    borrower_phone = models.CharField('Telefon raqami 1', max_length=25, blank=True)
     borrower_phone2 = models.CharField('Telefon raqami 2', max_length=25, blank=True)
     borrower_phone3 = models.CharField('Telefon raqami 3', max_length=25, blank=True)
     # Arizadagi «Менинг иш жойим ва унинг манзили» qatori
@@ -187,7 +184,7 @@ class Contract(models.Model):
     # Garovga qo'yuvchi qarz oluvchining o'zi bo'lmasligi mumkin — masalan
     # onasining tillasini garovga qo'ysa. Bo'sh bo'lsa qarz oluvchining
     # ma'lumotlari ishlatiladi (garov_beruvchi_* xossalariga qarang).
-    # Transportda bu ish `VehicleInfo.owner` orqali qilinadi.
+    # Transportda bu ish `VehicleInfo.egasi_turi` orqali qilinadi.
     pledgor_other = models.BooleanField('Garovga qo\'yuvchi boshqa shaxs', default=False)
     pledgor_fio = models.CharField('Garovga qo\'yuvchi F.I.Sh. (kirillda)',
                                    max_length=200, blank=True)
@@ -200,8 +197,7 @@ class Contract(models.Model):
                                                 r'^\d*$', 'Faqat raqam kiriting.')])
     pledgor_passport_district = models.CharField('Tuman (kirillcha)', max_length=100,
                                                  blank=True,
-                                                 validators=[TUMAN_VALIDATORI],
-                                                 help_text='Masalan: Когон тумани')
+                                                 validators=[TUMAN_VALIDATORI])
     pledgor_passport_date = models.DateField('Hujjat berilgan sana', null=True, blank=True)
     pledgor_passport_number = models.CharField('Hujjat seriya-raqami', max_length=30, blank=True)
     pledgor_address = models.CharField('Manzil (kirillda)', max_length=300, blank=True)
@@ -353,10 +349,42 @@ class JewelryItem(models.Model):
 
 class VehicleInfo(models.Model):
     """Transport garovi ma'lumotlari."""
+
+    # Mashina kimniki — hujjat matni shunga qarab uch xil chiqadi
+    # (qarang: shablondan.py dagi `_transport_garovi`).
+    EGASI_OZI = 'oz'
+    EGASI_SHAXS = 'shaxs'
+    EGASI_TASHKILOT = 'tashkilot'
+    EGASI_TURLARI = [
+        (EGASI_OZI, 'Qarz oluvchiniki'),
+        (EGASI_SHAXS, 'Boshqa (jismoniy shaxs)'),
+        (EGASI_TASHKILOT, 'Boshqa (tashkilot)'),
+    ]
+
     contract = models.OneToOneField(Contract, on_delete=models.CASCADE, related_name='vehicle')
-    owner = models.CharField('Egasi (garovga qo\'yuvchi)', max_length=250,
-                             help_text='Masalan: “Express Alligator Bukhara” МЧЖ yoki F.I.Sh.')
+    egasi_turi = models.CharField('Mashina egasi', max_length=10,
+                                  choices=EGASI_TURLARI, default=EGASI_OZI)
+    # «Qarz oluvchiniki» bo'lsa `owner` saqlashda qarz oluvchining ismi
+    # bilan to'ldiriladi — hujjatda mulk egasi shu maydondan olinadi.
+    owner = models.CharField('Egasi (garovga qo\'yuvchi)', max_length=250, blank=True)
     owner_head = models.CharField('Tashkilot rahbari (bo\'lsa)', max_length=200, blank=True)
+
+    # Egasi boshqa jismoniy shaxs bo'lsa — uning hujjati va manzili
+    owner_passport_type = models.CharField('Egasining hujjati', max_length=10,
+                                           blank=True, choices=HUJJAT_TURLARI)
+    owner_passport_region = models.CharField('Hujjat berilgan viloyat', max_length=100,
+                                             blank=True, choices=VILOYATLAR)
+    owner_passport_org = models.CharField('IIV bo\'lim raqami', max_length=50,
+                                          blank=True, validators=[RegexValidator(
+                                              r'^\d*$', 'Faqat raqam kiriting.')])
+    owner_passport_district = models.CharField('Tuman (kirillcha)', max_length=100,
+                                               blank=True, validators=[TUMAN_VALIDATORI])
+    owner_passport_date = models.DateField('Hujjat berilgan sana', null=True, blank=True)
+    owner_passport_number = models.CharField('Hujjat seriya-raqami', max_length=30,
+                                             blank=True)
+    owner_address = models.CharField('Egasining manzili (kirillda)', max_length=300,
+                                     blank=True)
+
     state_number = models.CharField('Davlat raqami', max_length=20)
     model = models.CharField('Rusumi', max_length=100)
     color = models.CharField('Rangi', max_length=50)
@@ -364,8 +392,7 @@ class VehicleInfo(models.Model):
     chassis_number = models.CharField('Shassi raqami', max_length=50, blank=True, default='-')
     engine_number = models.CharField('Dvigatel raqami', max_length=50, blank=True, default='-')
     year = models.CharField('Ishlab chiqarilgan yili', max_length=10)
-    techpassport = models.CharField('Texpasport raqami va sanasi', max_length=100,
-                                    help_text='Masalan: AAG 0949387 / 14.02.2023')
+    techpassport = models.CharField('Texpasport raqami va sanasi', max_length=100)
 
     class Meta:
         verbose_name = 'Transport vositasi'
@@ -373,6 +400,31 @@ class VehicleInfo(models.Model):
 
     def __str__(self):
         return f'{self.model} {self.state_number}'
+
+    @property
+    def egasi_pasporti(self):
+        """Egasining hujjat matni — qarz oluvchinikidek yoziladi."""
+        return pasport_matni(self.owner_passport_region, self.owner_passport_org,
+                             self.owner_passport_date, self.owner_passport_number,
+                             self.owner_passport_type, self.owner_passport_district)
+
+    def save(self, *args, **kwargs):
+        """Egasi turiga tegishli bo'lmagan maydonlarni tozalab qo'yadi.
+
+        Formada ularni JS yashiradi, lekin baza baribir toza turishi kerak:
+        tashkilotdan jismoniy shaxsga o'tilganda eski rahbar ismi yoki
+        pasport ma'lumoti qolib ketmasin.
+        """
+        if self.egasi_turi == self.EGASI_OZI and self.contract_id:
+            self.owner = self.contract.borrower_fio
+        if self.egasi_turi != self.EGASI_TASHKILOT:
+            self.owner_head = ''
+        if self.egasi_turi != self.EGASI_SHAXS:
+            self.owner_passport_type = self.owner_passport_region = ''
+            self.owner_passport_org = self.owner_passport_district = ''
+            self.owner_passport_number = self.owner_address = ''
+            self.owner_passport_date = None
+        super().save(*args, **kwargs)
 
 
 class GuarantorInfo(models.Model):
