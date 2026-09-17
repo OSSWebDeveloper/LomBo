@@ -17,35 +17,6 @@ set "YORLIQ2=Lombardni to'xtatish"
 set "PY_YUKLASH=https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
 rem ============================================================
 
-rem --- Fayl loyiha papkasining ichidami? ---
-rem Ombor yopiq bo'lgani uchun ORNATISH.bat kodni O'ZI turgan papkadan oladi.
-rem Yolg'iz ishga tushirilsa (masalan Yuklamalardan) hech nima topilmaydi -
-rem shuni administrator huquqi so'ralishidan OLDIN aytamiz.
-rem (Ombor ochiq qilinsa, bu tekshiruvni olib tashlash mumkin - u holda
-rem fayllar internetdan keladi.)
-set "YOLGIZ="
-if not exist "%~dp0manage.py" set "YOLGIZ=1"
-if defined YOLGIZ if exist "%JOY%\manage.py" set "YOLGIZ="
-
-if defined YOLGIZ color 0C
-if defined YOLGIZ echo.
-if defined YOLGIZ echo  ============================================================
-if defined YOLGIZ echo   Bu fayl yolg'iz ishlamaydi.
-if defined YOLGIZ echo.
-if defined YOLGIZ echo   ORNATISH.bat dastur fayllari bilan BITTA papkada
-if defined YOLGIZ echo   turishi kerak ^(yonida manage.py bo'lishi shart^).
-if defined YOLGIZ echo.
-if defined YOLGIZ echo   Nima qilish kerak:
-if defined YOLGIZ echo     1^) Zip faylni o'ng tugma - "Extract All" ^(Chiqarish^)
-if defined YOLGIZ echo     2^) Chiqqan "lombard_site" papkasini OCHING
-if defined YOLGIZ echo     3^) Ichidagi ORNATISH.bat ni ishga tushiring
-if defined YOLGIZ echo.
-if defined YOLGIZ echo   Hozirgi papka: %~dp0
-if defined YOLGIZ echo  ============================================================
-if defined YOLGIZ echo.
-if defined YOLGIZ pause
-if defined YOLGIZ exit /b 1
-
 rem --- Administrator huquqi tekshiriladi ---
 rem Ish stoli manzili ko'tarilishdan OLDIN aniqlanib, argument sifatida
 rem uzatiladi. Sababi: UAC boshqa hisob bilan ko'tarilsa, ko'tarilgan
@@ -508,7 +479,7 @@ pause
 exit /b 1
 
 :xato_internet
-call :xato "Dastur fayllari topilmadi." "ORNATISH.bat manage.py bilan BITTA papkada turishi kerak - zip ni chiqarib, lombard_site papkasining ichidan ishga tushiring."
+call :xato "Dastur fayllarini olib bo'lmadi." "Internetni tekshiring - fayllar %GITHUB% dan yuklanadi. Internet bo'lmasa, ORNATISH.bat ni manage.py turgan papka ichidan ishga tushiring."
 goto :tamom
 
 :xato_python

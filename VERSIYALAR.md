@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.1.1 — 2026-09-17
+
+Ombor ochiq: ORNATISH.bat yolg'iz o'zi ham ishlaydi, fayllarni GitHub'dan oladi
+
 ## 1.1.0 — 2026-09-17
 
 Birinchi o'rnatishda ma'lumotlar jonli saytdan (`mrclayd.pythonanywhere.com`)

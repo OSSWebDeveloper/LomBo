@@ -140,11 +140,21 @@ Shu `ORNATISH.bat` ni qayta ishga tushirish kifoya (yoki treydagi belgidan
 yuklangan shablonlar **hech qachon o'chirilmaydi** — yangilanishdan oldin
 bazadan `db_zaxira_oxirgi.sqlite3` nusxasi olinadi.
 
-Ombor (`OSSWebDeveloper/LomBo`) yopiq bo'lgani uchun hozir GitHub'dan yuklash
-ishlamaydi: o'rnatuvchi loyiha papkasining o'zidan nusxa oladi. Ya'ni mijozga
-butun papkani (zip yoki fleshka bilan) berib, ichidagi `ORNATISH.bat` ni
-bostirish kerak. Omborni ochiq qilsangiz — yangilanish internet orqali o'zi
-keladi, boshqa hech nima o'zgartirilmaydi.
+Fayllar **GitHub'dan** olinadi: `OSSWebDeveloper/LomBo` ombori ochiq, shuning
+uchun mijozga yolg'iz `ORNATISH.bat` ni berish kifoya — qolganini o'zi yuklab
+oladi. Internet bo'lmasa yoki GitHub ochilmasa, `.bat` turgan papkadagi
+nusxadan foydalanadi (ya'ni zip/fleshka bilan tarqatish ham ishlayveradi).
+
+Versiya `versiya.txt` orqali solishtiriladi: o'rnatuvchi «Qurilmada / Yangi»
+deb ikkalasini ko'rsatadi. Yangi versiya chiqarish:
+
+```bash
+python versiya.py 1.2.0 "Nima o'zgardi" --push
+```
+
+Bu `versiya.txt` ni yangilaydi, `VERSIYALAR.md` ga yozadi, commit qiladi,
+`v1.2.0` tegini qo'yadi va GitHub'ga yuboradi. Shundan keyin mijozlardagi
+o'rnatuvchi (yoki treydagi «Dasturni yangilash») yangi versiyani o'zi oladi.
 
 ### O'rnatuvchi fayllar
 
