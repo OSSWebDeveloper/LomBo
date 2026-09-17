@@ -475,6 +475,21 @@ Oq rangga tegilmaydi: asl faylda u ko'rinmas to'ldirgich sifatida ishlatilgan.
 
 ## PythonAnywhere'ga joylash (bepul tarif)
 
+> **2026-09-17 dan beri sayt PythonAnywhere'da ishlamaydi.** Tizim mijozning
+> o'z kompyuteriga (`C:\lombard`) ko'chirildi: baza va garov suratlari o'sha
+> yerda, sayt faqat `127.0.0.1:8010` da ochiladi. PA dagi web ilova
+> **o'chirilgan (disabled)** — fayllar, baza va sozlamalar serverda turibdi,
+> lekin manzil javob bermaydi. Shu bilan bir vaqtda ikki joyda ikki xil
+> ma'lumot to'planib qolishining oldi olinadi.
+>
+> Qaytarish kerak bo'lsa: PythonAnywhere → **Web** bo'limi → *Enable* tugmasi
+> (yoki API orqali `webapps/<domen>/disable|enable`).
+> PA bazasining o'sha kundagi nusxasi:
+> `D:\lambard\lombard_PA_zaxira_2026-09-17.sqlite3`.
+>
+> Quyidagi qo'llanma kerak bo'lib qolsa — PA ga qaytish uchun saqlab qo'yilgan.
+
+
 1. **Fayllarni yuklash** — `lombard_site` papkasini ZIP qilib Files bo'limiga yuklang
    va Bash konsolda oching:
    ```bash
