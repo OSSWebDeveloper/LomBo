@@ -1547,3 +1547,9 @@ class ToplamTartibiTest(TestCase):
             if p.text.startswith(('Ижрочи директор :', 'Хурматли кредитор', 'Мурожаат учун')):
                 self.assertTrue(p.runs[0].bold, p.text)
                 self.assertEqual(p.runs[0].font.size.pt, 11.0, p.text)
+
+    def test_ilova_nusxasi_bitta_boshliq(self):
+        """«олдим» va imzo chizig'i orasida faqat bitta bo'shliq (2026-09-29)."""
+        doc, _ = self._xatboshilar()
+        qator = next(p.text for p in doc.paragraphs if p.text.startswith('Илованинг бир'))
+        self.assertEqual(qator, 'Илованинг бир нусхасини олдим ____________________')
