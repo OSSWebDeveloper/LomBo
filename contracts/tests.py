@@ -1488,3 +1488,45 @@ class FaqatKorishTest(TestCase):
                                  HTTP_REFERER='/shartnoma/yangi/', follow=True)
         self.assertFalse(Contract.objects.exists())
         self.assertContains(javob, 'faqat ko')
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class ToplamTartibiTest(TestCase):
+    """To'plam tartibi va imzo joyi (xaridor talabi, 2026-09-29)."""
+
+    def setUp(self):
+        from accounts.models import User
+        self.ishchi = User.objects.create_user(
+            username='ishchi1', password='ishchi123', role=User.ROLE_ISHCHI)
+        self.client.force_login(self.ishchi)
+        self.client.post('/shartnoma/yangi/', FormaSahifasiTest._malumot(self))
+        self.c = Contract.objects.get()
+
+    def _xatboshilar(self):
+        from .docgen import build_contract_docx
+        doc = Document(io.BytesIO(build_contract_docx(self.c)))
+        return doc, [''.join(t.text or '' for t in el.iter(qn('w:t'))).strip()
+                     for el in doc.element.body]
+
+    def test_qismlar_tartibi(self):
+        """dalolatnoma → suratlar → bayon → farmoyish → ariza → grafik → yuzi."""
+        _, matnlar = self._xatboshilar()
+
+        def joyi(bolak):
+            return next(i for i, m in enumerate(matnlar) if bolak in m)
+        tartib = [joyi('ТАСДИКЛАЙМАН'), joyi('Гаров суратлари'), joyi('БАЁНИ'),
+                  joyi('ФАРМОЙИШ'), matnlar.index('АРИЗА'), joyi('сонли илова'),
+                  joyi('Кредит №')]
+        self.assertEqual(tartib, sorted(tartib))
+
+    def test_imzo_joyi(self):
+        """Belgilangan uzun chiziq yo'q; imzo chizig'i alohida qatorda, «(имзо)» bilan."""
+        from .shablondan import IMZO_CHIZIGI
+        doc, _ = self._xatboshilar()
+        katak = next(tc for tc in doc.element.body.iter(qn('w:tc'))
+                     if 'танишдим' in ''.join(t.text or '' for t in tc.iter(qn('w:t'))))
+        qatorlar = [''.join(t.text or '' for t in p.iter(qn('w:t'))).strip()
+                    for p in katak.findall(qn('w:p'))]
+        qatorlar = [q for q in qatorlar if q]
+        self.assertTrue(qatorlar[-3].endswith('олдим.'))
+        self.assertEqual(qatorlar[-2:], [IMZO_CHIZIGI, '(имзо)'])

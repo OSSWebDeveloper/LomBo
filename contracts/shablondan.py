@@ -9,6 +9,7 @@ import io
 import os
 
 from docx import Document
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
@@ -501,7 +502,7 @@ def qismlarga_ajrat(bayt):
 
 
 def garov_rasmlarini_qosh(doc, contract):
-    """To'plam oxiriga garov suratlarini qo'yadi (muqovadan oldin).
+    """Garov suratlarini hujjat oxiriga qo'shadi — joyiga `_tartibla` ko'chiradi.
 
     Bir varaqda ikkita surat (xaridor talabi, 2026-08-14). Har bir surat
     16×11 sm ramkaga sig'diriladi — nisbati saqlanadi, ya'ni tik surat ham,
@@ -575,11 +576,221 @@ def garov_rasmlarini_qosh(doc, contract):
     return qoshildi
 
 
+def _matni(el):
+    return ''.join(t.text or '' for t in el.iter(qn('w:t'))).strip()
+
+
+def _bolim_oxirimi(el):
+    """Xatboshi bo'lim uzilishini (sectPr) olib yuradimi."""
+    return el.tag == qn('w:p') and el.find(qn('w:pPr') + '/' + qn('w:sectPr')) is not None
+
+
+def _sahifa_uzilishimi(el):
+    """Faqat sahifa uzilishidan iborat bo'sh xatboshi."""
+    return (el.tag == qn('w:p') and not _matni(el)
+            and any(b.get(qn('w:type')) == 'page' for b in el.iter(qn('w:br'))))
+
+
+def _sahifa_uzilishi():
+    p = OxmlElement('w:p')
+    r = OxmlElement('w:r')
+    br = OxmlElement('w:br')
+    br.set(qn('w:type'), 'page')
+    r.append(br)
+    p.append(r)
+    return p
+
+
+def _bolimlarni_top(body):
+    """To'plam qismlarining chegaralari — topilmasa None.
+
+    Shablonlarda (zargarlik, transport, kafillik) tartib bir xil:
+    shartnoma [+ garov + dalolatnoma] · bo'lim uzilishi · ARIZA · bo'lim
+    uzilishi · bayon · farmoyish · sahifa uzilishi · 1-ilova (grafik).
+    Shablon saytdan almashtirilib tuzilma boshqacha bo'lib qolsa — None,
+    ya'ni hujjat avvalgi tartibda chiqaveradi.
+    """
+    els = list(body)
+    ariza = next((i for i, el in enumerate(els)
+                  if el.tag == qn('w:p') and _matni(el) == 'АРИЗА'), None)
+    if ariza is None:
+        return None
+    # Ariza sarlavhasi tepasida «... директори Б.Б Самиевга» jadvali va bo'sh
+    # xatboshilar turadi — ariza oldingi bo'lim uzilishidan keyin boshlanadi
+    while ariza > 0 and not _bolim_oxirimi(els[ariza - 1]):
+        if els[ariza - 1].tag == qn('w:p') and _matni(els[ariza - 1]):
+            return None                             # dalolatnoma bo'lim bilan tugamagan
+        ariza -= 1
+    if ariza == 0:
+        return None
+    ariza_oxiri = next((i for i in range(ariza, len(els)) if _bolim_oxirimi(els[i])), None)
+    ilova = next((i for i in range(len(els))
+                  if 'сонли илова' in _matni(els[i])), None)
+    if ariza_oxiri is None or ilova is None or ilova < ariza_oxiri:
+        return None
+    grafik = next((i for i in range(ilova, ariza_oxiri, -1)
+                   if _sahifa_uzilishimi(els[i])), None)
+    if grafik is None:
+        return None
+    return {'dalolatnoma_oxiri': els[ariza - 1],
+            'ariza': els[ariza:ariza_oxiri + 1],          # o'z bo'lim sozlamasi bilan
+            'bayon_farmoyish': els[ariza_oxiri + 1:grafik],
+            'grafik_uzilishi': els[grafik]}
+
+
+def _tartibla(doc, suratlar):
+    """Qismlarni xaridor tartibiga qo'yadi (2026-09-29):
+
+        1–7  shartnoma, garov shartnomasi, dalolatnoma (o'zgarmaydi)
+        8    garov suratlari
+        9    bayon, 10 farmoyish
+        11   ariza
+        12   to'lov jadvali (grafik), 13 yuzi (muqova — keyin qo'shiladi)
+
+    Sahifa raqamlari suratlar bir varaqqa sig'ganda shunday bo'ladi
+    (bir varaqda ikkita surat).
+
+    Har qism o'z bo'lim sozlamasi (chekkalar) bilan qoladi: ariza o'z
+    bo'limida ko'chadi, bayon va farmoyishga esa oxirgi bo'lim sozlamasining
+    nusxasi biriktiriladi — ular avval shu bo'limda edi.
+    `suratlar` — hujjat oxiriga qo'shilgan surat elementlari (bo'sh bo'lishi mumkin).
+    """
+    body = doc.element.body
+    q = _bolimlarni_top(body)
+    if q is None:
+        return False
+    oxirgi_sect = body.find(qn('w:sectPr'))
+    if oxirgi_sect is None:
+        return False
+
+    # Suratlar: dalolatnomadan keyin. Bo'lim uzilishi o'zi yangi sahifa
+    # boshlaydi — suratlarning birinchi sahifa uzilishi ortiqcha (bo'sh varaq).
+    suratlar = list(suratlar)
+    if suratlar and _sahifa_uzilishimi(suratlar[0]):
+        body.remove(suratlar.pop(0))
+    joy = q['dalolatnoma_oxiri']
+    for el in suratlar:
+        joy.addnext(el)
+        joy = el
+    if suratlar:
+        uzilish = _sahifa_uzilishi()               # bayon yangi varaqdan
+        joy.addnext(uzilish)
+        joy = uzilish
+
+    # Bayon va farmoyish — suratlardan keyin; oxirida o'z bo'limi yopiladi
+    for el in q['bayon_farmoyish']:
+        joy.addnext(el)
+        joy = el
+    chegara = OxmlElement('w:p')
+    pPr = OxmlElement('w:pPr')
+    pPr.append(copy.deepcopy(oxirgi_sect))
+    chegara.append(pPr)
+    joy.addnext(chegara)
+    joy = chegara
+
+    # Ariza — farmoyishdan keyin, o'z bo'lim uzilishi bilan
+    for el in q['ariza']:
+        joy.addnext(el)
+        joy = el
+
+    # Grafik arizadan keyin keladi; bo'lim uzilishi yangi sahifa beradi,
+    # grafikning o'z sahifa uzilishi esa bo'sh varaq qoldirardi
+    body.remove(q['grafik_uzilishi'])
+    return True
+
+
+IMZO_CHIZIGI = '_' * 28
+
+
+def _imzo_joyini_kattalashtir(doc):
+    """Rekvizitlar jadvalida qarz oluvchining imzo joyi (xaridor talabi, 2026-09-29).
+
+    Katak ostidagi uzun chiziq olib tashlanadi; imzo chizig'i esa «Шартнома
+    билан танишдим ва бир нусхасини олдим.» yonidan alohida qatorga, tepasida
+    bo'sh joy bilan chiqadi — imzo qo'yishga joy yetadi.
+    """
+    from docx.shared import Pt
+    from docx.text.paragraph import Paragraph
+
+    for tbl in doc.element.body.iter(qn('w:tbl')):
+        for tc in tbl.iter(qn('w:tc')):
+            ps = tc.findall(qn('w:p'))
+            matn = next((p for p in ps if 'танишдим' in _matni(p)), None)
+            if matn is None or tc.find('.//' + qn('w:tbl')) is not None:
+                continue
+            # Katak oxiridagi faqat chiziqdan iborat xatboshilar (belgilangan chiziq)
+            for p in reversed(ps[ps.index(matn) + 1:]):
+                m = _matni(p)
+                if m and set(m) == {'_'}:
+                    tc.remove(p)
+                elif not m:
+                    continue
+                else:
+                    break
+            # Matn yonidagi qisqa chiziq va bo'shliqlar olib tashlanadi
+            for r in reversed(matn.findall(qn('w:r'))):
+                m = ''.join(t.text or '' for t in r.iter(qn('w:t')))
+                if m.strip('_ ') == '':
+                    matn.remove(r)
+                else:
+                    break
+            # Oxirgi bo'sh xatboshilar ham — imzo qatori o'rnini egallaydi
+            for p in reversed(tc.findall(qn('w:p'))):
+                if p is matn or _matni(p):
+                    break
+                tc.remove(p)
+            # Imzo chizig'i — alohida qatorda, tepasida joy qoldirib
+            imzo = copy.deepcopy(matn)
+            for r in imzo.findall(qn('w:r'))[1:]:
+                imzo.remove(r)
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            par = Paragraph(imzo, None)
+            par.runs[0].text = IMZO_CHIZIGI
+            par.runs[0].bold = False
+            par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            par.paragraph_format.space_before = Pt(30)
+            par.paragraph_format.space_after = Pt(0)
+            # Tagida kichik «(имзо)» — bu imzo joyi ekani ko'rinib tursin
+            izoh_el = copy.deepcopy(imzo)
+            izoh = Paragraph(izoh_el, None)
+            izoh.runs[0].text = '(имзо)'
+            izoh.runs[0].font.size = Pt(9)
+            izoh.paragraph_format.space_before = Pt(0)
+            izoh.paragraph_format.space_after = Pt(6)
+            matn.addnext(imzo)
+            imzo.addnext(izoh_el)
+            _jadvaldan_keyingi_boshliqni_kichrayt(tbl)
+
+
+def _jadvaldan_keyingi_boshliqni_kichrayt(tbl):
+    """Rekvizitlar jadvalidan keyingi bo'sh xatboshilar deyarli nol balandlikda.
+
+    Jadvaldan keyin garov qismigacha bo'sh xatboshi va sahifa uzilishi
+    turadi. Jadval sahifani to'ldirib qo'ysa, ular keyingi varaqqa tushib
+    bo'sh sahifa qoldirardi (imzo joyi kattalashgach transportda shunday
+    bo'ldi). 1 pt qator — ko'rinmaydi, lekin uzilish o'z ishini qiladi.
+    """
+    from docx.shared import Pt
+    from docx.enum.text import WD_LINE_SPACING
+    el = tbl.getnext()
+    while el is not None and el.tag == qn('w:p') and not _matni(el):
+        p = Paragraph(el, None)
+        pf = p.paragraph_format
+        pf.space_before = pf.space_after = Pt(0)
+        pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+        pf.line_spacing = Pt(1)
+        for r in p.runs:
+            r.font.size = Pt(1)
+        if _bolim_oxirimi(el):
+            break
+        el = el.getnext()
+
+
 def muqova_bilan(contract, bayt):
     """To'plam oxiriga muqovani qo'yadi.
 
-    Xaridor talabi (2026-08-14): muqova («Yuzi») eng oxirida tursin — avval
-    shartnoma, garov, dalolatnoma, ariza, jadval va suratlar.
+    Xaridor talabi (2026-08-14): muqova («Yuzi») eng oxirida tursin.
+    Qismlar tartibi (2026-09-29) — `_tartibla` da.
 
     Muqova shartnoma hujjatining ichiga qo'shiladi, teskarisi emas — shunda
     shartnomaning uslublari joyida qoladi (qarang: docx_ulash).
@@ -587,7 +798,12 @@ def muqova_bilan(contract, bayt):
     from .muqova import muqova_hujjati
 
     doc = Document(io.BytesIO(bayt))
-    garov_rasmlarini_qosh(doc, contract)      # suratlar muqovadan oldin
+    _imzo_joyini_kattalashtir(doc)
+    body = doc.element.body
+    oldin = set(body)
+    garov_rasmlarini_qosh(doc, contract)      # avval oxiriga qo'shiladi…
+    suratlar = [el for el in body if el not in oldin and el.tag != qn('w:sectPr')]
+    _tartibla(doc, suratlar)                  # …keyin joyiga ko'chiriladi
     hujjatni_ulash(doc, muqova_hujjati(contract))
     buf = io.BytesIO()
     doc.save(buf)

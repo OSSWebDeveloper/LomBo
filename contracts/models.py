@@ -407,7 +407,7 @@ def garov_rasm_yoli(instance, fayl_nomi):
 class GarovRasm(models.Model):
     """Garovga qo'yilgan mol-mulk surati (xaridor talabi, 2026-08-14).
 
-    Suratlar shartnoma to'plamining oxirida, muqovadan oldin chiqadi.
+    Suratlar to'plamda dalolatnomadan keyin, bayondan oldin chiqadi (2026-09-29).
     """
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE,
                                  related_name='garov_rasmlari')

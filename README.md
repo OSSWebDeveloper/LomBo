@@ -325,6 +325,31 @@ va `TolovJadvaliTest` da qat'iy yozib qo'yilgan:
 - **Foiz** avval kunlik summaga yaxlitlanadi, keyin kunlarga ko'paytiriladi:
   `yaxlit(qoldiq × yillik/365, 2 xona) × kunlar`. Kabisa yilida 365 emas, 366.
 
+## To'plam tartibi (v1.3.0)
+
+«Word» tugmasidagi to'plam (xaridor talabi, 2026-09-29):
+
+| Sahifa | Qism |
+|---|---|
+| 1–4 | Mikroqarz shartnomasi |
+| 5–7 | Garov shartnomasi va baholash dalolatnomasi |
+| 8 | Garov suratlari (bir varaqda ikkitadan) |
+| 9 | Kredit qo'mitasi bayoni |
+| 10 | Farmoyish |
+| 11 | Ariza |
+| 12 | To'lov jadvali (1-ilova) |
+| 13 | Yuzi (muqova) |
+
+Suratlar ikkitadan ko'p bo'lsa keyingi raqamlar shunchaga suriladi.
+Tartibni `shablondan._tartibla` yig'ilgan hujjat ichida o'rnatadi: har qism
+o'z bo'lim sozlamasi (chekkalar) bilan ko'chadi. Shablon saytdan almashtirilib
+tuzilmasi tanilmasa, hujjat avvalgi tartibda chiqaveradi.
+
+Rekvizitlar jadvalida qarz oluvchi katagining ostidagi uzun chiziq olib
+tashlangan; imzo chizig'i alohida qatorda, tepasida bo'sh joy va tagida
+«(имзо)» bilan (`_imzo_joyini_kattalashtir`). Jadvaldan keyingi bo'sh xizmat
+xatboshilari 1 pt qilingan — jadval sahifani to'ldirsa bo'sh varaq chiqmasin.
+
 ## Mijozlar bazasi (v1.2.0)
 
 Qayta kelgan mijozning ma'lumotlari qaytadan kiritilmaydi. «Yangi
