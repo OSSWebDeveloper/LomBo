@@ -193,7 +193,7 @@ def _mijozni_saqla(request, contract):
         messages.warning(request, 'Shartnoma saqlandi, lekin mijoz bazaga yozilmadi.')
 
 
-MIJOZ_QIDIRUV_SONI = 15
+MIJOZ_QIDIRUV_SONI = 30
 
 
 @login_required
@@ -201,24 +201,27 @@ def mijoz_qidir(request):
     """«Oldingi mijoz» ro'yxati uchun: hujjat seriya-raqami (yoki ism) bo'yicha.
 
     «ad 254», «АD№2540», «2540542» — hammasi bir xil topadi: kalitda
-    ajratgich yo'q, kirill harflar lotinga o'girilgan.
+    ajratgich yo'q, kirill harflar lotinga o'girilgan. Hech narsa
+    yozilmagan bo'lsa — oxirgi kelgan mijozlar. Tartib: oxirgi shartnoma
+    sanasi bo'yicha, eng yangisi tepada.
     """
     q = (request.GET.get('q') or '').strip()
     kalit = pasport_kalit(q)
-    if len(kalit) < 2 and len(q) < 2:
-        return JsonResponse({'natija': []})
-    shart = Q(kalit__icontains=kalit) if kalit else Q()
-    if len(q) >= 3:
-        shart |= Q(fio__icontains=q)
-    qs = (Mijoz.objects.filter(shart)
-          .annotate(soni=Count('shartnomalar'))
-          .order_by('-updated_at')[:MIJOZ_QIDIRUV_SONI])
+    qs = Mijoz.objects.annotate(soni=Count('shartnomalar'),
+                                oxirgi=Max('shartnomalar__date'))
+    if q:
+        shart = Q(kalit__icontains=kalit) if kalit else Q(pk__in=[])
+        if len(q) >= 3:
+            shart |= Q(fio__icontains=q)
+        qs = qs.filter(shart)
+    qs = qs.order_by(F('oxirgi').desc(nulls_last=True), '-updated_at')[:MIJOZ_QIDIRUV_SONI]
     return JsonResponse({'natija': [{
         'id': m.pk,
         'fio': m.fio,
         'hujjat': m.passport_number,
         'telefon': m.phone,
         'soni': m.soni,
+        'oxirgi': m.oxirgi.strftime('%d.%m.%Y') if m.oxirgi else '',
         'maydonlar': m.formaga(),
     } for m in qs]})
 
@@ -236,7 +239,7 @@ def mijoz_list(request):
         if kalit:
             shart |= Q(kalit__icontains=kalit)
         qs = qs.filter(shart)
-    qs = qs.order_by('-oxirgi', 'fio')
+    qs = qs.order_by(F('oxirgi').desc(nulls_last=True), 'fio')
     sahifa = Paginator(qs, 25).get_page(request.GET.get('page'))
     return render(request, 'contracts/mijoz_list.html', {
         'mijozlar': sahifa, 'q': q, 'jami': qs.count(),

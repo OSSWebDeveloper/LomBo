@@ -1454,3 +1454,15 @@ class MijozlarBazasiTest(TestCase):
         yigish.yig(django_apps, None)
         self.assertEqual(Mijoz.objects.count(), 2)
         self.assertFalse(Contract.objects.filter(mijoz__isnull=True).exists())
+
+    def test_bosh_sorovda_oxirgi_mijozlar_tepada(self):
+        """Hech narsa yozilmasa ham ro'yxat chiqadi; tartib — oxirgi shartnoma sanasi."""
+        self.client.post('/shartnoma/yangi/', self._malumot(date='2026-08-01'))
+        self.client.post('/shartnoma/yangi/', self._malumot(
+            date='2026-09-20', passport_number='AD7654321', borrower_fio='Янги Келган'))
+        self.client.post('/shartnoma/yangi/', self._malumot(
+            date='2026-07-10', passport_number='AB1112223', borrower_fio='Эски Мижоз'))
+        natija = self.client.get('/mijozlar/qidir/').json()['natija']
+        self.assertEqual([m['hujjat'] for m in natija],
+                         ['AD№7654321', 'AE№2437494', 'AB№1112223'])
+        self.assertEqual(natija[0]['oxirgi'], '20.09.2026')

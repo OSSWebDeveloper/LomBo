@@ -59,7 +59,7 @@
                role="combobox" aria-expanded="false" aria-controls="mijoz-royxat"
                aria-autocomplete="list">
         <ul class="mijoz-royxat hidden" id="mijoz-royxat" role="listbox"></ul>
-        <div class="help">Seriya va raqamdan bir qismini yozing — mos mijozlar ro‘yxatda chiqadi.</div>
+        <div class="help">Bosing — oxirgi kelgan mijozlar chiqadi. Seriya-raqamdan bir qismini yozsangiz, ro‘yxat saralanadi.</div>
       </div>
       <div class="mijoz-tanlangan{% if not tanlangan_mijoz %} hidden{% endif %}" id="mijoz-tanlangan">
         <div>
@@ -761,7 +761,8 @@
         ism.textContent = m.fio;
         var qosh = document.createElement('span');
         qosh.className = 'qoshimcha';
-        qosh.textContent = [m.telefon, m.soni ? m.soni + ' ta shartnoma' : '']
+        qosh.textContent = [m.telefon, m.soni ? m.soni + ' ta shartnoma' : '',
+                            m.oxirgi ? 'oxirgisi ' + m.oxirgi : '']
           .filter(Boolean).join(' · ');
         li.appendChild(hujjat); li.appendChild(ism); li.appendChild(qosh);
         // mousedown — input fokusni yo'qotishidan oldin tanlansin
@@ -783,24 +784,26 @@
         .catch(function(){ if (raqam === songgiSorov) javob(null); });
     }
 
-    kirit.addEventListener('input', function(){
+    // Bo'sh maydonda ham ro'yxat chiqadi — oxirgi kelgan mijozlar tepada
+    function royxatniYangila(kechiktir){
       var q = kirit.value.trim();
       clearTimeout(kutish);
-      if (q.replace(/[\s№\-]/g, '').length < 2){ natijalar = []; yop(); return; }
       kutish = setTimeout(function(){
         qidir(q, function(r){
           if (r === null){ natijalar = []; chiz('Qidirib bo‘lmadi — sahifani yangilang.'); return; }
           natijalar = r; faol = r.length ? 0 : -1;
-          chiz(r.length ? '' : 'Bunday mijoz topilmadi — «Yangi mijoz» sifatida kiriting.');
+          chiz(r.length ? '' : (q ? 'Bunday mijoz topilmadi — «Yangi mijoz» sifatida kiriting.'
+                                  : 'Bazada hali mijoz yo‘q.'));
         });
-      }, 200);
-    });
+      }, kechiktir ? 200 : 0);
+    }
+    kirit.addEventListener('input', function(){ royxatniYangila(true); });
 
     kirit.addEventListener('keydown', function(e){
       var ochiq = !royxat.classList.contains('hidden');
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
-        if (!natijalar.length) return;
         e.preventDefault();
+        if (!natijalar.length){ royxatniYangila(false); return; }
         faol = (faol + (e.key === 'ArrowDown' ? 1 : -1) + natijalar.length) % natijalar.length;
         chiz('');
       } else if (e.key === 'Enter'){
@@ -812,7 +815,12 @@
       }
     });
     kirit.addEventListener('blur', function(){ setTimeout(yop, 150); });
-    kirit.addEventListener('focus', function(){ if (natijalar.length) chiz(''); });
+    kirit.addEventListener('focus', function(){ royxatniYangila(false); });
+    // Fokus allaqachon turgan bo'lsa ham bosganda ro'yxat qayta ochilsin
+    kirit.addEventListener('mousedown', function(){
+      if (document.activeElement === kirit && royxat.classList.contains('hidden'))
+        royxatniYangila(false);
+    });
 
     document.getElementById('mijoz-boshqa').addEventListener('click', function(){
       mijozId.value = '';
@@ -820,6 +828,7 @@
       toldirildi = false;
       holat();
       kirit.focus();
+      royxatniYangila(false);     // fokus hodisasiga suyanmaymiz
     });
 
     tanlov.querySelectorAll('input[type=radio]').forEach(function(r){
@@ -831,7 +840,10 @@
           toldirildi = false;
         }
         holat();
-        if (rejim() === 'oldingi' && !mijozId.value) kirit.focus();
+        if (rejim() === 'oldingi' && !mijozId.value){
+          kirit.focus();
+          royxatniYangila(false);
+        }
       });
     });
 
