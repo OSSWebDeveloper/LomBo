@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.2.0 — 2026-09-29
+
+Mijozlar bazasi: qayta kelgan mijoz pasport seriya-raqami bo'yicha ro'yxatdan tanlanadi, ma'lumotlari o'zi to'ldiriladi. Eski shartnomalardagi mijozlar avtomatik bazaga yozildi.
+
 ## 1.1.1 — 2026-09-17
 
 Ombor ochiq: ORNATISH.bat yolg'iz o'zi ham ishlaydi, fayllarni GitHub'dan oladi
