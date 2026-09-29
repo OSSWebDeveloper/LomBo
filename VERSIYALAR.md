@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.2.6 — 2026-09-29
+
+Almashtirgich tugmalari (mijoz, kimniki, mashina egasi) kengligi 85%, telefonda 100%.
+
 ## 1.2.5 — 2026-09-29
 
 ngrok nusxasida saqlash/tahrirlash/o'chirish tugmalari boshidanoq o'chiq (formani to'ldirib bo'lgach bloklanmasin).
