@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.2.2 — 2026-09-29
+
+ngrok orqali ochish: NGROK.bat (doimiy domen, alohida 8011-port, DEBUG o'chiq).
+
 ## 1.2.1 — 2026-09-29
 
 Joylash paytida mijozlar qayta yig'iladi: 0022 dan keyin tuzilgan shartnomalar ham mijozga bog'lanadi.
