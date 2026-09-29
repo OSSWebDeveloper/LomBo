@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.4 — 2026-09-29
+
+Mijoz ro'yxati faqat qidiruv maydoni bosilganda ochiladi; almashtirgich tugmalari o'rtada; ro'yxatda sarlavha va yozilgan qism ajratib ko'rsatiladi; tanlangan tugma aniqroq.
+
 ## 1.3.3 — 2026-09-29
 
 Grafik ostida «Илованинг бир нусхасини олдим» va imzo chizig'i orasida bitta bo'shliq.
