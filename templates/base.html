@@ -166,5 +166,27 @@
 </script>
 <script src="{% statik 'js/pul.js' %}"></script>
 {% block scripts %}{% endblock %}
+{% if faqat_korish %}
+<script>
+/* Faqat ko'rish rejimi (ngrok nusxasi): saqlaydigan tugmalar boshidanoq
+   o'chiq — xodim formani to'ldirib bo'lgach bloklanganini bilib qolmasin.
+   Kirish/chiqish formalari bundan mustasno. Server baribir bloklaydi. */
+(function(){
+  var IZOH = 'Faqat ko‘rish uchun nusxa — o‘zgartirish asosiy saytda';
+  document.querySelectorAll('form[method=post], form[method=POST]').forEach(function(f){
+    if (/\/(kirish|chiqish)\//.test(f.getAttribute('action') || location.pathname)) return;
+    f.querySelectorAll('button[type=submit], input[type=submit], button:not([type])').forEach(function(b){
+      b.disabled = true; b.title = IZOH;
+    });
+  });
+  // Tahrirlash / o'chirish sahifalariga olib boradigan havolalar
+  document.querySelectorAll('a[href$="/tahrir/"], a[href$="/ochirish/"]').forEach(function(a){
+    a.classList.add('faqat-korish-ochiq');
+    a.setAttribute('aria-disabled', 'true'); a.title = IZOH;
+    a.addEventListener('click', function(e){ e.preventDefault(); });
+  });
+})();
+</script>
+{% endif %}
 </body>
 </html>

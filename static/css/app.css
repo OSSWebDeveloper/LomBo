@@ -698,3 +698,7 @@ td.actions .btn:hover{filter:none;border-color:currentColor}
 .mijoz-tanlangan .muted{margin-left:6px}
 /* `display:flex` yuqorida `.hidden` ni bosib ketmasin */
 .mijoz-tanlangan.hidden,.mijoz-bor.hidden,.mijoz-royxat.hidden{display:none}
+
+/* Faqat ko'rish rejimi (ngrok nusxasi): o'chiq havolalar */
+.faqat-korish-ochiq{opacity:.45;pointer-events:none;cursor:not-allowed}
+button:disabled{cursor:not-allowed;opacity:.55}
