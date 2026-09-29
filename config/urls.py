@@ -75,3 +75,13 @@ urlpatterns = [
 # PythonAnywhere'ning Web bo'limida /media/ uchun statik yo'l ko'rsatiladi.
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif getattr(settings, 'NGROK', False):
+    # ngrok nusxasida DEBUG o'chiq, lekin alohida veb-server yo'q — statik
+    # fayllar va garov suratlarini Django o'zi beradi.
+    from django.contrib.staticfiles.views import serve as statik_serve
+    from django.urls import re_path
+    from django.views.static import serve
+    urlpatterns += [
+        re_path(r'^static/(?P<path>.*)$', statik_serve, {'insecure': True}),
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

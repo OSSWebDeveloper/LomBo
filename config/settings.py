@@ -13,6 +13,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ============ ISHGA TUSHIRISH REJIMI ============
 DEBUG = os.environ.get('LOMBARD_DEBUG', '1') == '1'
 
+# ngrok orqali internetga ochilgan nusxa (LOMBARD_NGROK=1, NGROK.bat). Xato
+# sahifalari ichki ma'lumotni ko'rsatmasligi uchun DEBUG majburan o'chiriladi;
+# statik fayllar va garov suratlarini baribir Django beradi (config/urls.py).
+NGROK = os.environ.get('LOMBARD_NGROK') == '1'
+if NGROK:
+    DEBUG = False
+
 # Maxfiy kalit kodda saqlanmaydi — muhit o'zgaruvchisidan olinadi.
 # Serverda (PythonAnywhere WSGI faylida) shunday beriladi:
 #     os.environ['LOMBARD_SECRET_KEY'] = '<tasodifiy kalit>'
@@ -21,7 +28,8 @@ DEBUG = os.environ.get('LOMBARD_DEBUG', '1') == '1'
 SECRET_KEY = os.environ.get('LOMBARD_SECRET_KEY', '').strip()
 
 if not SECRET_KEY:
-    if not DEBUG:
+    # ngrok nusxasi shu kompyuterda ishlaydi — kalit `.secret_key` dan olinadi
+    if not DEBUG and not NGROK:
         raise ImproperlyConfigured(
             "LOMBARD_SECRET_KEY muhit o'zgaruvchisi berilmagan. "
             "Ishlab chiqarish rejimida (LOMBARD_DEBUG=0) maxfiy kalit majburiy — "
@@ -44,6 +52,13 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
     CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h != '*']
+
+if NGROK:
+    # Kirish va saqlash (POST) ngrok domenidan kelganda CSRF'dan o'tsin
+    CSRF_TRUSTED_ORIGINS = [
+        'https://*.ngrok-free.app', 'https://*.ngrok-free.dev',
+        'https://*.ngrok.app', 'https://*.ngrok.io',
+    ]
 
 # ============ LOMBARD SOZLAMALARI ============
 
