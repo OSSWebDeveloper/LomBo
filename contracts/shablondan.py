@@ -696,7 +696,42 @@ def _tartibla(doc, suratlar):
     # Grafik arizadan keyin keladi; bo'lim uzilishi yangi sahifa beradi,
     # grafikning o'z sahifa uzilishi esa bo'sh varaq qoldirardi
     body.remove(q['grafik_uzilishi'])
+    _uzilishlarni_kichrayt(body)
     return True
+
+
+def _kichik_qil(el):
+    """Bo'sh xatboshini 1 pt balandlikka keltiradi (ko'rinmaydi)."""
+    from docx.enum.text import WD_LINE_SPACING
+    from docx.shared import Pt
+    p = Paragraph(el, None)
+    pf = p.paragraph_format
+    pf.space_before = pf.space_after = Pt(0)
+    pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+    pf.line_spacing = Pt(1)
+    for r in p.runs:
+        r.font.size = Pt(1)
+
+
+def _uzilishlarni_kichrayt(body):
+    """Bo'lim/sahifa uzilishi va undan oldingi bo'sh xatboshilar — 1 pt.
+
+    Qism (dalolatnoma, ariza...) sahifani to'ldirib qo'ysa, undan keyingi
+    bo'sh uzilish xatboshisi yangi varaqqa tushib bo'sh sahifa qoldirardi
+    (jonli №201 da ikkita shunday varaq bor edi). Uzilish o'z ishini
+    qilaveradi, faqat joy egallamaydi. Muqova hali qo'shilmagan.
+    """
+    els = list(body)
+    for i, el in enumerate(els):
+        if not (_bolim_oxirimi(el) or _sahifa_uzilishimi(el)) or _matni(el):
+            continue
+        _kichik_qil(el)
+        j = i - 1
+        while j >= 0 and els[j].tag == qn('w:p') and not _matni(els[j]) \
+                and els[j].find('.//' + qn('w:drawing')) is None \
+                and not (_bolim_oxirimi(els[j]) or _sahifa_uzilishimi(els[j])):
+            _kichik_qil(els[j])
+            j -= 1
 
 
 IMZO_CHIZIGI = '_' * 28
@@ -770,17 +805,9 @@ def _jadvaldan_keyingi_boshliqni_kichrayt(tbl):
     bo'sh sahifa qoldirardi (imzo joyi kattalashgach transportda shunday
     bo'ldi). 1 pt qator — ko'rinmaydi, lekin uzilish o'z ishini qiladi.
     """
-    from docx.shared import Pt
-    from docx.enum.text import WD_LINE_SPACING
     el = tbl.getnext()
     while el is not None and el.tag == qn('w:p') and not _matni(el):
-        p = Paragraph(el, None)
-        pf = p.paragraph_format
-        pf.space_before = pf.space_after = Pt(0)
-        pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-        pf.line_spacing = Pt(1)
-        for r in p.runs:
-            r.font.size = Pt(1)
+        _kichik_qil(el)
         if _bolim_oxirimi(el):
             break
         el = el.getnext()
