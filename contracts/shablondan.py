@@ -313,12 +313,12 @@ def _summa_tiyin(qiymat):
 # aynan olingan. Jami 16,9 sm — A4 matn maydoniga (17 sm) sig'adi.
 JADVAL_USTUN_ENLARI = [0.81, 3.16, 3.19, 3.19, 3.36, 3.19]
 
-ILOVA_MATN_PT = 12     # xatboshilar, sarlavha, «№» va sana ustunlari
-ILOVA_SUMMA_PT = 11    # FAQAT pul summalari (2–5-ustunlar)
+# Shrift o'lchamlari (xaridor talabi, 2026-09-29): jadvalning o'zi 10 pt,
+# jadval ostidagi yozuvlar 11 pt qalin, tepadagi sarlavha 12 pt qalin.
+ILOVA_SARLAVHA_PT = 12  # jadval tepasidagi uch qator
+ILOVA_JADVAL_PT = 10    # jadvalning barcha kataklari
+ILOVA_OSTI_PT = 11      # jadval ostidagi yozuvlar (imzolar, eslatmalar)
 
-# Pul summalari turadigan ustunlar: qoldiq, asosiy qarz, foiz, umumiy summa.
-# Faqat shular 11 pt — qolgan hamma narsa 12 pt (xaridor talabi, 2026-08-18).
-SUMMA_USTUNLARI = (2, 3, 4, 5)
 
 
 def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
@@ -326,11 +326,10 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
 
     Ko'rinishi xaridor tahrirlab qaytargan namunadan olingan (2026-08-18,
     `shartnoma_168.docx`) — 2026-08-14 namunasini almashtiradi:
-      * ilovadagi BARCHA yozuvlar qalin va 12 pt (eslatmalar ham);
+      * shrift (2026-09-29): jadval kataklari 10 pt, jadval ostidagi yozuvlar
+        11 pt qalin, tepadagi sarlavha 12 pt qalin;
       * sarlavha ikki qatorga bo'lingan — tashkilot/sana, keyin shartnoma raqami;
-      * jadval kataklari gorizontal va vertikal markazda; FAQAT pul summalari
-        11 pt (SUMMA_USTUNLARI), qolgani 12 pt — sarlavha qatori, «№» va sana
-        ustunlari, «Жами» so'zi;
+      * jadval kataklari gorizontal va vertikal markazda;
       * ustun enlari qat'iy (JADVAL_USTUN_ENLARI), teng bo'linmaydi;
       * «Жами» qatorida faqat «Жами» so'zi qalin — summalar oddiy.
 
@@ -344,7 +343,7 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
 
     org = settings.LOMBARD_ORG
 
-    def qator(matn, *, markaz=False, qalin=True, olcham=ILOVA_MATN_PT):
+    def qator(matn, *, markaz=False, qalin=True, olcham=ILOVA_OSTI_PT):
         p = doc.add_paragraph()
         if markaz:
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -356,7 +355,7 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
             r.font.name = 'Times New Roman'
         return p
 
-    def katak(i, j, matn, *, qalin=False, olcham=ILOVA_MATN_PT):
+    def katak(i, j, matn, *, qalin=False, olcham=ILOVA_JADVAL_PT):
         """Jadval katagi — gorizontal va vertikal markazda."""
         yacheyka = jadval.cell(i, j)
         yacheyka.width = Cm(JADVAL_USTUN_ENLARI[j])
@@ -369,14 +368,17 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
         r.font.size = Pt(olcham)
         r.font.name = 'Times New Roman'
 
+    birinchi = qator(contract.borrower_fio, markaz=True, olcham=ILOVA_SARLAVHA_PT)
     if yangi_sahifa:
-        doc.add_page_break()
-    qator(contract.borrower_fio, markaz=True)
+        # Alohida sahifa uzilishi xatboshisi emas: uning bo'sh qatori keyingi
+        # sahifaning boshiga tushib qolardi (xaridor, 2026-09-29).
+        birinchi.paragraph_format.page_break_before = True
     # Sarlavha ikki qatorda — xaridor hujjatidagidek: birinchi qator tashkilot
     # va sana bilan tugaydi (oxiridagi bo'sh joy ham o'sha yerdan).
-    qator(f'{org["name"]}нинг {sana_sozlar(contract.date)}-йилдаги ', markaz=True)
+    qator(f'{org["name"]}нинг {sana_sozlar(contract.date)}-йилдаги ', markaz=True,
+          olcham=ILOVA_SARLAVHA_PT)
     qator(f'№{contract.number}-сонли микрокарз шартномасига 1-сонли илова',
-          markaz=True)
+          markaz=True, olcham=ILOVA_SARLAVHA_PT)
     qator('')
 
     jadval = doc.add_table(rows=len(qatorlar) + 2, cols=6)
@@ -390,8 +392,7 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
         qiymatlar = [str(n), sana.strftime('%d.%m.%Y'), _summa_tiyin(qoldiq),
                      _summa_tiyin(asosiy), _summa_tiyin(foiz), _summa_tiyin(jami)]
         for j, q in enumerate(qiymatlar):
-            katak(i, j, q, qalin=(j == 0),      # «№» ustuni qalin
-                  olcham=ILOVA_SUMMA_PT if j in SUMMA_USTUNLARI else ILOVA_MATN_PT)
+            katak(i, j, q, qalin=(j == 0))      # «№» ustuni qalin
         j_asosiy += asosiy
         j_foiz += foiz
         j_jami += jami
@@ -403,10 +404,7 @@ def tolov_jadvalini_qosh(doc, contract, qatorlar, *, yangi_sahifa=True):
                    (3, _summa_tiyin(j_asosiy)), (4, _summa_tiyin(j_foiz)),
                    (5, _summa_tiyin(j_jami))]
     for j, q in jami_qatori:
-        # 2-ustun «Жами» qatorida bo'sh — summa emas, shuning uchun 12 pt
-        summami = j in SUMMA_USTUNLARI and q
-        katak(oxirgi, j, q, qalin=(j == 1),
-              olcham=ILOVA_SUMMA_PT if summami else ILOVA_MATN_PT)
+        katak(oxirgi, j, q, qalin=(j == 1))
 
     qator('')
     qator(f'Ижрочи директор :\t\t\t\t\t\t{org["director_short"]}')
@@ -433,12 +431,14 @@ def shablondan_yasa(shablon_nomi, ctx, contract=None, jadval_qatorlari=None):
     doc = Document(buf)
     if buyumlar is not None:
         _buyumlar_jadvali(doc, buyumlar)
-    if jadval_qatorlari:
-        tolov_jadvalini_qosh(doc, contract, jadval_qatorlari)
     # Ko'rinish shablonda emas, aynan shu yerda tekislanadi: shunda xodim
     # o'zi yuklagan shablon ham oddiy chiqadi, shablon tahrirlash sahifasida
     # esa `{{ }}` belgilari rangi bilan ajralib turaveradi.
     matnni_oddiy_qil(doc)
+    # Grafik keyin qo'shiladi: tekislash qalinlikni olib tashlardi, jadval
+    # ostidagi yozuvlar esa qalin bo'lishi kerak (xaridor, 2026-09-29)
+    if jadval_qatorlari:
+        tolov_jadvalini_qosh(doc, contract, jadval_qatorlari)
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -628,8 +628,11 @@ def _bolimlarni_top(body):
                   if 'сонли илова' in _matni(els[i])), None)
     if ariza_oxiri is None or ilova is None or ilova < ariza_oxiri:
         return None
+    # Grafik «yangi sahifadan» belgili xatboshidan boshlanadi (eski usulda —
+    # alohida sahifa uzilishi xatboshisidan)
     grafik = next((i for i in range(ilova, ariza_oxiri, -1)
-                   if _sahifa_uzilishimi(els[i])), None)
+                   if _sahifa_uzilishimi(els[i])
+                   or els[i].find('.//' + qn('w:pageBreakBefore')) is not None), None)
     if grafik is None:
         return None
     return {'dalolatnoma_oxiri': els[ariza - 1],
@@ -693,9 +696,13 @@ def _tartibla(doc, suratlar):
         joy.addnext(el)
         joy = el
 
-    # Grafik arizadan keyin keladi; bo'lim uzilishi yangi sahifa beradi,
-    # grafikning o'z sahifa uzilishi esa bo'sh varaq qoldirardi
-    body.remove(q['grafik_uzilishi'])
+    # Grafik arizadan keyin keladi; bo'lim uzilishi o'zi yangi sahifa beradi
+    g = q['grafik_uzilishi']
+    if _sahifa_uzilishimi(g):
+        body.remove(g)                          # eski usuldagi uzilish xatboshisi
+    else:
+        for pbb in g.findall('.//' + qn('w:pageBreakBefore')):
+            pbb.getparent().remove(pbb)
     _uzilishlarni_kichrayt(body)
     return True
 

@@ -1119,22 +1119,21 @@ class TolovJadvaliTest(TestCase):
         run = jadval.cell(i, j).paragraphs[0].runs[0]
         return (run.font.size.pt, bool(run.bold))
 
-    def test_faqat_summalar_11_pt(self):
-        """Xaridor talabi (2026-08-18): FAQAT pul summalari 11 pt.
+    def test_jadval_10_pt(self):
+        """Xaridor talabi (2026-09-29): jadvalning barcha kataklari 10 pt.
 
-        Sarlavha qatori, «№» va sana ustunlari, «Жами» so'zi — 12 pt.
+        Qalinlik avvalgidek: sarlavha qatori, «№» ustuni va «Жами» so'zi.
         """
         jadval = self._ilova().tables[0]
         for j in range(6):
-            self.assertEqual(self._katak(jadval, 0, j), (12.0, True), f'sarlavha {j}')
-        self.assertEqual(self._katak(jadval, 1, 0), (12.0, True))      # «№»
-        self.assertEqual(self._katak(jadval, 1, 1), (12.0, False))     # sana
-        for j in (2, 3, 4, 5):                                          # summalar
-            self.assertEqual(self._katak(jadval, 1, j), (11.0, False), f'summa {j}')
+            self.assertEqual(self._katak(jadval, 0, j), (10.0, True), f'sarlavha {j}')
+        self.assertEqual(self._katak(jadval, 1, 0), (10.0, True))      # «№»
+        for j in range(1, 6):                                           # sana, summalar
+            self.assertEqual(self._katak(jadval, 1, j), (10.0, False), f'katak {j}')
         oxirgi = len(jadval.rows) - 1
-        self.assertEqual(self._katak(jadval, oxirgi, 1), (12.0, True))  # «Жами»
+        self.assertEqual(self._katak(jadval, oxirgi, 1), (10.0, True))  # «Жами»
         for j in (3, 4, 5):
-            self.assertEqual(self._katak(jadval, oxirgi, j), (11.0, False), f'jami {j}')
+            self.assertEqual(self._katak(jadval, oxirgi, j), (10.0, False), f'jami {j}')
 
     def test_ustun_enlari_qatiy(self):
         from .shablondan import JADVAL_USTUN_ENLARI
@@ -1142,14 +1141,21 @@ class TolovJadvaliTest(TestCase):
         enlar = [round(c.width.cm, 2) for c in jadval.rows[0].cells]
         self.assertEqual(enlar, JADVAL_USTUN_ENLARI)
 
-    def test_xatboshilar_qalin_va_12_pt(self):
-        """Ilovadagi barcha yozuvlar qalin, 12 pt (eslatmalar ham)."""
+    def test_xatboshilar_qalin(self):
+        """Tepadagi sarlavha 12 pt, jadval ostidagi yozuvlar 11 pt — hammasi qalin."""
         xatboshilar = [p for p in self._ilova().paragraphs if p.text.strip()]
         self.assertEqual(len(xatboshilar), 11)
-        for p in xatboshilar:
+        for i, p in enumerate(xatboshilar):
             run = p.runs[0]
             self.assertTrue(run.bold, p.text[:40])
-            self.assertEqual(run.font.size.pt, 12.0, p.text[:40])
+            self.assertEqual(run.font.size.pt, 12.0 if i < 3 else 11.0, p.text[:40])
+
+    def test_sahifa_boshida_bosh_qator_yoq(self):
+        """Ilova alohida uzilish xatboshisisiz — birinchi qator «yangi sahifadan»."""
+        doc = self._ilova()
+        birinchi = doc.paragraphs[0]
+        self.assertEqual(birinchi.text.strip(), self.c.borrower_fio)
+        self.assertTrue(birinchi.paragraph_format.page_break_before)
 
     def test_sarlavha_ikki_qatorda(self):
         matnlar = [p.text.strip() for p in self._ilova().paragraphs if p.text.strip()]
@@ -1530,3 +1536,14 @@ class ToplamTartibiTest(TestCase):
         qatorlar = [q for q in qatorlar if q]
         self.assertTrue(qatorlar[-3].endswith('олдим.'))
         self.assertEqual(qatorlar[-2:], [IMZO_CHIZIGI, '(имзо)'])
+
+    def test_toplamda_jadval_osti_qalin(self):
+        """To'liq to'plamda ham jadval ostidagi yozuvlar qalin, 11 pt qoladi.
+
+        Avval shablon matnini tekislash qalinlikni olib tashlardi.
+        """
+        doc, _ = self._xatboshilar()
+        for p in doc.paragraphs:
+            if p.text.startswith(('Ижрочи директор :', 'Хурматли кредитор', 'Мурожаат учун')):
+                self.assertTrue(p.runs[0].bold, p.text)
+                self.assertEqual(p.runs[0].font.size.pt, 11.0, p.text)

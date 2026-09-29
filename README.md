@@ -345,6 +345,11 @@ Tartibni `shablondan._tartibla` yig'ilgan hujjat ichida o'rnatadi: har qism
 o'z bo'lim sozlamasi (chekkalar) bilan ko'chadi. Shablon saytdan almashtirilib
 tuzilmasi tanilmasa, hujjat avvalgi tartibda chiqaveradi.
 
+To'lov jadvali (1-ilova): jadval kataklari 10 pt, jadval ostidagi yozuvlar
+11 pt qalin, tepadagi sarlavha 12 pt qalin. Ilova alohida sahifa uzilishi
+xatboshisisiz — birinchi qatori «yangi sahifadan», shuning uchun sahifa
+boshida bo'sh qator qolmaydi. 36 oylik jadval ham bir varaqqa sig'adi.
+
 Rekvizitlar jadvalida qarz oluvchi katagining ostidagi uzun chiziq olib
 tashlangan; imzo chizig'i alohida qatorda, tepasida bo'sh joy va tagida
 «(имзо)» bilan (`_imzo_joyini_kattalashtir`). Jadvaldan keyingi bo'sh xizmat
