@@ -740,8 +740,43 @@
       kirit.setAttribute('aria-expanded', 'false');
     }
 
+    // Yozilgan qismni ajratib ko'rsatadi. Pasportda «ad 254» ham «AD№2540542»
+    // ichidan topilishi uchun solishtirish kalit bo'yicha (ajratgichsiz,
+    // kirill harf lotinga) — belgilanadigan joy esa asl matndan olinadi.
+    function belgila(el, matn, q, kalitli){
+      el.textContent = '';
+      var bosh = -1, oxir = -1;
+      if (q){
+        if (kalitli){
+          var k = kalit(q), ixcham = '', joylar = [];
+          for (var i = 0; i < matn.length; i++){
+            var c = kalit(matn[i]);
+            if (c){ ixcham += c; joylar.push(i); }
+          }
+          var t = k ? ixcham.indexOf(k) : -1;
+          if (t > -1){ bosh = joylar[t]; oxir = joylar[t + k.length - 1] + 1; }
+        } else {
+          bosh = matn.toLowerCase().indexOf(q.toLowerCase());
+          if (bosh > -1) oxir = bosh + q.length;
+        }
+      }
+      if (bosh < 0){ el.textContent = matn; return; }
+      var mos = document.createElement('mark');
+      mos.textContent = matn.slice(bosh, oxir);
+      el.append(matn.slice(0, bosh), mos, matn.slice(oxir));
+    }
+
     function chiz(xabar){
       royxat.innerHTML = '';
+      var q = kirit.value.trim();
+      if (natijalar.length){
+        var sar = document.createElement('li');
+        sar.className = 'sarlavha';
+        sar.setAttribute('aria-hidden', 'true');
+        sar.textContent = q ? natijalar.length + ' ta mijoz topildi'
+                            : 'Oxirgi kelgan mijozlar';
+        royxat.appendChild(sar);
+      }
       if (xabar){
         var li = document.createElement('li');
         li.className = 'bosh';
@@ -755,10 +790,10 @@
         if (i === faol){ li.classList.add('faol'); li.setAttribute('aria-selected', 'true'); }
         var hujjat = document.createElement('span');
         hujjat.className = 'hujjat';
-        hujjat.textContent = m.hujjat;
+        belgila(hujjat, m.hujjat, q, true);
         var ism = document.createElement('span');
         ism.className = 'ism';
-        ism.textContent = m.fio;
+        belgila(ism, m.fio, q.length >= 3 ? q : '', false);
         var qosh = document.createElement('span');
         qosh.className = 'qoshimcha';
         qosh.textContent = [m.telefon, m.soni ? m.soni + ' ta shartnoma' : '',
@@ -815,11 +850,11 @@
       }
     });
     kirit.addEventListener('blur', function(){ setTimeout(yop, 150); });
-    kirit.addEventListener('focus', function(){ royxatniYangila(false); });
-    // Fokus allaqachon turgan bo'lsa ham bosganda ro'yxat qayta ochilsin
-    kirit.addEventListener('mousedown', function(){
-      if (document.activeElement === kirit && royxat.classList.contains('hidden'))
-        royxatniYangila(false);
+    // Ro'yxat faqat maydonning o'zi bosilganda ochiladi (xaridor, 2026-09-29):
+    // rejim almashganda yoki fokus dasturdan kelganda o'zi chiqmaydi.
+    // Klaviaturada — yozish yoki ↓ bilan.
+    kirit.addEventListener('click', function(){
+      if (royxat.classList.contains('hidden')) royxatniYangila(false);
     });
 
     document.getElementById('mijoz-boshqa').addEventListener('click', function(){
@@ -827,8 +862,7 @@
       maydonlarniTozala();
       toldirildi = false;
       holat();
-      kirit.focus();
-      royxatniYangila(false);     // fokus hodisasiga suyanmaymiz
+      kirit.focus();              // ro'yxat bosilganda ochiladi
     });
 
     tanlov.querySelectorAll('input[type=radio]').forEach(function(r){
@@ -840,10 +874,7 @@
           toldirildi = false;
         }
         holat();
-        if (rejim() === 'oldingi' && !mijozId.value){
-          kirit.focus();
-          royxatniYangila(false);
-        }
+        if (rejim() === 'oldingi' && !mijozId.value) kirit.focus();
       });
     });
 
