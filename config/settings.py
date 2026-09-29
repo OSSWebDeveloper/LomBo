@@ -20,6 +20,10 @@ NGROK = os.environ.get('LOMBARD_NGROK') == '1'
 if NGROK:
     DEBUG = False
 
+# Asosiy sayt — PythonAnywhere (2026-09-29). ngrok nusxasi undan ma'lumot
+# oladi va faqat ko'rish uchun: o'zgartiradigan so'rovlar bloklanadi.
+FAQAT_KORISH = NGROK
+
 # Maxfiy kalit kodda saqlanmaydi — muhit o'zgaruvchisidan olinadi.
 # Serverda (PythonAnywhere WSGI faylida) shunday beriladi:
 #     os.environ['LOMBARD_SECRET_KEY'] = '<tasodifiy kalit>'
@@ -138,6 +142,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'accounts.middleware.SaytKirishNazorati',
+    'config.faqat_korish.FaqatKorish',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 

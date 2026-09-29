@@ -9,4 +9,6 @@ from django.conf import settings
 
 
 def versiya(request):
-    return {'versiya': getattr(settings, 'VERSIYA', '')}
+    return {'versiya': getattr(settings, 'VERSIYA', ''),
+            # ngrok nusxasi: sahifa tepasida «faqat ko'rish uchun» yozuvi
+            'faqat_korish': getattr(settings, 'FAQAT_KORISH', False)}

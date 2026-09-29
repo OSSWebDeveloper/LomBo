@@ -25,6 +25,13 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
+rem Asosiy sayt — PythonAnywhere. Avval undan eng yangi ma'lumot olinadi,
+rem keyin har 15 daqiqada yangilanib turadi (nusxa_ol.py). Bu nusxa faqat
+rem ko'rish uchun: o'zgartirish bloklanadi (config/faqat_korish.py).
+echo Asosiy saytdan ma'lumot olinmoqda...
+".venv\Scripts\python.exe" nusxa_ol.py
+start "Lombard nusxa" /min cmd /c ".venv\Scripts\python.exe nusxa_ol.py --har 15"
+
 set "LOMBARD_NGROK=1"
 start "Lombard ngrok server" /min cmd /c ".venv\Scripts\python.exe manage.py runserver 127.0.0.1:%NPORT% --noreload >> server_ngrok.log 2>&1"
 echo Server 127.0.0.1:%NPORT% da ishga tushdi.
@@ -32,5 +39,6 @@ echo Internetdagi manzil: https://%DOMEN%
 echo.
 "%NGROK_EXE%" http %NPORT% --url https://%DOMEN%
 
-rem ngrok yopilgach serverni ham to'xtatamiz
+rem ngrok yopilgach server va yangilovchini ham to'xtatamiz
+taskkill /FI "WINDOWTITLE eq Lombard nusxa*" /T /F >nul 2>&1
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /c:":%NPORT% " ^| findstr /i "LISTENING"') do taskkill /PID %%P /T /F >nul 2>&1

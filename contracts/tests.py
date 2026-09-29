@@ -1466,3 +1466,25 @@ class MijozlarBazasiTest(TestCase):
         self.assertEqual([m['hujjat'] for m in natija],
                          ['AD№7654321', 'AE№2437494', 'AB№1112223'])
         self.assertEqual(natija[0]['oxirgi'], '20.09.2026')
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA, FAQAT_KORISH=True)
+class FaqatKorishTest(TestCase):
+    """ngrok nusxasi: o'zgartirish bloklanadi, ko'rish va kirish ishlaydi."""
+
+    def setUp(self):
+        from accounts.models import User
+        self.ishchi = User.objects.create_user(
+            username='ishchi1', password='ishchi123', role=User.ROLE_ISHCHI)
+
+    def test_kirish_ishlaydi(self):
+        javob = self.client.post('/kirish/', {'username': 'ishchi1', 'password': 'ishchi123'})
+        self.assertEqual(javob.status_code, 302)
+        self.assertEqual(self.client.get('/shartnoma/yangi/').status_code, 200)
+
+    def test_shartnoma_saqlanmaydi(self):
+        self.client.force_login(self.ishchi)
+        javob = self.client.post('/shartnoma/yangi/', FormaSahifasiTest._malumot(self),
+                                 HTTP_REFERER='/shartnoma/yangi/', follow=True)
+        self.assertFalse(Contract.objects.exists())
+        self.assertContains(javob, 'faqat ko')

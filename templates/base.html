@@ -78,6 +78,11 @@
 
 <main class="main">
   <div class="container">
+    {% if faqat_korish %}
+    <div class="alert alert-info faqat-korish">Bu nusxa <b>faqat ko‘rish uchun</b>.
+      Shartnoma qo‘shish va o‘zgartirish asosiy saytda:
+      <a href="https://mrclayd.pythonanywhere.com/">mrclayd.pythonanywhere.com</a></div>
+    {% endif %}
     {% block content %}{% endblock %}
   </div>
 </main>
