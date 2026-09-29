@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.2.5 — 2026-09-29
+
+ngrok nusxasida saqlash/tahrirlash/o'chirish tugmalari boshidanoq o'chiq (formani to'ldirib bo'lgach bloklanmasin).
+
 ## 1.2.4 — 2026-09-29
 
 Asosiy sayt — PythonAnywhere. ngrok nusxasi faqat ko'rish uchun va ma'lumotni PA'dan o'zi yangilab turadi.
