@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.2 — 2026-09-29
+
+To'lov jadvali: jadval 10 pt, ostidagi yozuvlar 11 pt qalin, sahifa boshidagi bo'sh qator olib tashlandi.
+
 ## 1.3.1 — 2026-09-29
 
 Shartnoma to'plamida bo'sh varaqlar chiqmaydi (dalolatnoma yoki ariza sahifani to'ldirganda).
