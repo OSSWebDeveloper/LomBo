@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.3 — 2026-09-29
+
+Grafik ostida «Илованинг бир нусхасини олдим» va imzo chizig'i orasida bitta bo'shliq.
+
 ## 1.3.2 — 2026-09-29
 
 To'lov jadvali: jadval 10 pt, ostidagi yozuvlar 11 pt qalin, sahifa boshidagi bo'sh qator olib tashlandi.
