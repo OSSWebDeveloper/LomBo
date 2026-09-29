@@ -29,6 +29,54 @@
 
   <div class="card">
     <h2 style="margin-top:0">2. Qarz oluvchi</h2>
+    {% if not is_edit %}
+    {% comment %}Mijoz yangimi yoki avval kelganmi (v1.2.0). Oldingi mijoz
+    hujjat seriya-raqami bo'yicha topiladi va ma'lumotlari quyidagi
+    maydonlarga to'ldiriladi — kerak bo'lsa tuzatib saqlanadi.{% endcomment %}
+    <div class="almashtirgich" id="mijoz-tanlov">
+      <label>
+        <input type="radio" name="mijoz_rejimi" value="yangi" {% if mijoz_rejimi != 'oldingi' %}checked{% endif %}>
+        <span class="matn">
+          <span class="nom">Yangi mijoz</span>
+          <span class="izoh">ma’lumotlar qo‘lda kiritiladi</span>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="mijoz_rejimi" value="oldingi" {% if mijoz_rejimi == 'oldingi' %}checked{% endif %}>
+        <span class="matn">
+          <span class="nom">Oldingi mijoz</span>
+          <span class="izoh">bazadan pasport bo‘yicha</span>
+        </span>
+      </label>
+    </div>
+    <input type="hidden" name="mijoz_id" id="mijoz-id" value="{{ tanlangan_mijoz.pk|default:'' }}">
+
+    <div id="mijoz-qidiruv" class="mijoz-qidiruv hidden">
+      <div class="field mijoz-combo">
+        <label for="mijoz-qidir">Mijozni tanlang</label>
+        <input type="text" id="mijoz-qidir" class="form-control" autocomplete="off"
+               placeholder="Pasport seriya-raqami: AD2540542"
+               role="combobox" aria-expanded="false" aria-controls="mijoz-royxat"
+               aria-autocomplete="list">
+        <ul class="mijoz-royxat hidden" id="mijoz-royxat" role="listbox"></ul>
+        <div class="help">Seriya va raqamdan bir qismini yozing — mos mijozlar ro‘yxatda chiqadi.</div>
+      </div>
+      <div class="mijoz-tanlangan{% if not tanlangan_mijoz %} hidden{% endif %}" id="mijoz-tanlangan">
+        <div>
+          <b id="mijoz-tanlangan-ism">{{ tanlangan_mijoz.fio }}</b>
+          <span class="muted" id="mijoz-tanlangan-hujjat">{{ tanlangan_mijoz.passport_number }}</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="mijoz-boshqa">Boshqasini tanlash</button>
+      </div>
+    </div>
+
+    {% elif contract.mijoz_id and user.is_boshliq %}
+    <p class="help" style="margin-top:-4px">Mijozlar bazasida:
+      <a href="{% url 'mijoz_detail' contract.mijoz_id %}">{{ contract.mijoz.fio }}</a>.
+      Saqlanganda mijoz ma’lumoti ham yangilanadi.</p>
+    {% endif %}
+
+    <div id="qarz-oluvchi-maydonlari">
     <div class="grid">
       {% include 'contracts/_field.html' with field=form.borrower_fio %}
       {% include 'contracts/_field.html' with field=form.borrower_address %}
@@ -51,6 +99,14 @@
       {% include 'contracts/_field.html' with field=form.passport_date %}
       {% include 'contracts/_field.html' with field=form.passport_number %}
     </div>
+    {% if not is_edit %}
+    {# «Yangi mijoz»da yozilgan hujjat bazada bo'lsa — shu yerda aytiladi #}
+    <div class="mijoz-bor hidden" id="mijoz-bor">
+      <span id="mijoz-bor-matn"></span>
+      <button type="button" class="btn btn-secondary btn-sm" id="mijoz-bor-tugma">Ma’lumotlarini to‘ldirish</button>
+    </div>
+    {% endif %}
+    </div>{# /qarz-oluvchi-maydonlari #}
   </div>
 
   <div class="card">
@@ -595,6 +651,223 @@
       hujjatF.value = hujjatFormatla(hujjatF.value);
     });
   });
+
+  // ---- Mijoz: yangi yoki oldingi (v1.2.0) ----
+  // «Oldingi mijoz»da maydonlar mijoz tanlanguncha yashirin turadi; tanlangach
+  // bazadagi ma'lumot to'ldiriladi va xodim uni tekshirib (kerak bo'lsa
+  // tuzatib) saqlaydi. Saqlashda mijoz yozuvi ham yangilanadi.
+  (function(){
+    var tanlov = document.getElementById('mijoz-tanlov');
+    if (!tanlov) return;                          // tahrirlashda almashtirgich yo'q
+    var QIDIRUV_URL = "{% url 'mijoz_qidir' %}";
+    var qidiruv = document.getElementById('mijoz-qidiruv'),
+        kirit = document.getElementById('mijoz-qidir'),
+        royxat = document.getElementById('mijoz-royxat'),
+        mijozId = document.getElementById('mijoz-id'),
+        tanlangan = document.getElementById('mijoz-tanlangan'),
+        maydonlar = document.getElementById('qarz-oluvchi-maydonlari'),
+        borBlok = document.getElementById('mijoz-bor'),
+        borMatn = document.getElementById('mijoz-bor-matn'),
+        borTugma = document.getElementById('mijoz-bor-tugma'),
+        hujjatF = document.getElementById('id_passport_number');
+    var natijalar = [], faol = -1, kutish = null, songgiSorov = 0, borMijoz = null;
+    // Bazadan to'ldirilgan maydonlar — «Yangi mijoz»ga qaytilsa tozalanadi
+    var toldirildi = !!mijozId.value;
+
+    function rejim(){
+      var r = tanlov.querySelector('input:checked');
+      return r ? r.value : 'yangi';
+    }
+
+    // Yashirin maydonlar o'chiriladi — ko'rinmaydigan «required» formani
+    // jimgina bloklamasin. Yoqilganda IIV/tuman holati qayta hisoblanadi.
+    function maydonlarHolati(ochiq){
+      maydonlar.classList.toggle('hidden', !ochiq);
+      maydonlar.querySelectorAll('input, select, textarea').forEach(function(inp){
+        inp.disabled = !ochiq;
+      });
+      if (ochiq) iivHolati('id_passport_type', 'id_passport_org', true);
+    }
+
+    function holat(){
+      var oldingi = rejim() === 'oldingi', bor = !!mijozId.value;
+      qidiruv.classList.toggle('hidden', !oldingi);
+      kirit.closest('.mijoz-combo').classList.toggle('hidden', oldingi && bor);
+      tanlangan.classList.toggle('hidden', !(oldingi && bor));
+      kirit.required = oldingi && !bor;
+      maydonlarHolati(!oldingi || bor);
+      if (oldingi) borBlok.classList.add('hidden');
+    }
+
+    function maydonlarniTozala(){
+      maydonlar.querySelectorAll('input, textarea').forEach(function(inp){
+        if (inp.type !== 'hidden') inp.value = '';
+      });
+      maydonlar.querySelectorAll('select').forEach(function(sl){ sl.selectedIndex = 0; });
+    }
+
+    function toldir(m){
+      var q = m.maydonlar;
+      // Avval hujjat turi — IIV/tuman maydonlari shunga qarab ochiladi
+      var tur = document.getElementById('id_passport_type');
+      if (tur) tur.value = q.passport_type || 'id_karta';
+      Object.keys(q).forEach(function(nom){
+        var el = document.getElementById('id_' + nom);
+        if (!el || nom === 'passport_type') return;
+        var v = q[nom] || '';
+        if (el.classList.contains('pul') && v) v = pul.format(v);
+        el.value = v;
+      });
+      toldirildi = true;
+    }
+
+    function tanla(m){
+      mijozId.value = m.id;
+      document.getElementById('mijoz-tanlangan-ism').textContent = m.fio;
+      document.getElementById('mijoz-tanlangan-hujjat').textContent =
+        m.hujjat + (m.soni ? ' · ' + m.soni + ' ta shartnoma' : '');
+      yop();
+      kirit.value = '';
+      natijalar = [];
+      toldir(m);
+      holat();                   // maydonlar ochiladi, IIV/tuman to'g'rilanadi
+      var ism = document.getElementById('id_borrower_fio');
+      if (ism) ism.focus();
+    }
+
+    function yop(){
+      royxat.classList.add('hidden');
+      kirit.setAttribute('aria-expanded', 'false');
+    }
+
+    function chiz(xabar){
+      royxat.innerHTML = '';
+      if (xabar){
+        var li = document.createElement('li');
+        li.className = 'bosh';
+        li.textContent = xabar;
+        royxat.appendChild(li);
+      }
+      natijalar.forEach(function(m, i){
+        var li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.id = 'mijoz-variant-' + i;
+        if (i === faol){ li.classList.add('faol'); li.setAttribute('aria-selected', 'true'); }
+        var hujjat = document.createElement('span');
+        hujjat.className = 'hujjat';
+        hujjat.textContent = m.hujjat;
+        var ism = document.createElement('span');
+        ism.className = 'ism';
+        ism.textContent = m.fio;
+        var qosh = document.createElement('span');
+        qosh.className = 'qoshimcha';
+        qosh.textContent = [m.telefon, m.soni ? m.soni + ' ta shartnoma' : '']
+          .filter(Boolean).join(' · ');
+        li.appendChild(hujjat); li.appendChild(ism); li.appendChild(qosh);
+        // mousedown — input fokusni yo'qotishidan oldin tanlansin
+        li.addEventListener('mousedown', function(e){ e.preventDefault(); tanla(m); });
+        royxat.appendChild(li);
+      });
+      royxat.classList.remove('hidden');
+      kirit.setAttribute('aria-expanded', 'true');
+      kirit.setAttribute('aria-activedescendant', faol > -1 ? 'mijoz-variant-' + faol : '');
+      var f = royxat.querySelector('.faol');
+      if (f) f.scrollIntoView({block: 'nearest'});
+    }
+
+    function qidir(q, javob){
+      var raqam = ++songgiSorov;
+      fetch(QIDIRUV_URL + '?q=' + encodeURIComponent(q), {credentials: 'same-origin'})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (raqam === songgiSorov) javob(d.natija || []); })
+        .catch(function(){ if (raqam === songgiSorov) javob(null); });
+    }
+
+    kirit.addEventListener('input', function(){
+      var q = kirit.value.trim();
+      clearTimeout(kutish);
+      if (q.replace(/[\s№\-]/g, '').length < 2){ natijalar = []; yop(); return; }
+      kutish = setTimeout(function(){
+        qidir(q, function(r){
+          if (r === null){ natijalar = []; chiz('Qidirib bo‘lmadi — sahifani yangilang.'); return; }
+          natijalar = r; faol = r.length ? 0 : -1;
+          chiz(r.length ? '' : 'Bunday mijoz topilmadi — «Yangi mijoz» sifatida kiriting.');
+        });
+      }, 200);
+    });
+
+    kirit.addEventListener('keydown', function(e){
+      var ochiq = !royxat.classList.contains('hidden');
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+        if (!natijalar.length) return;
+        e.preventDefault();
+        faol = (faol + (e.key === 'ArrowDown' ? 1 : -1) + natijalar.length) % natijalar.length;
+        chiz('');
+      } else if (e.key === 'Enter'){
+        // Forma Enter'da keyingi maydonga o'tadi — bu yerda esa tanlaydi
+        e.preventDefault(); e.stopPropagation();
+        if (ochiq && faol > -1 && natijalar[faol]) tanla(natijalar[faol]);
+      } else if (e.key === 'Escape'){
+        yop();
+      }
+    });
+    kirit.addEventListener('blur', function(){ setTimeout(yop, 150); });
+    kirit.addEventListener('focus', function(){ if (natijalar.length) chiz(''); });
+
+    document.getElementById('mijoz-boshqa').addEventListener('click', function(){
+      mijozId.value = '';
+      maydonlarniTozala();
+      toldirildi = false;
+      holat();
+      kirit.focus();
+    });
+
+    tanlov.querySelectorAll('input[type=radio]').forEach(function(r){
+      r.addEventListener('change', function(){
+        if (rejim() === 'yangi' && toldirildi){
+          // Bazadan olingan ma'lumot yangi mijozga o'tib ketmasin
+          mijozId.value = '';
+          maydonlarniTozala();
+          toldirildi = false;
+        }
+        holat();
+        if (rejim() === 'oldingi' && !mijozId.value) kirit.focus();
+      });
+    });
+
+    // «Yangi mijoz»da kiritilgan hujjat bazada bo'lsa — ogohlantiramiz,
+    // bir bosishda ma'lumotini to'ldirish mumkin (ikki marta yozilmasin).
+    var KALIT_KIRILL = {'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H',
+                        'О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X'};
+    function kalit(v){
+      return (v || '').replace(/[\s\-–—_№]+/g, '').toUpperCase()
+        .replace(/[АВЕКМНОРСТУХ]/g, function(c){ return KALIT_KIRILL[c]; });
+    }
+    if (hujjatF){
+      hujjatF.addEventListener('blur', function(){
+        if (rejim() !== 'yangi') return;
+        var k = kalit(hujjatF.value);
+        borBlok.classList.add('hidden');
+        if (k.length < 6) return;
+        qidir(k, function(r){
+          borMijoz = null;
+          (r || []).forEach(function(m){ if (kalit(m.hujjat) === k) borMijoz = m; });
+          if (!borMijoz) return;
+          borMatn.textContent = 'Bu hujjat bazada bor: ' + borMijoz.fio +
+            (borMijoz.soni ? ' (' + borMijoz.soni + ' ta shartnoma)' : '') + '.';
+          borBlok.classList.remove('hidden');
+        });
+      });
+    }
+    borTugma.addEventListener('click', function(){
+      if (!borMijoz) return;
+      tanlov.querySelector('input[value=oldingi]').checked = true;
+      borBlok.classList.add('hidden');
+      tanla(borMijoz);
+    });
+
+    holat();
+  })();
 
   // ---- Telefon: «999441824» -> «99 944-18-24» ----
   // Bo'shliq va chiziqchalar yozayotganda o'zi qo'yiladi. Server ham xuddi

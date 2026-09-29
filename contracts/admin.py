@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import (Amal, Contract, DeleteRequest, GuarantorInfo, JewelryItem,
+from .models import (Amal, Contract, Mijoz, DeleteRequest, GuarantorInfo, JewelryItem,
                      VehicleInfo)
 
 
@@ -45,3 +45,9 @@ class AmalAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False      # tarix qo'lda yozilmaydi
+
+
+@admin.register(Mijoz)
+class MijozAdmin(admin.ModelAdmin):
+    list_display = ('fio', 'passport_number', 'phone', 'updated_at')
+    search_fields = ('fio', 'kalit', 'passport_number', 'phone')

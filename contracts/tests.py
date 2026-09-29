@@ -1364,3 +1364,93 @@ class TelefonFormatiTest(TestCase):
     def test_boshqa_format_ozgarmaydi(self):
         self.assertEqual(self._tozala('8 (495) 123-45-67'), '8 (495) 123-45-67')
 
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class MijozlarBazasiTest(TestCase):
+    """Mijozlar bazasi (v1.2.0): qayta kelgan mijoz qaytadan kiritilmaydi."""
+
+    def setUp(self):
+        from accounts.models import User
+        self.ishchi = User.objects.create_user(
+            username='ishchi1', password='ishchi123', role=User.ROLE_ISHCHI)
+        self.client.force_login(self.ishchi)
+
+    def _malumot(self, **qoshimcha):
+        malumot = FormaSahifasiTest._malumot(self)
+        malumot.update(qoshimcha)
+        return malumot
+
+    def test_pasport_kaliti(self):
+        from .formatlash import pasport_kalit
+        for yozuv in ('АE№2437494', 'ae 2437494', 'AE-2437494', 'АЕ№ 2437494'):
+            self.assertEqual(pasport_kalit(yozuv), 'AE2437494')
+
+    def test_yangi_shartnoma_mijozni_bazaga_yozadi(self):
+        from .models import Mijoz
+        self.client.post('/shartnoma/yangi/', self._malumot())
+        m = Mijoz.objects.get()
+        c = Contract.objects.get()
+        self.assertEqual(c.mijoz, m)
+        self.assertEqual(m.kalit, 'AE2437494')
+        self.assertEqual(m.phone, '90 123-45-67')
+        self.assertEqual(int(m.monthly_income), 4_000_000)
+
+    def test_qayta_kelgan_mijoz_ikki_marta_yozilmaydi(self):
+        """«Yangi mijoz» tanlansa ham hujjat raqami bir xil bo'lsa — o'sha mijoz."""
+        from .models import Mijoz
+        self.client.post('/shartnoma/yangi/', self._malumot())
+        self.client.post('/shartnoma/yangi/', self._malumot(
+            passport_number='ae 2437494', borrower_address='Янги манзил'))
+        self.assertEqual(Contract.objects.count(), 2)
+        m = Mijoz.objects.get()
+        self.assertEqual(m.shartnomalar.count(), 2)
+        self.assertEqual(m.address, 'Янги манзил')      # oxirgisi saqlanadi
+
+    def test_tanlangan_mijoz_hujjatini_almashtirsa(self):
+        """Ro'yxatdan tanlangan mijoz yangi hujjat olgan — yozuv yangilanadi."""
+        from .models import Mijoz
+        self.client.post('/shartnoma/yangi/', self._malumot())
+        m = Mijoz.objects.get()
+        self.client.post('/shartnoma/yangi/', self._malumot(
+            mijoz_rejimi='oldingi', mijoz_id=str(m.pk),
+            passport_number='AD1234567'))
+        self.assertEqual(Mijoz.objects.count(), 1)
+        m.refresh_from_db()
+        self.assertEqual(m.kalit, 'AD1234567')
+        self.assertEqual(m.shartnomalar.count(), 2)
+
+    def test_qidiruv_pasport_bolagi_boyicha(self):
+        self.client.post('/shartnoma/yangi/', self._malumot())
+        for q in ('ae24', 'АЕ№2437', '437494', 'Каримова'):
+            natija = self.client.get('/mijozlar/qidir/', {'q': q}).json()['natija']
+            self.assertEqual(len(natija), 1, q)
+            self.assertEqual(natija[0]['maydonlar']['borrower_phone'], '90 123-45-67')
+            self.assertEqual(natija[0]['maydonlar']['passport_date'], '2025-04-23')
+        self.assertEqual(
+            self.client.get('/mijozlar/qidir/', {'q': 'XY99'}).json()['natija'], [])
+
+    def test_formada_mijoz_almashtirgichi(self):
+        matn = self.client.get('/shartnoma/yangi/').content.decode()
+        self.assertIn('id="mijoz-tanlov"', matn)
+        self.assertIn('id="mijoz-qidir"', matn)
+        self.assertNotIn('{%', matn)
+
+    def test_mijozlar_sahifasi_faqat_boshliqqa(self):
+        self.assertEqual(self.client.get('/mijozlar/').status_code, 403)
+
+    def test_eski_shartnomalardan_yigish(self):
+        """Migratsiya: bir odamning bir necha shartnomasi — bitta mijoz."""
+        import importlib
+        from django.apps import apps as django_apps
+        from .models import Mijoz
+        yigish = importlib.import_module('contracts.migrations.0022_mijozlarni_yigish')
+        self.client.post('/shartnoma/yangi/', self._malumot())
+        self.client.post('/shartnoma/yangi/', self._malumot(passport_number='АЕ 2437494'))
+        self.client.post('/shartnoma/yangi/', self._malumot(
+            passport_number='AD7654321', borrower_fio='Бошқа Одам'))
+        Contract.objects.update(mijoz=None)
+        Mijoz.objects.all().delete()
+        yigish.yig(django_apps, None)
+        self.assertEqual(Mijoz.objects.count(), 2)
+        self.assertFalse(Contract.objects.filter(mijoz__isnull=True).exists())

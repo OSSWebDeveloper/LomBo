@@ -38,6 +38,11 @@ urlpatterns = [
     path('shartnoma/<int:pk>/garov-pdf/', con.contract_download_garov_pdf, name='contract_download_garov_pdf'),
     path('shartnoma/<int:pk>/ochirish/', con.contract_delete, name='contract_delete'),
 
+    # Mijozlar bazasi (v1.2.0)
+    path('mijozlar/', con.mijoz_list, name='mijoz_list'),
+    path('mijoz/<int:pk>/', con.mijoz_detail, name='mijoz_detail'),
+    path('mijozlar/qidir/', con.mijoz_qidir, name='mijoz_qidir'),
+
     # To'lov jadvali kalkulyatori — shartnoma tuzmasdan grafik hisoblash
     path('grafik/', con.grafik, name='grafik'),
     path('grafik/word/', con.grafik_download, name='grafik_download'),

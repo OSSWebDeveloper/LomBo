@@ -42,6 +42,7 @@
     <a href="{% url 'contract_create' %}" {% if request.resolver_match.url_name == 'contract_create' %}class="on"{% endif %}>+ Yangi</a>
     <a href="{% url 'grafik' %}" {% if request.resolver_match.url_name == 'grafik' %}class="on"{% endif %}>Grafik</a>
     {% if user.is_boshliq %}
+      <a href="{% url 'mijoz_list' %}" {% if request.resolver_match.url_name == 'mijoz_list' or request.resolver_match.url_name == 'mijoz_detail' %}class="on"{% endif %}>Mijozlar</a>
       <a href="{% url 'worker_list' %}" {% if request.resolver_match.url_name == 'worker_list' %}class="on"{% endif %}>Ishchilar</a>
       <a href="{% url 'delete_requests' %}" {% if request.resolver_match.url_name == 'delete_requests' %}class="on"{% endif %}>So‘rovlar</a>
       <a href="{% url 'monitoring' %}" {% if request.resolver_match.url_name == 'monitoring' %}class="on"{% endif %}>Monitoring</a>

@@ -9,8 +9,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.db.models import Count, F, Q, Sum
-from django.http import Http404, HttpResponse
+from django.db.models import Count, F, Max, Q, Sum
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -24,7 +24,8 @@ from .pdf import PdfImkoniYoq, docx_dan_pdf, pdf_imkoni_bor
 from .shablondan import SHABLONLAR, garovi_bormi
 from .forms import (GarovRasmFormSet, ContractForm, ContractSearchForm, DeleteRequestForm,
                     GrafikFormasi, GuarantorForm, JewelryFormSet, VehicleForm)
-from .models import Amal, Contract, DeleteRequest, amal_yoz
+from .formatlash import pasport_kalit
+from .models import Amal, Contract, DeleteRequest, Mijoz, amal_yoz
 
 
 # --------------------------------------------------------------- yordamchi
@@ -169,6 +170,89 @@ def contract_list(request):
     })
 
 
+# --------------------------------------------------------------- mijozlar
+
+def _tanlangan_mijoz(request):
+    """Formada «Oldingi mijoz» ro'yxatidan tanlangan yozuv (bo'lsa)."""
+    pk = (request.POST.get('mijoz_id') or '').strip()
+    if pk.isdigit():
+        return Mijoz.objects.filter(pk=int(pk)).first()
+    return None
+
+
+def _mijozni_saqla(request, contract):
+    """Shartnoma saqlangach mijozlar bazasini yangilaydi.
+
+    Mijoz yozilmay qolsa ham shartnoma saqlangan bo'ladi — xato asosiy
+    ishni to'xtatmasin.
+    """
+    tanlangan = _tanlangan_mijoz(request)
+    try:
+        Mijoz.shartnomadan(contract, tanlangan=tanlangan.pk if tanlangan else None)
+    except Exception:
+        messages.warning(request, 'Shartnoma saqlandi, lekin mijoz bazaga yozilmadi.')
+
+
+MIJOZ_QIDIRUV_SONI = 15
+
+
+@login_required
+def mijoz_qidir(request):
+    """«Oldingi mijoz» ro'yxati uchun: hujjat seriya-raqami (yoki ism) bo'yicha.
+
+    «ad 254», «АD№2540», «2540542» — hammasi bir xil topadi: kalitda
+    ajratgich yo'q, kirill harflar lotinga o'girilgan.
+    """
+    q = (request.GET.get('q') or '').strip()
+    kalit = pasport_kalit(q)
+    if len(kalit) < 2 and len(q) < 2:
+        return JsonResponse({'natija': []})
+    shart = Q(kalit__icontains=kalit) if kalit else Q()
+    if len(q) >= 3:
+        shart |= Q(fio__icontains=q)
+    qs = (Mijoz.objects.filter(shart)
+          .annotate(soni=Count('shartnomalar'))
+          .order_by('-updated_at')[:MIJOZ_QIDIRUV_SONI])
+    return JsonResponse({'natija': [{
+        'id': m.pk,
+        'fio': m.fio,
+        'hujjat': m.passport_number,
+        'telefon': m.phone,
+        'soni': m.soni,
+        'maydonlar': m.formaga(),
+    } for m in qs]})
+
+
+@login_required
+def mijoz_list(request):
+    """Mijozlar bazasi — faqat boshliq ko'radi (ishchi o'z shartnomasini)."""
+    _boss_required(request.user)
+    q = (request.GET.get('q') or '').strip()
+    qs = Mijoz.objects.annotate(soni=Count('shartnomalar'),
+                                oxirgi=Max('shartnomalar__date'))
+    if q:
+        kalit = pasport_kalit(q)
+        shart = Q(fio__icontains=q) | Q(phone__icontains=q)
+        if kalit:
+            shart |= Q(kalit__icontains=kalit)
+        qs = qs.filter(shart)
+    qs = qs.order_by('-oxirgi', 'fio')
+    sahifa = Paginator(qs, 25).get_page(request.GET.get('page'))
+    return render(request, 'contracts/mijoz_list.html', {
+        'mijozlar': sahifa, 'q': q, 'jami': qs.count(),
+    })
+
+
+@login_required
+def mijoz_detail(request, pk):
+    _boss_required(request.user)
+    mijoz = get_object_or_404(Mijoz, pk=pk)
+    return render(request, 'contracts/mijoz_detail.html', {
+        'mijoz': mijoz,
+        'shartnomalar': mijoz.shartnomalar.select_related('created_by'),
+    })
+
+
 # --------------------------------------------------------------- qo'shish / tahrirlash
 
 def _collateral_forms(request, contract=None, data=None):
@@ -231,6 +315,9 @@ def contract_create(request):
             rasmlar.instance = contract
             rasmlar.save()
 
+            # Mijozlar bazasi: yangisi qo'shiladi, eskisi yangilanadi
+            _mijozni_saqla(request, contract)
+
             User.objects.filter(pk=request.user.pk).update(
                 contracts_added=F('contracts_added') + 1)
             amal_yoz(request.user, Amal.YARATDI, f'Shartnoma №{contract.number}',
@@ -243,6 +330,8 @@ def contract_create(request):
         'form': form, 'jewelry': jewelry, 'vehicle': vehicle, 'guarantor': guarantor,
         'rasmlar': rasmlar,
         'title': "Yangi shartnoma qo'shish", 'is_edit': False,
+        'mijoz_rejimi': request.POST.get('mijoz_rejimi') or 'yangi',
+        'tanlangan_mijoz': _tanlangan_mijoz(request),
     })
 
 
@@ -301,6 +390,8 @@ def contract_edit(request, pk):
 
             rasmlar.instance = contract
             rasmlar.save()
+
+            _mijozni_saqla(request, contract)
 
             # Logda faqat o'zgargan qismlar soni saqlanadi
             soni = len(form.changed_data)

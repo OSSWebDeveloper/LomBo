@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Mijozlar{% endblock %}
+{% block content %}
+
+<div class="section-title">
+  <h1 style="margin:0">Mijozlar <span class="muted">({{ jami }} ta)</span></h1>
+  <a class="btn btn-primary" href="{% url 'contract_create' %}">+ Yangi shartnoma</a>
+</div>
+
+<div class="card">
+  <form method="get">
+    <div class="grid">
+      <div class="field">
+        <label for="q">Qidiruv</label>
+        <input type="text" name="q" id="q" value="{{ q }}" class="form-control"
+               placeholder="Pasport seriya-raqami, ism yoki telefon">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" type="submit">Qidirish</button>
+      <a class="btn btn-secondary btn-sm" href="{% url 'mijoz_list' %}">Tozalash</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+{% if mijozlar %}
+<div class="table-wrap">
+<table>
+  <tr>
+    <th>F.I.Sh.</th><th>Hujjat</th><th>Telefon</th>
+    <th class="num">Shartnomalar</th><th>Oxirgi shartnoma</th><th></th>
+  </tr>
+  {% for m in mijozlar %}
+  <tr>
+    <td><b>{{ m.fio }}</b></td>
+    <td>{{ m.passport_number }}</td>
+    <td class="muted">{{ m.phone|default:'—' }}</td>
+    <td class="num">{{ m.soni }}</td>
+    <td class="muted">{{ m.oxirgi|date:'d.m.Y'|default:'—' }}</td>
+    <td class="right"><a class="btn btn-secondary btn-sm" href="{% url 'mijoz_detail' m.pk %}">Ochish</a></td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+  <div class="empty"><span class="icon">🔎</span>Mijoz topilmadi.</div>
+{% endif %}
+</div>
+
+{% if mijozlar.paginator.num_pages > 1 %}
+<nav class="sahifalar actions" aria-label="Sahifalar">
+  {% if mijozlar.has_previous %}
+    <a class="btn btn-secondary btn-sm" href="?q={{ q|urlencode }}&amp;page={{ mijozlar.previous_page_number }}">&lsaquo; Oldingi</a>
+  {% endif %}
+  <span class="muted">{{ mijozlar.number }} / {{ mijozlar.paginator.num_pages }}</span>
+  {% if mijozlar.has_next %}
+    <a class="btn btn-secondary btn-sm" href="?q={{ q|urlencode }}&amp;page={{ mijozlar.next_page_number }}">Keyingi &rsaquo;</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

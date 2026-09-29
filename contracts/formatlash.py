@@ -48,6 +48,16 @@ def hujjat_raqami(qiymat: str) -> str:
     return asl
 
 
+
+def pasport_kalit(qiymat: str) -> str:
+    """Mijozni topish uchun kalit: «АЕ№ 5862145» ham, «ae5862145» ham -> «AE5862145».
+
+    Bazada hujjat raqami turli ko'rinishda yozilgan bo'lishi mumkin (kirill
+    harf, bo'shliq, «№»). Qidiruv va mijozni aniqlash faqat shu kalit bo'yicha.
+    """
+    return AJRATGICH.sub('', (qiymat or '')).upper().translate(KIRILL_LOTIN)
+
+
 # --------------------------------------------------------------- tuman nomi
 
 # Biometrik pasportda hujjat berilgan joy tuman (yoki shahar) nomi bilan

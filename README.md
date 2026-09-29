@@ -325,6 +325,38 @@ va `TolovJadvaliTest` da qat'iy yozib qo'yilgan:
 - **Foiz** avval kunlik summaga yaxlitlanadi, keyin kunlarga ko'paytiriladi:
   `yaxlit(qoldiq × yillik/365, 2 xona) × kunlar`. Kabisa yilida 365 emas, 366.
 
+## Mijozlar bazasi (v1.2.0)
+
+Qayta kelgan mijozning ma'lumotlari qaytadan kiritilmaydi. «Yangi
+shartnoma» formasining «2. Qarz oluvchi» bo'limi tepasida almashtirgich bor:
+
+- **Yangi mijoz** — hammasi avvalgidek qo'lda kiritiladi. Yozilgan hujjat
+  raqami bazada bo'lsa, pasport maydonining tagida «Bu hujjat bazada bor»
+  degan ogohlantirish va «Ma'lumotlarini to'ldirish» tugmasi chiqadi.
+- **Oldingi mijoz** — ochiluvchi ro'yxatli qidiruv maydoni. Hujjat
+  seriya-raqamidan bir qismini yozish kifoya (`ad25`, `АД№254`, `2540542`
+  — hammasi topadi; kirill/lotin harf, bo'shliq va «№» farqi yo'q), ism
+  bo'yicha ham topadi. Strelkalar + Enter yoki sichqoncha bilan tanlanadi.
+  Tanlangach qarz oluvchining hamma maydoni to'ldiriladi — manzil yoki
+  telefon o'zgargan bo'lsa shu yerda tuzatiladi.
+
+Mijoz **hujjat seriya-raqami** bo'yicha aniqlanadi (`Mijoz.kalit`). Shartnoma
+saqlanganda mijoz yozuvi yangilanadi (oxirgi ma'lumot turadi) yoki yangisi
+ochiladi — «Yangi mijoz» tanlangan bo'lsa ham bazadagi odam ikki marta
+yozilmaydi. Ro'yxatdan tanlangan mijoz yangi hujjat olgan bo'lsa, o'sha
+yozuvning raqami yangilanadi.
+
+Shartnoma ichidagi qarz oluvchi maydonlari o'zgarmagan — hujjat matni
+avvalgidek shartnomaning o'zidan yasaladi; mijoz yozuvi faqat keyingi safar
+to'ldirish uchun. Shuning uchun eski shartnomalarning hujjati o'zgarmaydi.
+
+Eski ma'lumot: `0022_mijozlarni_yigish` migratsiyasi `migrate` paytida shu
+kungacha tuzilgan hamma shartnomadan mijozlarni yig'adi va shartnomalarni
+ularga bog'laydi. Shartnomalarning o'ziga tegilmaydi.
+
+Boshliqlar menyuda **Mijozlar** sahifasini ko'radi: qidiruv, har bir
+mijozning ma'lumoti va shartnomalari ro'yxati.
+
 ## Grafik bo'limi — shartnoma tuzmasdan hisoblash
 
 Yuqori menyudagi **Grafik** — to'lov jadvali kalkulyatori (`/grafik/`). Mijoz

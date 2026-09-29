@@ -1,0 +1,51 @@
+{% extends 'base.html' %}{% load pul %}
+{% block title %}{{ mijoz.fio }}{% endblock %}
+{% block content %}
+
+<div class="section-title">
+  <h1 style="margin:0">{{ mijoz.fio }}</h1>
+  <a class="btn btn-secondary" href="{% url 'mijoz_list' %}">&lsaquo; Mijozlar</a>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Ma’lumotlar</h2>
+  <p class="help" style="margin-top:0">Oxirgi shartnomadagi holat. Yangi shartnoma
+    tuzilganda shu yerga yangilanadi.</p>
+  <table>
+    <tr><th>Hujjat</th><td>{{ mijoz.get_passport_type_display }} · <b>{{ mijoz.passport_number }}</b>
+      {% if mijoz.passport_date %}· {{ mijoz.passport_date|date:'d.m.Y' }}{% endif %}</td></tr>
+    <tr><th>Kim bergan</th><td>{{ mijoz.passport_region|default:'—' }}
+      {% if mijoz.passport_org %}· {{ mijoz.passport_org }}-сонли ИИВ{% endif %}
+      {% if mijoz.passport_district %}· {{ mijoz.passport_district }}{% endif %}</td></tr>
+    <tr><th>Manzil</th><td>{{ mijoz.address|default:'—' }}</td></tr>
+    <tr><th>Telefonlar</th><td>{{ mijoz.phone|default:'—' }}{% if mijoz.phone2 %}, {{ mijoz.phone2 }}{% endif %}{% if mijoz.phone3 %}, {{ mijoz.phone3 }}{% endif %}</td></tr>
+    <tr><th>Ish joyi</th><td>{{ mijoz.workplace|default:'—' }}</td></tr>
+    <tr><th>Oylik daromad</th><td>{% if mijoz.monthly_income %}{{ mijoz.monthly_income|pul }} so‘m{% else %}—{% endif %}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Shartnomalari <span class="muted">({{ shartnomalar|length }} ta)</span></h2>
+  {% if shartnomalar %}
+  <div class="table-wrap">
+  <table>
+    <tr><th>№</th><th>Sana</th><th>Ta’minot</th><th class="num">Summa</th>
+        <th class="num">Muddat</th><th>Kim kiritgan</th><th></th></tr>
+    {% for c in shartnomalar %}
+    <tr>
+      <td><b>{{ c.number }}</b></td>
+      <td>{{ c.date|date:'d.m.Y' }}</td>
+      <td class="muted">{{ c.get_collateral_type_display }}</td>
+      <td class="num">{{ c.amount|pul }}</td>
+      <td class="num">{{ c.term_months }} oy</td>
+      <td class="muted">{{ c.created_by|default:'—' }}</td>
+      <td class="right"><a class="btn btn-secondary btn-sm" href="{% url 'contract_detail' c.pk %}">Ochish</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}
+    <div class="empty">Shartnoma yo‘q.</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -106,6 +106,102 @@ def next_garov_number():
     return max(last + 1, settings.GAROV_START_NUMBER)
 
 
+class Mijoz(models.Model):
+    """Qarz oluvchi — qayta kelganda ma'lumoti qaytadan kiritilmasin (v1.2.0).
+
+    Mijoz hujjat seriya-raqami (`kalit`) bo'yicha aniqlanadi. Ma'lumotlar
+    shartnomaning o'zida ham nusxa sifatida turaveradi — hujjat matni
+    avvalgidek shartnomadan yasaladi; bu yerda esa mijozning eng oxirgi
+    shartnomadagi holati saqlanadi va keyingi safar formaga to'ldiriladi.
+    """
+    kalit = models.CharField('Qidiruv kaliti', max_length=30, unique=True,
+                             help_text='Hujjat raqami ajratgichlarsiz: AE5862145')
+    fio = models.CharField('F.I.Sh. (kirillda)', max_length=200)
+    passport_type = models.CharField('Hujjat turi', max_length=10, choices=HUJJAT_TURLARI,
+                                     default=HUJJAT_ID_KARTA)
+    passport_region = models.CharField('Hujjat berilgan viloyat', max_length=100,
+                                       blank=True, choices=VILOYATLAR)
+    passport_org = models.CharField('IIV bo\'lim raqami', max_length=50, blank=True)
+    passport_district = models.CharField('Tuman (kirillcha)', max_length=100, blank=True)
+    passport_date = models.DateField('Hujjat berilgan sana', null=True, blank=True)
+    passport_number = models.CharField('Hujjat seriya-raqami', max_length=30)
+    address = models.CharField('Manzil (kirillda)', max_length=300, blank=True)
+    phone = models.CharField('Telefon raqami 1', max_length=25, blank=True)
+    phone2 = models.CharField('Telefon raqami 2', max_length=25, blank=True)
+    phone3 = models.CharField('Telefon raqami 3', max_length=25, blank=True)
+    workplace = models.CharField('Ish joyi va manzili', max_length=300, blank=True)
+    monthly_income = models.DecimalField('Oylik daromad (so\'m)', max_digits=15,
+                                         decimal_places=0, null=True, blank=True)
+    created_at = models.DateTimeField('Bazaga qo\'shilgan', auto_now_add=True)
+    updated_at = models.DateTimeField('Yangilangan', auto_now=True)
+
+    # Shartnomadagi maydon -> mijozdagi maydon
+    SHARTNOMA_MAYDONLARI = {
+        'borrower_fio': 'fio',
+        'passport_type': 'passport_type',
+        'passport_region': 'passport_region',
+        'passport_org': 'passport_org',
+        'passport_district': 'passport_district',
+        'passport_date': 'passport_date',
+        'passport_number': 'passport_number',
+        'borrower_address': 'address',
+        'borrower_phone': 'phone',
+        'borrower_phone2': 'phone2',
+        'borrower_phone3': 'phone3',
+        'borrower_workplace': 'workplace',
+        'monthly_income': 'monthly_income',
+    }
+
+    class Meta:
+        verbose_name = 'Mijoz'
+        verbose_name_plural = 'Mijozlar'
+        ordering = ['fio']
+
+    def __str__(self):
+        return f'{self.fio} ({self.passport_number})'
+
+    def formaga(self):
+        """Shartnoma formasiga to'ldiriladigan qiymatlar (JSON uchun)."""
+        natija = {}
+        for shartnomada, bunda in self.SHARTNOMA_MAYDONLARI.items():
+            qiymat = getattr(self, bunda)
+            if qiymat is None:
+                qiymat = ''
+            elif hasattr(qiymat, 'isoformat'):
+                qiymat = qiymat.isoformat()
+            else:
+                qiymat = str(qiymat)
+            natija[shartnomada] = qiymat
+        return natija
+
+    @classmethod
+    def shartnomadan(cls, contract, tanlangan=None):
+        """Shartnoma saqlangach mijozni yangilaydi yoki yangisini ochadi.
+
+        Mijoz avvalo hujjat raqami bo'yicha qidiriladi — «Yangi mijoz»
+        tanlangan bo'lsa ham bazada bor odam ikkinchi marta yozilmaydi.
+        Topilmasa va xodim ro'yxatdan mijozni tanlagan bo'lsa (`tanlangan`),
+        demak mijoz hujjatini almashtirgan — o'sha yozuvning raqami yangilanadi.
+        """
+        from .formatlash import pasport_kalit
+        kalit = pasport_kalit(contract.passport_number)
+        if not kalit:
+            return None
+        mijoz = cls.objects.filter(kalit=kalit).first()
+        if mijoz is None and tanlangan:
+            mijoz = cls.objects.filter(pk=tanlangan).first()
+        if mijoz is None:
+            mijoz = cls(kalit=kalit)
+        mijoz.kalit = kalit
+        for shartnomada, bunda in cls.SHARTNOMA_MAYDONLARI.items():
+            setattr(mijoz, bunda, getattr(contract, shartnomada))
+        mijoz.save()
+        if contract.mijoz_id != mijoz.pk:
+            Contract.objects.filter(pk=contract.pk).update(mijoz=mijoz)
+            contract.mijoz = mijoz
+        return mijoz
+
+
 class Contract(models.Model):
     TYPE_ZARGARLIK = 'zargarlik'
     TYPE_TRANSPORT = 'transport'
@@ -127,8 +223,11 @@ class Contract(models.Model):
     date = models.DateField('Shartnoma sanasi')
     collateral_type = models.CharField("Ta'minot turi", max_length=12, choices=TYPE_CHOICES)
 
-    # Qarz oluvchi
-    borrower_fio = models.CharField('Qarz oluvchi F.I.Sh. (kirillda)', max_length=200)
+    # Qarz oluvchi. `mijoz` — bazadagi mijoz yozuvi (v1.2.0); quyidagi
+    # maydonlar esa shartnoma tuzilgan paytdagi nusxa, hujjat shulardan chiqadi.
+    mijoz = models.ForeignKey(Mijoz, verbose_name='Mijoz', null=True, blank=True,
+                              on_delete=models.SET_NULL, related_name='shartnomalar')
+    borrower_fio =models.CharField('Qarz oluvchi F.I.Sh. (kirillda)', max_length=200)
     passport_type = models.CharField('Hujjat turi', max_length=10, choices=HUJJAT_TURLARI,
                                      default=HUJJAT_ID_KARTA)
     passport_region = models.CharField('Hujjat berilgan viloyat', max_length=100, blank=True,
