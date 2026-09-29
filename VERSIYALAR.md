@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.0 — 2026-09-29
+
+Shartnoma to'plami tartibi: 8 — garov suratlari, 9 — bayon, 10 — farmoyish, 11 — ariza, 12 — grafik, 13 — yuzi. Qarz oluvchining imzo joyi kattalashtirildi, ortiqcha chiziq olib tashlandi.
+
 ## 1.2.6 — 2026-09-29
 
 Almashtirgich tugmalari (mijoz, kimniki, mashina egasi) kengligi 85%, telefonda 100%.
