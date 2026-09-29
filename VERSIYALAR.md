@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.2.3 — 2026-09-29
+
+«Oldingi mijoz» maydoni bosilishi bilan (hech narsa yozilmasa ham) mijozlar ro'yxati chiqadi; tartib oxirgi shartnoma sanasi bo'yicha, yangisi tepada.
+
 ## 1.2.2 — 2026-09-29
 
 ngrok orqali ochish: NGROK.bat (doimiy domen, alohida 8011-port, DEBUG o'chiq).
