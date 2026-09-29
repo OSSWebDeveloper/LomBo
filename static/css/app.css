@@ -621,7 +621,7 @@ td.actions .btn:hover{filter:none;border-color:currentColor}
    ikkita, transportda uchta tugma bo'ladi — ular teng bo'linadi. */
 .almashtirgich{
   display:flex;gap:4px;padding:4px;margin:2px 0 12px;
-  width:100%;max-width:680px;
+  width:85%;
   background:var(--surface-2);border:1px solid var(--line);
   border-radius:calc(var(--radius-lg) + 8px);
 }
@@ -644,7 +644,9 @@ td.actions .btn:hover{filter:none;border-color:currentColor}
   outline:2px solid var(--accent);outline-offset:2px;
 }
 @media (max-width:560px){
-  .almashtirgich{flex-direction:column}
+  /* Telefonda tugmalar ustma-ust tushadi — butun kenglik */
+  .almashtirgich{flex-direction:column;width:100%}
+  .mijoz-qidiruv{width:100%}
 }
 
 /* ---------- chop etish ---------- */
@@ -672,7 +674,7 @@ td.actions .btn:hover{filter:none;border-color:currentColor}
 
 /* ---------- mijoz tanlash (v1.2.0) ---------- */
 /* «Oldingi mijoz»: pasport bo'yicha qidiriladigan ochiluvchi ro'yxat */
-.mijoz-qidiruv{max-width:680px;margin-bottom:12px}
+.mijoz-qidiruv{width:85%;margin-bottom:12px}
 .mijoz-combo{position:relative;margin:0}
 .mijoz-royxat{
   position:absolute;left:0;right:0;top:calc(100% - 18px);z-index:30;
