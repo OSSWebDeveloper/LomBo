@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.1 — 2026-09-29
+
+Shartnoma to'plamida bo'sh varaqlar chiqmaydi (dalolatnoma yoki ariza sahifani to'ldirganda).
+
 ## 1.3.0 — 2026-09-29
 
 Shartnoma to'plami tartibi: 8 — garov suratlari, 9 — bayon, 10 — farmoyish, 11 — ariza, 12 — grafik, 13 — yuzi. Qarz oluvchining imzo joyi kattalashtirildi, ortiqcha chiziq olib tashlandi.
