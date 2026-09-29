@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.2.4 — 2026-09-29
+
+Asosiy sayt — PythonAnywhere. ngrok nusxasi faqat ko'rish uchun va ma'lumotni PA'dan o'zi yangilab turadi.
+
 ## 1.2.3 — 2026-09-29
 
 «Oldingi mijoz» maydoni bosilishi bilan (hech narsa yozilmasa ham) mijozlar ro'yxati chiqadi; tartib oxirgi shartnoma sanasi bo'yicha, yangisi tepada.
