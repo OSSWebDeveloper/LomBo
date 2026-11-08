@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.5 — 2026-11-08
+
+Zargarlikda «Garov bahosi» maydoni buyumlar jadvali ostiga, «Garovga qo'yuvchi» ustiga ko'chirildi (transportda joyida qoladi).
+
 ## 1.3.4 — 2026-09-29
 
 Mijoz ro'yxati faqat qidiruv maydoni bosilganda ochiladi; almashtirgich tugmalari o'rtada; ro'yxatda sarlavha va yozilgan qism ajratib ko'rsatiladi; tanlangan tugma aniqroq.
