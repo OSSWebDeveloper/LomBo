@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.14 — 2026-11-08
+
+Ishchiga bildirishnoma: boshliq shartnomasini tasdiqlasa yoki tuzatsa, sahifada xabar (va ruxsat bo'lsa Windows bildirishnomasi) chiqadi. Migratsiya: contracts 0026.
+
 ## 1.3.13 — 2026-11-08
 
 Sahifalardagi izoh va xabarlar qisqartirildi. Tasdiq kutayotgan shartnoma sahifasining oxirida ham yashil «Tasdiqlash» tugmasi.
