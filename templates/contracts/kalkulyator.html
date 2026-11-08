@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% block title %}Kredit kalkulyatori — Lombard{% endblock %}
+{% block content %}
+
+<h1>Kredit kalkulyatori</h1>
+<p class="muted" style="margin-top:-8px">
+  Mijozga «oyiga qancha to‘layman?» degan savolga darrov javob berish uchun.
+  Natija maydonlarni o‘zgartirishingiz bilan yangilanadi. Hisob taxminiy:
+  aniq jadval shartnomada (yoki «Grafik» bo‘limida) chiqadi.</p>
+
+<div class="card kalk-forma">
+  <div class="kalk-grid">
+    <div class="field">
+      <label for="k-summa">Kredit summasi (so‘m)</label>
+      <input type="text" id="k-summa" class="pul" inputmode="numeric" value="10 000 000">
+      <input type="range" id="k-summa-r" class="kalk-slider" min="500000" max="100000000" step="500000" value="10000000"
+             aria-label="Kredit summasi">
+      <div class="kalk-chegara"><span>500 ming</span><span>100 mln</span></div>
+    </div>
+    <div class="field">
+      <label for="k-muddat">Muddat (oy)</label>
+      <input type="number" id="k-muddat" min="1" max="120" value="12">
+      <input type="range" id="k-muddat-r" class="kalk-slider" min="1" max="60" step="1" value="12"
+             aria-label="Muddat">
+      <div class="kalk-chegara"><span>1 oy</span><span>60 oy</span></div>
+    </div>
+    <div class="field">
+      <label for="k-foiz">Yillik foiz stavkasi (%)</label>
+      <input type="number" id="k-foiz" min="0" max="300" step="0.1" value="60">
+    </div>
+    <div class="field">
+      <label for="k-sana">Kredit berilgan sana</label>
+      <input type="date" id="k-sana">
+    </div>
+  </div>
+
+  <p class="ajratgich-nom" style="margin-top:6px">Qaytarish usuli</p>
+  <div class="almashtirgich kalk-usul" id="k-usul">
+    <label>
+      <input type="radio" name="k-usul" value="lombard" checked>
+      <span class="matn"><span class="nom">Lombard usuli</span>
+        <span class="izoh">Shartnomadagidek: foiz kunlab</span></span>
+    </label>
+    <label>
+      <input type="radio" name="k-usul" value="annuitet">
+      <span class="matn"><span class="nom">Annuitet</span>
+        <span class="izoh">Har oy bir xil to‘lov</span></span>
+    </label>
+    <label>
+      <input type="radio" name="k-usul" value="differensial">
+      <span class="matn"><span class="nom">Differensial</span>
+        <span class="izoh">To‘lov oyma-oy kamayadi</span></span>
+    </label>
+  </div>
+
+  <details class="grafik-qoshimcha" id="k-xarajatlar">
+    <summary>Qo‘shimcha xarajatlar (ixtiyoriy)</summary>
+    <div class="grid" style="margin-top:12px">
+      <div class="field"><label for="k-sugurta">Sug‘urta (so‘m)</label>
+        <input type="text" id="k-sugurta" class="pul k-xarajat" inputmode="numeric" placeholder="0"></div>
+      <div class="field"><label for="k-baholash">Garovni baholash (so‘m)</label>
+        <input type="text" id="k-baholash" class="pul k-xarajat" inputmode="numeric" placeholder="0"></div>
+      <div class="field"><label for="k-notarius">Notarius (so‘m)</label>
+        <input type="text" id="k-notarius" class="pul k-xarajat" inputmode="numeric" placeholder="0"></div>
+      <div class="field"><label for="k-boshqa">Boshqa xarajatlar (so‘m)</label>
+        <input type="text" id="k-boshqa" class="pul k-xarajat" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <div class="help">Bir martalik xarajatlar — kredit olish paytida to‘lanadi.
+      Ular jami summaga va kreditning to‘liq qiymatiga (KTQ) qo‘shiladi.</div>
+  </details>
+
+  <div class="errors hidden" id="k-xato"></div>
+</div>
+
+<div id="k-natija">
+  <div class="stats">
+    <div class="stat accent">
+      <div class="label" id="k-oylik-nom">Oylik to‘lov</div>
+      <div class="value" id="k-oylik">—</div>
+      <div class="muted" id="k-oylik-izoh"></div>
+    </div>
+    <div class="stat">
+      <div class="label">Jami foiz</div>
+      <div class="value sm" id="k-jami-foiz">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Jami to‘lov</div>
+      <div class="value sm" id="k-jami">—</div>
+      <div class="muted" id="k-jami-izoh"></div>
+    </div>
+    <div class="stat">
+      <div class="label">Kreditning to‘liq qiymati (KTQ)</div>
+      <div class="value sm" id="k-ktq">—</div>
+      <div class="muted">yillik, xarajatlar bilan</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Usullarni solishtirish</h2>
+    <div class="table-wrap">
+      <table id="k-solishtir">
+        <tr><th>Usul</th><th class="num">Birinchi to‘lov</th><th class="num">Oxirgi to‘lov</th>
+            <th class="num">Jami foiz</th><th class="num">Jami to‘lov</th><th class="num">KTQ</th></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">
+      <h2 style="margin:0">To‘lov jadvali</h2>
+      <div class="actions" style="margin:0">
+        <button class="btn btn-secondary btn-sm" type="button" onclick="window.print()">Chop etish</button>
+      </div>
+    </div>
+    <div class="muted grafik-shart" id="k-shart"></div>
+    <div class="table-wrap">
+      <table id="k-jadval">
+        <thead><tr><th>№</th><th>Sana</th><th class="num">Kredit qoldig‘i</th>
+          <th class="num">Asosiy qarz</th><th class="num">Foiz</th>
+          <th class="num">Jami to‘lov</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{# pul.js dan KEYIN ulanadi — `window.pul` kerak #}
+<script>
+(function(){
+  'use strict';
+  // Hamma summalar TIYINDA (butun son) hisoblanadi — kasr xatolari to'planmasin.
+  var $ = function(id){ return document.getElementById(id); };
+  var USULLAR = {lombard: 'Lombard usuli', annuitet: 'Annuitet', differensial: 'Differensial'};
+
+  // ---------------------------------------------------------------- sanalar
+  // docgen.add_months bilan bir xil: kun oshib ketsa oy oxiriga tushadi
+  function oyQosh(d, n){
+    var y = d.getFullYear(), m = d.getMonth() + n;
+    var oxirgi = new Date(y, m + 1, 0).getDate();
+    return new Date(y, m, Math.min(d.getDate(), oxirgi));
+  }
+  function kunFarqi(a, b){ return Math.round((b - a) / 86400000); }
+  function kabisa(y){ return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+  function sanaMatn(d){
+    return String(d.getDate()).padStart(2, '0') + '.' +
+           String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+  }
+
+  // ---------------------------------------------------------------- formatlash
+  function somMatn(tiyin){                     // 1234567 tiyin -> «12 345,67»
+    var manfiy = tiyin < 0; tiyin = Math.abs(Math.round(tiyin));
+    var som = Math.floor(tiyin / 100), t = tiyin % 100;
+    return (manfiy ? '−' : '') + pul.format(String(som)) + ',' + String(t).padStart(2, '0');
+  }
+  function somQisqa(tiyin, html){              // kartochkalar uchun: tiyinsiz
+    var son = pul.format(String(Math.round(tiyin / 100)));
+    return html ? son + ' <small class="kalk-som">so‘m</small>' : son + ' so‘m';
+  }
+
+  // ---------------------------------------------------------------- jadvallar
+  // Har biri [{n, sana, qoldiq, asosiy, foiz, jami}] qaytaradi (tiyinda).
+
+  // Shartnomadagidek (docgen.payment_schedule): asosiy qarz butun so'mga teng
+  // bo'linadi, foiz davr boshidagi qoldiqqa kunlab: yaxlit(qoldiq×foiz/kunlar_yilda)
+  // × kunlar. 1-to'lov keyingi oyning 10-sanasi, oxirgisi sana + muddat − 1 kun.
+  function lombardJadvali(S, n, foiz, sana){
+    var ulush = Math.round(S / n);             // so'm
+    var bosh = oyQosh(sana, 1); bosh.setDate(10);
+    var tugash = oyQosh(sana, n); tugash.setDate(tugash.getDate() - 1);
+    var qoldiq = S, oldingi = sana, q = [];
+    for (var k = 1; k <= n; k++){
+      var d = (k === n) ? tugash : oyQosh(bosh, k - 1);
+      var kunlar = kunFarqi(oldingi, d);
+      var yilda = kabisa(d.getFullYear()) ? 366 : 365;
+      var kunlik = Math.round(qoldiq * foiz / yilda + 1e-9);   // tiyin (= so'm×%/kun ×100/100)
+      var foizT = kunlik * kunlar;
+      var asosiy = (k < n) ? ulush : qoldiq;
+      q.push({n: k, sana: d, qoldiq: qoldiq * 100, asosiy: asosiy * 100,
+              foiz: foizT, jami: asosiy * 100 + foizT});
+      qoldiq -= asosiy; oldingi = d;
+    }
+    return q;
+  }
+
+  // Annuitet: oylik stavka = yillik/12, har oy teng to'lov; oxirgisi qoldiqni yopadi
+  function annuitetJadvali(S, n, foiz, sana){
+    var r = foiz / 1200, qoldiq = S * 100, q = [];
+    var tolov = r === 0 ? qoldiq / n : qoldiq * r / (1 - Math.pow(1 + r, -n));
+    tolov = Math.round(tolov);
+    for (var k = 1; k <= n; k++){
+      var foizT = Math.round(qoldiq * r);
+      var asosiy = (k < n) ? Math.min(tolov - foizT, qoldiq) : qoldiq;
+      q.push({n: k, t: k, sana: oyQosh(sana, k), qoldiq: qoldiq, asosiy: asosiy,
+              foiz: foizT, jami: asosiy + foizT});
+      qoldiq -= asosiy;
+    }
+    return q;
+  }
+
+  // Differensial: asosiy qarz teng (butun so'm), foiz qoldiqqa oylik stavka bilan
+  function differensialJadvali(S, n, foiz, sana){
+    var r = foiz / 1200, ulush = Math.round(S / n) * 100, qoldiq = S * 100, q = [];
+    for (var k = 1; k <= n; k++){
+      var foizT = Math.round(qoldiq * r);
+      var asosiy = (k < n) ? ulush : qoldiq;
+      q.push({n: k, t: k, sana: oyQosh(sana, k), qoldiq: qoldiq, asosiy: asosiy,
+              foiz: foizT, jami: asosiy + foizT});
+      qoldiq -= asosiy;
+    }
+    return q;
+  }
+
+  // KTQ: qo'lga tegadigan summa (kredit − xarajatlar) va to'lovlar oqimi
+  // bo'yicha oylik ichki stavka i topiladi (vaqt: bank usullarida butun oylar,
+  // lombard usulida kunlar / (365/12)),
+  // KTQ = i × 12 × 100%. Xarajat bo'lmasa annuitetda yillik stavkaga teng chiqadi.
+  function ktq(S, xarajat, jadval, sana){
+    var olingan = (S * 100) - xarajat;
+    if (olingan <= 0) return null;
+    var oqim = jadval.map(function(r){
+      return {t: r.t != null ? r.t : kunFarqi(sana, r.sana) / (365 / 12), s: r.jami};
+    });
+    function qiymat(i){
+      var v = -olingan;
+      for (var j = 0; j < oqim.length; j++) v += oqim[j].s / Math.pow(1 + i, oqim[j].t);
+      return v;
+    }
+    var past = -0.99, yuqori = 10;
+    if (qiymat(past) * qiymat(yuqori) > 0) return null;
+    for (var it = 0; it < 200; it++){
+      var orta = (past + yuqori) / 2;
+      if (qiymat(orta) > 0) past = orta; else yuqori = orta;
+    }
+    return (past + yuqori) / 2 * 12 * 100;
+  }
+
+  var JADVAL = {lombard: lombardJadvali, annuitet: annuitetJadvali,
+                differensial: differensialJadvali};
+
+  function yigindi(q, k){ return q.reduce(function(a, r){ return a + r[k]; }, 0); }
+
+  // ---------------------------------------------------------------- hisoblash
+  function hisobla(){
+    var S = pul.son($('k-summa').value);
+    var n = parseInt($('k-muddat').value, 10);
+    var foiz = parseFloat(String($('k-foiz').value).replace(',', '.'));
+    var sana = $('k-sana').value ? new Date($('k-sana').value + 'T00:00:00') : null;
+    var xarajat = 0;
+    document.querySelectorAll('.k-xarajat').forEach(function(i){ xarajat += pul.son(i.value) * 100; });
+
+    var xato = '';
+    if (!S) xato = 'Kredit summasini kiriting.';
+    else if (!(n >= 1 && n <= 120)) xato = 'Muddat 1 dan 120 oygacha bo‘lishi kerak.';
+    else if (!(foiz >= 0 && foiz <= 300)) xato = 'Foiz stavkasi 0–300% oralig‘ida bo‘lishi kerak.';
+    else if (!sana || isNaN(sana)) xato = 'Kredit berilgan sanani kiriting.';
+    $('k-xato').textContent = xato;
+    $('k-xato').classList.toggle('hidden', !xato);
+    $('k-natija').classList.toggle('kalk-xira', !!xato);
+    if (xato) return;
+
+    var usul = document.querySelector('input[name="k-usul"]:checked').value;
+    var natijalar = {};
+    Object.keys(JADVAL).forEach(function(u){
+      var q = JADVAL[u](S, n, foiz, sana);
+      natijalar[u] = {q: q, foiz: yigindi(q, 'foiz'), jami: yigindi(q, 'jami'),
+                      ktq: ktq(S, xarajat, q, sana)};
+    });
+    var t = natijalar[usul], q = t.q;
+
+    // Kartochkalar
+    var birinchi = q[0].jami, oxirgi = q[q.length - 1].jami;
+    if (usul === 'annuitet'){
+      $('k-oylik-nom').textContent = 'Oylik to‘lov';
+      $('k-oylik').innerHTML = somQisqa(birinchi, true);
+      $('k-oylik-izoh').textContent = n > 1 ? 'oxirgi oy: ' + somQisqa(oxirgi) : '';
+    } else {
+      $('k-oylik-nom').textContent = 'Birinchi to‘lov';
+      $('k-oylik').innerHTML = somQisqa(birinchi, true);
+      $('k-oylik-izoh').textContent = n > 1 ? 'oxirgi to‘lov: ' + somQisqa(oxirgi) : '';
+    }
+    $('k-jami-foiz').innerHTML = somQisqa(t.foiz, true);
+    $('k-jami').innerHTML = somQisqa(t.jami + xarajat, true);
+    $('k-jami-izoh').textContent = xarajat ? 'shundan xarajatlar: ' + somQisqa(xarajat) : '';
+    $('k-ktq').textContent = t.ktq == null ? '—' : t.ktq.toFixed(2).replace('.', ',') + '%';
+
+    // Solishtirish jadvali
+    var sol = $('k-solishtir');
+    while (sol.rows.length > 1) sol.deleteRow(1);
+    Object.keys(JADVAL).forEach(function(u){
+      var r = natijalar[u], tr = sol.insertRow();
+      if (u === usul) tr.className = 'kalk-tanlangan';
+      tr.innerHTML = '<td>' + USULLAR[u] + '</td>' +
+        '<td class="num">' + somMatn(r.q[0].jami) + '</td>' +
+        '<td class="num">' + somMatn(r.q[r.q.length - 1].jami) + '</td>' +
+        '<td class="num">' + somMatn(r.foiz) + '</td>' +
+        '<td class="num"><b>' + somMatn(r.jami + xarajat) + '</b></td>' +
+        '<td class="num">' + (r.ktq == null ? '—' : r.ktq.toFixed(2).replace('.', ',') + '%') + '</td>';
+    });
+
+    // To'lov jadvali
+    $('k-shart').textContent = USULLAR[usul] + ' · ' + pul.format(String(S)) + ' so‘m · ' +
+      n + ' oy · yillik ' + String(foiz).replace('.', ',') + '% · berilgan sana ' + sanaMatn(sana);
+    var tb = $('k-jadval').tBodies[0], html = '';
+    q.forEach(function(r){
+      html += '<tr><td>' + r.n + '</td><td>' + sanaMatn(r.sana) + '</td>' +
+        '<td class="num">' + somMatn(r.qoldiq) + '</td>' +
+        '<td class="num">' + somMatn(r.asosiy) + '</td>' +
+        '<td class="num">' + somMatn(r.foiz) + '</td>' +
+        '<td class="num"><b>' + somMatn(r.jami) + '</b></td></tr>';
+    });
+    html += '<tr class="jami-qator"><td></td><td><b>Jami</b></td><td></td>' +
+      '<td class="num">' + somMatn(yigindi(q, 'asosiy')) + '</td>' +
+      '<td class="num">' + somMatn(t.foiz) + '</td>' +
+      '<td class="num"><b>' + somMatn(t.jami) + '</b></td></tr>';
+    tb.innerHTML = html;
+  }
+
+  // ---------------------------------------------------------------- bog'lash
+  // Sana standart — bugun
+  var bugun = new Date();
+  $('k-sana').value = bugun.getFullYear() + '-' + String(bugun.getMonth() + 1).padStart(2, '0') +
+                      '-' + String(bugun.getDate()).padStart(2, '0');
+
+  // Matn maydoni <-> surgich
+  $('k-summa-r').addEventListener('input', function(){
+    $('k-summa').value = pul.format(this.value); hisobla();
+  });
+  $('k-summa').addEventListener('input', function(){
+    $('k-summa-r').value = pul.son(this.value);
+  });
+  $('k-muddat-r').addEventListener('input', function(){
+    $('k-muddat').value = this.value; hisobla();
+  });
+  $('k-muddat').addEventListener('input', function(){
+    $('k-muddat-r').value = this.value;
+  });
+
+  // Har qanday maydon o'zgarsa — qayta hisoblaymiz (pul.js formatlashidan keyin)
+  document.querySelector('.kalk-forma').addEventListener('input', function(){
+    setTimeout(hisobla, 0);
+  });
+  document.querySelector('.kalk-forma').addEventListener('change', hisobla);
+  hisobla();
+})();
+</script>
+{% endblock %}

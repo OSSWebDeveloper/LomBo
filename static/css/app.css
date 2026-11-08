@@ -658,7 +658,7 @@ td.actions .btn:hover{filter:none;border-color:currentColor}
 /* Grafikni qog'ozga chiqarganda faqat jadval qolsin: menyu, forma va
    tugmalar kerak emas. */
 @media print{
-  .nav,.toasts,.actions,.grafik-forma,.btn{display:none !important}
+  .nav,.toasts,.actions,.grafik-forma,.kalk-forma,.btn{display:none !important}
   .shell{display:block}
   .main,.container{margin:0;padding:0;max-width:none}
   .card{border:none;box-shadow:none;padding:0;margin:0}
@@ -733,3 +733,15 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .qator-ochir:hover, .qator-ochir:focus-visible {
   background: var(--danger); color: #fff; outline: none;
 }
+
+/* ---------- kredit kalkulyatori (v1.3.7) ---------- */
+.kalk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}
+.kalk-slider{width:100%;margin:10px 0 0;accent-color:var(--accent);padding:0;border:none;background:none;box-shadow:none}
+.kalk-chegara{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.kalk-usul{width:100%}
+.kalk-xira{opacity:.35;pointer-events:none}
+.kalk-tanlangan td{background:var(--accent-soft)}
+.kalk-tanlangan td:first-child{font-weight:600;color:var(--accent)}
+.stat .muted{margin-top:6px}
+.kalk-som{font-size:.55em;font-weight:600;color:var(--muted)}
+#k-natija .stat .value{white-space:nowrap}

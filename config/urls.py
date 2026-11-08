@@ -46,6 +46,8 @@ urlpatterns = [
     # To'lov jadvali kalkulyatori — shartnoma tuzmasdan grafik hisoblash
     path('grafik/', con.grafik, name='grafik'),
     path('grafik/word/', con.grafik_download, name='grafik_download'),
+    # Kredit kalkulyatori — annuitet / differensial / lombard usulini solishtirish
+    path('kalkulyator/', con.kalkulyator, name='kalkulyator'),
 
     # O'chirish so'rovlari
     path('sorovlar/', con.delete_requests, name='delete_requests'),

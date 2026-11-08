@@ -512,6 +512,17 @@ def grafik(request):
 
 
 @login_required
+def kalkulyator(request):
+    """Kredit kalkulyatori (bank saytlaridagidek, lekin o'zimizniki).
+
+    Hisob butunlay brauzerda (shablondagi JS) — maydon o'zgarishi bilan natija
+    yangilanadi. «Lombard usuli» `payment_schedule` bilan bir xil qoidada
+    hisoblanadi; annuitet va differensial — oylik stavka (yillik/12) bilan.
+    """
+    return render(request, 'contracts/kalkulyator.html')
+
+
+@login_required
 def grafik_download(request):
     """Hisoblangan jadvalni Word hujjati sifatida yuklab olish."""
     form = GrafikFormasi(request.GET or None)
