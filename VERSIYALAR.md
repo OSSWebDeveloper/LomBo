@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.6 — 2026-11-08
+
+Zargarlik jadvalida yangi qo'shilgan qatorlarni × tugmasi bilan olib tashlash mumkin (birinchi qatorda tugma yo'q); jami summa qayta hisoblanadi.
+
 ## 1.3.5 — 2026-11-08
 
 Zargarlikda «Garov bahosi» maydoni buyumlar jadvali ostiga, «Garovga qo'yuvchi» ustiga ko'chirildi (transportda joyida qoladi).
