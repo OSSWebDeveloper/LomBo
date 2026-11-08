@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.13 — 2026-11-08
+
+Sahifalardagi izoh va xabarlar qisqartirildi. Tasdiq kutayotgan shartnoma sahifasining oxirida ham yashil «Tasdiqlash» tugmasi.
+
 ## 1.3.12 — 2026-11-08
 
 Shartnomada «Imtiyozli davr»: belgi qo'yilsa oy soni kiritiladi, to'lov grafigida (1-ilova) shu oylarda faqat foiz; «Grafik» bo'limida ham. Kalkulyatorda «Differensial» foizni haqiqiy kunlar/365 bilan hisoblaydi (kredit-kalkulator.uz / finlit bilan tiyingacha mos). Migratsiya: contracts 0025.
