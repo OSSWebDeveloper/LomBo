@@ -26,19 +26,16 @@
 
 {% if tahrir_qoldiq %}
 <div class="alert alert-info">
-  ✏️ Bu shartnomani yana <b>{{ tahrir_qoldiq }}</b> daqiqa davomida o‘zingiz tuzatishingiz mumkin.
-  Keyin o‘zgartirish faqat boshliq orqali bo‘ladi.
+  ✏️ Yana <b>{{ tahrir_qoldiq }}</b> daqiqa tuzatish mumkin.
 </div>
 {% endif %}
 
 {% if tasdiqlay_oladi %}
 <div class="alert alert-warning tasdiq-panel">
-  <div>⏳ Bu shartnomani <b>{{ contract.created_by|default:'ishchi' }}</b> kiritgan
-    ({{ contract.updated_at|date:'d.m.Y H:i' }}). Ma’lumotlarni tekshirib, tasdiqlang —
-    shundan keyin ishchi hujjatlarni yuklab olib chop eta oladi.</div>
+  <div>⏳ <b>{{ contract.created_by|default:'Ishchi' }}</b> kiritgan, tasdiq kutyapti.</div>
   <form method="post" action="{% url 'tasdiqlash' contract.pk %}" class="inline">
     {% csrf_token %}<input type="hidden" name="keyingi" value="detail">
-    <button class="btn btn-primary" type="submit">✓ Tasdiqlash</button>
+    <button class="btn btn-success" type="submit">✓ Tasdiqlash</button>
   </form>
 </div>
 {% endif %}
@@ -58,16 +55,13 @@
   {% endif %}
   {% else %}
   <div class="empty" style="padding:18px 12px"><span class="icon">⏳</span>
-    Shartnoma boshliqqa tasdiqlash uchun yuborilgan. Tasdiqlangach shu yerda
-    Word va PDF tugmalari paydo bo‘ladi.</div>
+    Boshliq tasdiqlagach yuklab olish mumkin.</div>
   {% endif %}
 </div>
 
 {% if pending_request %}
 <div class="alert alert-warning">
-  ⏳ Bu shartnoma uchun o‘chirish so‘rovi yuborilgan
-  ({{ pending_request.requested_by }} → {{ pending_request.assigned_to }}),
-  javob kutilmoqda.
+  ⏳ O‘chirish so‘ralgan ({{ pending_request.requested_by }} → {{ pending_request.assigned_to }}).
 </div>
 {% endif %}
 
@@ -95,7 +89,7 @@
       <tr><th>Muddat</th><td>{{ contract.term_months }} oy</td></tr>
       {% if contract.imtiyoz_oylar %}
       <tr><th>Imtiyozli davr</th><td>{{ contract.imtiyoz_oylar }} oy
-        <span class="muted">(faqat foiz to‘lanadi)</span></td></tr>
+</td></tr>
       {% endif %}
       <tr><th>Yillik foiz</th><td>{{ contract.interest_rate }}%</td></tr>
       <tr><th>Sanalar</th><td>{{ contract.date|date:'d.m.Y' }} —
@@ -202,5 +196,12 @@
     {% endfor %}
   </table>
 </div>
+
+{% if tasdiqlay_oladi %}
+<form method="post" action="{% url 'tasdiqlash' contract.pk %}" class="tasdiq-past">
+  {% csrf_token %}<input type="hidden" name="keyingi" value="detail">
+  <button class="btn btn-success" type="submit">✓ Tasdiqlash</button>
+</form>
+{% endif %}
 
 {% endblock %}

@@ -6,8 +6,7 @@
 
 {% if tahrir_qoldiq %}
 <div class="alert alert-info">
-  ⏳ Tuzatish muddati: yana <b>{{ tahrir_qoldiq }}</b> daqiqa.
-  Muddat o‘tgach o‘zgartirish faqat boshliq orqali bo‘ladi.
+  ⏳ Tuzatish uchun yana <b>{{ tahrir_qoldiq }}</b> daqiqa.
 </div>
 {% endif %}
 
@@ -59,7 +58,7 @@
                role="combobox" aria-expanded="false" aria-controls="mijoz-royxat"
                aria-autocomplete="list">
         <ul class="mijoz-royxat hidden" id="mijoz-royxat" role="listbox"></ul>
-        <div class="help">Bosing — oxirgi kelgan mijozlar chiqadi. Seriya-raqamdan bir qismini yozsangiz, ro‘yxat saralanadi.</div>
+        <div class="help">Pasport seriyasi yoki ismini yozing.</div>
       </div>
       <div class="mijoz-tanlangan{% if not tanlangan_mijoz %} hidden{% endif %}" id="mijoz-tanlangan">
         <div>
@@ -73,7 +72,7 @@
     {% elif contract.mijoz_id and user.is_boshliq %}
     <p class="help" style="margin-top:-4px">Mijozlar bazasida:
       <a href="{% url 'mijoz_detail' contract.mijoz_id %}">{{ contract.mijoz.fio }}</a>.
-      Saqlanganda mijoz ma’lumoti ham yangilanadi.</p>
+</p>
     {% endif %}
 
     <div id="qarz-oluvchi-maydonlari">
@@ -86,8 +85,7 @@
       {% include 'contracts/_field.html' with field=form.borrower_workplace %}
       {% include 'contracts/_field.html' with field=form.monthly_income %}
     </div>
-    <div class="help">Barcha matnlar hujjatga qanday yozilishi kerak bo‘lsa — kirill alifbosida
-      kiriting (masalan: Джураева Майсара Ахмедовна).</div>
+    <div class="help">Kirillda yozing.</div>
 
     <hr class="ajratgich">
     <p class="ajratgich-nom">Shaxsni tasdiqlovchi hujjat</p>
@@ -167,8 +165,7 @@
         </div>
       {% endfor %}
     </div>
-    <div class="help">Kamida bitta surat majburiy. Suratlar to‘plamda
-      dalolatnomadan keyin (bayondan oldin) chiqadi.</div>
+    <div class="help">Kamida bitta surat.</div>
 
     <!-- ZARGARLIK -->
     <div id="block-zargarlik" class="collateral-block hidden">
@@ -191,7 +188,7 @@
       </table>
       <div class="actions" style="margin-top:10px">
         <button type="button" class="btn btn-secondary btn-sm" id="add-jewelry">+ Qator qo‘shish</button>
-        <span class="muted">Jami summa garov bahosiga yoziladi.</span>
+
       </div>
 
       <div id="garov-joy-zargarlik" style="margin-top:14px"></div>
@@ -226,7 +223,6 @@
           {% include 'contracts/_field.html' with field=form.pledgor_passport_number %}
           {% include 'contracts/_field.html' with field=form.pledgor_address %}
         </div>
-        <div class="help">Bu ma’lumotlar garov shartnomasi va baholash dalolatnomasiga tushadi.</div>
       </div>
     </div>
 
@@ -291,8 +287,7 @@
         </div>
         {% endfor %}
       </div>
-      <div class="help">Kafillikda garov shartnomasi va baholash dalolatnomasi chiqmaydi —
-        faqat shartnoma va to‘lov jadvali.</div>
+      <div class="help">Garov hujjatlari chiqmaydi.</div>
     </div>
   </div>
 

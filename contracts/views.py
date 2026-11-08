@@ -94,9 +94,7 @@ def _tasdiq_holatini_qoy(contract, user):
 
 
 def _tasdiq_kutilmoqda(request, contract):
-    messages.error(request, f'Shartnoma №{contract.number} hali boshliq tomonidan '
-                            f'tasdiqlanmagan. Hujjatlarni tasdiqlangandan keyin '
-                            f'yuklab olishingiz mumkin.')
+    messages.error(request, f'Shartnoma №{contract.number} hali tasdiqlanmagan.')
     return redirect('contract_detail', pk=contract.pk)
 
 
@@ -122,8 +120,7 @@ def tasdiqlash(request, pk):
     contract.save(update_fields=['tasdiq_holati', 'tasdiqlagan', 'tasdiqlangan_vaqt'])
     amal_yoz(request.user, Amal.TASDIQLADI, f'Shartnoma №{contract.number}',
              f'{contract.created_by or "—"} kiritgan')
-    messages.success(request, f'Shartnoma №{contract.number} tasdiqlandi — '
-                              f'endi ishchi hujjatlarni yuklab ola oladi.')
+    messages.success(request, f'Shartnoma №{contract.number} tasdiqlandi.')
     if request.POST.get('keyingi') == 'detail':
         return redirect('contract_detail', pk=contract.pk)
     return redirect('tasdiq_royxati')
@@ -400,9 +397,8 @@ def contract_create(request):
             if contract.tasdiqlanganmi:
                 messages.success(request, f'Shartnoma №{contract.number} qo\'shildi.')
             else:
-                messages.success(request, f'Shartnoma №{contract.number} qo\'shildi va '
-                                          f'boshliqqa tasdiqlash uchun yuborildi. Hujjatlarni '
-                                          f'tasdiqlangandan keyin yuklab olasiz.')
+                messages.success(request, f'Shartnoma №{contract.number} qo\'shildi, '
+                                          f'boshliq tasdig\'ini kutyapti.')
             return redirect('contract_detail', pk=contract.pk)
         messages.error(request, 'Formada xatolar bor, tekshirib chiqing.')
 
@@ -491,8 +487,8 @@ def contract_edit(request, pk):
                 izoh += ' (kiritgandan keyingi tuzatish)'
             amal_yoz(request.user, Amal.OZGARTIRDI, f'Shartnoma №{contract.number}', izoh)
             if qayta_tasdiq:
-                messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi va '
-                                          f'boshliqqa qayta tasdiqlash uchun yuborildi.')
+                messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi, '
+                                          f'qayta tasdiq kutyapti.')
             else:
                 messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi.')
             return redirect('contract_detail', pk=contract.pk)

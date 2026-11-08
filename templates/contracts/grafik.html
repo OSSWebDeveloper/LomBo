@@ -3,9 +3,7 @@
 {% block content %}
 
 <h1>To‘lov grafigi</h1>
-<p class="muted" style="margin-top:-8px">
-  Shartnoma tuzmasdan jadvalni hisoblash. Hisob shartnomadagi bilan bir xil —
-  natija bosma 1-ilova bilan tiyingacha mos keladi.</p>
+<p class="muted" style="margin-top:-8px">Shartnomadagi 1-ilova bilan bir xil hisob.</p>
 
 <div class="card grafik-forma">
   <form method="get" action="{% url 'grafik' %}">
@@ -84,7 +82,7 @@
 {% elif query %}
 <div class="card">
   <div class="empty"><span class="icon">⚠️</span>
-    Jadval hisoblanmadi — yuqoridagi maydonlarni tekshiring.</div>
+    Maydonlarni tekshiring.</div>
 </div>
 {% endif %}
 

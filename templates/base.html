@@ -193,11 +193,10 @@
         if (eski === null) return;          // birinchi yuklash — eskilari haqida xabar shart emas
         d.oxirgilar.filter(function(x){ return eski.indexOf(x.id) === -1; })
           .reverse().forEach(function(x){
-            var matn = 'Yangi shartnoma №' + x.raqam + ' (' + x.fio + ') — ' + x.ishchi +
-                       ' kiritdi. Tasdiqlashingiz kutilmoqda.';
+            var matn = 'Yangi shartnoma №' + x.raqam + ' — ' + x.ishchi;
             if (window.bildirishnoma) bildirishnoma(matn, 'info');
             if ('Notification' in window && Notification.permission === 'granted'){
-              var n = new Notification('Tasdiqlash kerak: №' + x.raqam, {body: matn, tag: 'tasdiq-' + x.id});
+              var n = new Notification('Shartnoma №' + x.raqam, {body: x.fio + ' — ' + x.ishchi, tag: 'tasdiq-' + x.id});
               n.onclick = function(){ window.focus(); location.href = URL_ROYXAT; };
             }
           });

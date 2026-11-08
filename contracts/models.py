@@ -273,7 +273,7 @@ class Contract(models.Model):
     # faqat foiz to'laydi; asosiy qarz qolgan (muddat − imtiyoz) oyga bo'linadi.
     imtiyoz_oylar = models.PositiveSmallIntegerField(
         'Imtiyozli davr (oy)', default=0,
-        help_text="Shu oylarda faqat foiz to'lanadi.")
+        help_text="Bu oylarda faqat foiz to'lanadi.")
 
     # Garov umumiy
     # ESKIRGAN: bir muddat garov shartnomasi o'z raqamida yuritilgan edi.

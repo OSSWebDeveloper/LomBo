@@ -144,15 +144,13 @@ class ContractForm(forms.ModelForm):
         # ya'ni brauzerdan soxta qiymat kelolmaydi.
         self.fields['end_date'].disabled = True
         self.fields['end_date'].required = False
-        self.fields['end_date'].help_text = 'Sana va muddatdan avtomatik hisoblanadi.'
+        self.fields['end_date'].help_text = 'O‘zi hisoblanadi.'
 
         # Raqamlar avtomat taklif qilinadi, lekin qo'lda tuzatsa ham bo'ladi
         # (mijoz talabi, 2026-08-14).
         # Bo'sh qoldirilsa navbatdagi bo'sh raqam qo'yiladi (clean()ga qarang)
         self.fields['number'].required = False
-        self.fields['number'].help_text = (
-            'Avtomatik beriladi — kerak bo‘lsa o‘zgartiring. '
-            'Ariza, bayon va dalolatnoma shu raqam bilan chiqadi.')
+        self.fields['number'].help_text = 'O‘zi beriladi, o‘zgartirsa bo‘ladi.'
 
         if not self.instance.pk:
             self.fields['number'].initial = next_contract_number()
@@ -323,7 +321,7 @@ class ContractForm(forms.ModelForm):
         data['imtiyoz_oylar'] = imtiyoz
         if data.get('term_months') and imtiyoz >= data['term_months']:
             self.add_error('imtiyoz_oylar',
-                           f"Imtiyozli davr muddatdan kam bo'lishi kerak "
+                           f"Muddatdan kam bo'lsin "
                            f"(ko'pi bilan {data['term_months'] - 1} oy).")
 
         # Tugash sanasi har doim sana va muddatdan qayta hisoblanadi
@@ -579,7 +577,7 @@ class GrafikFormasi(forms.Form):
     imtiyoz_oylar = forms.IntegerField(
         label='Imtiyozli davr (oy)', required=False, min_value=0,
         max_value=MUDDAT_CHEGARASI - 1, initial=0,
-        help_text="Shu oylarda faqat foiz to'lanadi. Imtiyoz bo'lmasa — 0.")
+        help_text="Bo'lmasa 0.")
 
     # ---- quyidagilari ixtiyoriy: bo'sh qolsa shartnomadagidek hisoblanadi
     payment_start_date = forms.DateField(
@@ -613,7 +611,7 @@ class GrafikFormasi(forms.Form):
         data['imtiyoz_oylar'] = imtiyoz
         if imtiyoz >= oylar:
             self.add_error('imtiyoz_oylar',
-                           f"Imtiyozli davr muddatdan kam bo'lishi kerak "
+                           f"Muddatdan kam bo'lsin "
                            f"(ko'pi bilan {oylar - 1} oy).")
 
         # Bo'sh qoldirilgan sanalar shartnomadagi qoidalar bo'yicha to'ldiriladi

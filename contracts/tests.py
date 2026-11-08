@@ -1585,7 +1585,7 @@ class BoshliqTasdigiTest(TestCase):
                                      fetch_redirect_response=False)
         sahifa = self.client.get(f'/shartnoma/{self.c.pk}/').content.decode()
         self.assertNotIn(reverse('contract_download', args=[self.c.pk]), sahifa)
-        self.assertIn('tasdiqlash uchun yuborilgan', sahifa)
+        self.assertIn('Boshliq tasdiqlagach', sahifa)
 
     def test_boshliqqa_korinadi_va_tasdiqlaydi(self):
         from django.urls import reverse

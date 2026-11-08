@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='contract',
             name='imtiyoz_oylar',
-            field=models.PositiveSmallIntegerField(default=0, help_text="Shu oylarda faqat foiz to'lanadi.", verbose_name='Imtiyozli davr (oy)'),
+            field=models.PositiveSmallIntegerField(default=0, help_text="Bu oylarda faqat foiz to'lanadi.", verbose_name='Imtiyozli davr (oy)'),
         ),
     ]

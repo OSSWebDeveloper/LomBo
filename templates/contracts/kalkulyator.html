@@ -3,10 +3,7 @@
 {% block content %}
 
 <h1>Kredit kalkulyatori</h1>
-<p class="muted" style="margin-top:-8px">
-  Mijozga «oyiga qancha to‘layman?» degan savolga darrov javob berish uchun.
-  Natija maydonlarni o‘zgartirishingiz bilan yangilanadi. Hisob taxminiy:
-  aniq jadval shartnomada (yoki «Grafik» bo‘limida) chiqadi.</p>
+<p class="muted" style="margin-top:-8px">Taxminiy hisob. Aniq jadval — «Grafik» bo‘limida.</p>
 
 <div class="card kalk-forma">
   <div class="kalk-grid">
@@ -42,8 +39,7 @@
     <div class="field hidden" id="k-imtiyoz-maydon">
       <label for="k-imtiyoz">Imtiyozli davr (oy)</label>
       <input type="number" id="k-imtiyoz" min="1" max="119" value="3">
-      <div class="help">Shu oylarda mijoz faqat foizni to‘laydi. Asosiy qarz
-        qolgan oylarga teng bo‘linadi.</div>
+      <div class="help">Bu oylarda faqat foiz to‘lanadi.</div>
     </div>
   </div>
 
@@ -52,22 +48,22 @@
     <label>
       <input type="radio" name="k-usul" value="lombard" checked>
       <span class="matn"><span class="nom">Lombard usuli</span>
-        <span class="izoh">Shartnomadagidek: foiz kunlab</span></span>
+        <span class="izoh">shartnomadagidek</span></span>
     </label>
     <label>
       <input type="radio" name="k-usul" value="annuitet">
       <span class="matn"><span class="nom">Annuitet</span>
-        <span class="izoh">Har oy bir xil to‘lov</span></span>
+        <span class="izoh">teng to‘lov</span></span>
     </label>
     <label>
       <input type="radio" name="k-usul" value="differensial">
       <span class="matn"><span class="nom">Differensial</span>
-        <span class="izoh">To‘lov oyma-oy kamayadi</span></span>
+        <span class="izoh">kamayib boradi</span></span>
     </label>
   </div>
 
   <details class="grafik-qoshimcha" id="k-xarajatlar">
-    <summary>Qo‘shimcha xarajatlar (ixtiyoriy)</summary>
+    <summary>Qo‘shimcha xarajatlar</summary>
     <div class="grid" style="margin-top:12px">
       <div class="field"><label for="k-sugurta">Sug‘urta (so‘m)</label>
         <input type="text" id="k-sugurta" class="pul k-xarajat" inputmode="numeric" placeholder="0"></div>
@@ -78,8 +74,7 @@
       <div class="field"><label for="k-boshqa">Boshqa xarajatlar (so‘m)</label>
         <input type="text" id="k-boshqa" class="pul k-xarajat" inputmode="numeric" placeholder="0"></div>
     </div>
-    <div class="help">Bir martalik xarajatlar — kredit olish paytida to‘lanadi.
-      Ular jami summaga va kreditning to‘liq qiymatiga (KTQ) qo‘shiladi.</div>
+    <div class="help">Bir martalik. KTQ ga qo‘shiladi.</div>
   </details>
 
   <div class="errors hidden" id="k-xato"></div>
@@ -102,9 +97,9 @@
       <div class="muted" id="k-jami-izoh"></div>
     </div>
     <div class="stat">
-      <div class="label">Kreditning to‘liq qiymati (KTQ)</div>
+      <div class="label">KTQ</div>
       <div class="value sm" id="k-ktq">—</div>
-      <div class="muted">yillik, xarajatlar bilan</div>
+      <div class="muted">yillik</div>
     </div>
   </div>
 
@@ -278,12 +273,12 @@
     document.querySelectorAll('.k-xarajat').forEach(function(i){ xarajat += pul.son(i.value) * 100; });
 
     var xato = '';
-    if (!S) xato = 'Kredit summasini kiriting.';
-    else if (!(n >= 1 && n <= 120)) xato = 'Muddat 1 dan 120 oygacha bo‘lishi kerak.';
-    else if (!(foiz >= 0 && foiz <= 300)) xato = 'Foiz stavkasi 0–300% oralig‘ida bo‘lishi kerak.';
-    else if (!sana || isNaN(sana)) xato = 'Kredit berilgan sanani kiriting.';
+    if (!S) xato = 'Summani kiriting.';
+    else if (!(n >= 1 && n <= 120)) xato = 'Muddat 1–120 oy.';
+    else if (!(foiz >= 0 && foiz <= 300)) xato = 'Foiz 0–300%.';
+    else if (!sana || isNaN(sana)) xato = 'Sanani kiriting.';
     else if (imtiyozBor && !(g >= 1 && g < n))
-      xato = 'Imtiyozli davr 1 dan ' + (n - 1) + ' oygacha bo‘lishi kerak (muddatdan kam).';
+      xato = 'Imtiyoz 1–' + (n - 1) + ' oy bo‘lishi kerak.';
     $('k-xato').textContent = xato;
     $('k-xato').classList.toggle('hidden', !xato);
     $('k-natija').classList.toggle('kalk-xira', !!xato);
@@ -302,22 +297,22 @@
     var birinchi = q[0].jami, oxirgi = q[q.length - 1].jami;
     if (g > 0){
       // Imtiyozda: asosiy raqam — imtiyozdan keyingi birinchi to'lov
-      $('k-oylik-nom').textContent = 'Imtiyozdan keyingi to‘lov';
+      $('k-oylik-nom').textContent = 'Imtiyozdan keyin';
       $('k-oylik').innerHTML = somQisqa(q[g].jami, true);
-      $('k-oylik-izoh').textContent = 'imtiyoz davrida (' + g + ' oy) faqat foiz: ' +
-        somQisqa(birinchi) + ' · oxirgi to‘lov: ' + somQisqa(oxirgi);
+      $('k-oylik-izoh').textContent = 'imtiyozda: ' + somQisqa(birinchi) +
+        ', oxirgisi: ' + somQisqa(oxirgi);
     } else if (usul === 'annuitet'){
       $('k-oylik-nom').textContent = 'Oylik to‘lov';
       $('k-oylik').innerHTML = somQisqa(birinchi, true);
-      $('k-oylik-izoh').textContent = n > 1 ? 'oxirgi oy: ' + somQisqa(oxirgi) : '';
+      $('k-oylik-izoh').textContent = n > 1 ? 'oxirgisi: ' + somQisqa(oxirgi) : '';
     } else {
       $('k-oylik-nom').textContent = 'Birinchi to‘lov';
       $('k-oylik').innerHTML = somQisqa(birinchi, true);
-      $('k-oylik-izoh').textContent = n > 1 ? 'oxirgi to‘lov: ' + somQisqa(oxirgi) : '';
+      $('k-oylik-izoh').textContent = n > 1 ? 'oxirgisi: ' + somQisqa(oxirgi) : '';
     }
     $('k-jami-foiz').innerHTML = somQisqa(t.foiz, true);
     $('k-jami').innerHTML = somQisqa(t.jami + xarajat, true);
-    $('k-jami-izoh').textContent = xarajat ? 'shundan xarajatlar: ' + somQisqa(xarajat) : '';
+    $('k-jami-izoh').textContent = xarajat ? 'xarajatlar: ' + somQisqa(xarajat) : '';
     $('k-ktq').textContent = t.ktq == null ? '—' : t.ktq.toFixed(2).replace('.', ',') + '%';
 
     // Solishtirish jadvali

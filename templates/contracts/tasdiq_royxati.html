@@ -7,11 +7,9 @@
     {% if navbat %}<span class="pill pill-pending">{{ navbat|length }} ta kutilmoqda</span>{% endif %}
   </h1>
   <button type="button" class="btn btn-secondary btn-sm hidden" id="brauzer-xabar-yoq">
-    🔔 Brauzer bildirishnomalarini yoqish</button>
+    🔔 Bildirishnomani yoqish</button>
 </div>
-<p class="muted" style="margin-top:-8px">
-  Ishchilar kiritgan shartnomalar. Tasdiqlamaguningizcha ishchi hujjatlarni
-  yuklab ololmaydi va chop etolmaydi. Avval «Ko‘rish» orqali tekshirib chiqing.</p>
+<p class="muted" style="margin-top:-8px">Tasdiqlanmaguncha ishchi hujjatni yuklab ololmaydi.</p>
 
 <div class="card">
 {% if navbat %}
@@ -41,7 +39,7 @@
 </table>
 </div>
 {% else %}
-  <div class="empty"><span class="icon">✅</span>Tasdiq kutayotgan shartnoma yo‘q.</div>
+  <div class="empty"><span class="icon">✅</span>Hammasi tasdiqlangan.</div>
 {% endif %}
 </div>
 
@@ -59,8 +57,7 @@
     Notification.requestPermission().then(function(r){
       t.classList.add('hidden');
       if (window.bildirishnoma)
-        bildirishnoma(r === 'granted' ? 'Brauzer bildirishnomalari yoqildi.'
-                                      : 'Brauzer ruxsat bermadi — xabarlar faqat saytda chiqadi.',
+        bildirishnoma(r === 'granted' ? 'Yoqildi.' : 'Ruxsat berilmadi.',
                       r === 'granted' ? 'success' : 'info');
     });
   });
