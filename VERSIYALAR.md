@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.7 — 2026-11-08
+
+Yangi «Kalkulyator» bo'limi: kredit summasi, muddat, foiz va sana bo'yicha to'lovni darhol hisoblaydi — lombard usuli (shartnomadagidek), annuitet va differensial; qo'shimcha xarajatlar, KTQ, usullarni solishtirish va to'lov jadvali.
+
 ## 1.3.6 — 2026-11-08
 
 Zargarlik jadvalida yangi qo'shilgan qatorlarni × tugmasi bilan olib tashlash mumkin (birinchi qatorda tugma yo'q); jami summa qayta hisoblanadi.
