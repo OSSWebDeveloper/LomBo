@@ -123,8 +123,11 @@
 
   <div class="card">
     <h2 style="margin-top:0">4. Ta'minot (garov)</h2>
-    <div class="grid">
-      {% include 'contracts/_field.html' with field=form.garov_value extra_class='garov-field' %}
+    {# Zargarlikda bu qator JS orqali jadval ostiga (#garov-joy-zargarlik) ko'chadi #}
+    <div id="garov-joy-tepa">
+      <div class="grid" id="garov-qator">
+        {% include 'contracts/_field.html' with field=form.garov_value extra_class='garov-field' %}
+      </div>
     </div>
 
     <hr class="ajratgich">
@@ -178,6 +181,8 @@
         <button type="button" class="btn btn-secondary btn-sm" id="add-jewelry">+ Qator qo‘shish</button>
         <span class="muted">Jami summa garov bahosiga yoziladi.</span>
       </div>
+
+      <div id="garov-joy-zargarlik" style="margin-top:14px"></div>
 
       <h3 style="margin-top:18px">Garovga qo‘yuvchi</h3>
       <div class="almashtirgich" id="pledgor-tanlov">
@@ -441,8 +446,21 @@
     t.addEventListener('change', egasiHolati);
   });
 
+  var garovQator = document.getElementById('garov-qator');
+  var garovJoylari = {
+    tepa: document.getElementById('garov-joy-tepa'),
+    zargarlik: document.getElementById('garov-joy-zargarlik')
+  };
+
   function toggle(){
     var v = sel.value;
+    // Zargarlikda garov bahosi jadval ostida, «Garovga qo'yuvchi» ustida turadi.
+    // Ko'chirish bloklarni o'chirib-yoqishdan OLDIN — aks holda yashirin
+    // zargarlik bloki ichida qolib, maydon disabled bo'lib qoladi.
+    if (garovQator) {
+      var joy = (v === 'zargarlik') ? garovJoylari.zargarlik : garovJoylari.tepa;
+      if (joy && garovQator.parentNode !== joy) joy.appendChild(garovQator);
+    }
     for (var k in blocks){
       var yashirin = (k !== v);
       blocks[k].classList.toggle('hidden', yashirin);
