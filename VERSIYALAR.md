@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.8 — 2026-11-08
+
+Kalkulyatorda «Imtiyozli davr»: belgi qo'yilsa oy soni kiritiladi; shu oylarda mijoz faqat foiz to'laydi, asosiy qarz qolgan oylarga teng bo'linadi (uchala usulda).
+
 ## 1.3.7 — 2026-11-08
 
 Yangi «Kalkulyator» bo'limi: kredit summasi, muddat, foiz va sana bo'yicha to'lovni darhol hisoblaydi — lombard usuli (shartnomadagidek), annuitet va differensial; qo'shimcha xarajatlar, KTQ, usullarni solishtirish va to'lov jadvali.
