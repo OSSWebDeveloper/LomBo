@@ -25,7 +25,7 @@ from .shablondan import SHABLONLAR, garovi_bormi
 from .forms import (GarovRasmFormSet, ContractForm, ContractSearchForm, DeleteRequestForm,
                     GrafikFormasi, GuarantorForm, JewelryFormSet, VehicleForm)
 from .formatlash import pasport_kalit
-from .models import tasdiq_kutayotganlar
+from .models import Bildirishnoma, ishchiga_xabar, tasdiq_kutayotganlar
 from .models import Amal, Contract, DeleteRequest, Mijoz, amal_yoz
 
 
@@ -120,6 +120,7 @@ def tasdiqlash(request, pk):
     contract.save(update_fields=['tasdiq_holati', 'tasdiqlagan', 'tasdiqlangan_vaqt'])
     amal_yoz(request.user, Amal.TASDIQLADI, f'Shartnoma №{contract.number}',
              f'{contract.created_by or "—"} kiritgan')
+    ishchiga_xabar(contract, request.user, f'Shartnoma №{contract.number} tasdiqlandi.')
     messages.success(request, f'Shartnoma №{contract.number} tasdiqlandi.')
     if request.POST.get('keyingi') == 'detail':
         return redirect('contract_detail', pk=contract.pk)
@@ -143,6 +144,17 @@ def tasdiq_holati(request):
         'fio': c.borrower_fio,
     } for c in navbat.order_by('-created_at')[:5]]
     return JsonResponse({'soni': navbat.count(), 'oxirgilar': oxirgilar})
+
+
+@login_required
+def bildirishnomalar(request):
+    """Ishchining o'qilmagan xabarlari (JSON). Berilganlari o'qilgan bo'ladi."""
+    yangi = list(Bildirishnoma.objects.filter(kimga=request.user, oqildi=False)[:10])
+    Bildirishnoma.objects.filter(pk__in=[b.pk for b in yangi]).update(oqildi=True)
+    return JsonResponse({'xabarlar': [{
+        'id': b.pk, 'matn': b.matn,
+        'url': f'/shartnoma/{b.shartnoma_id}/' if b.shartnoma_id else '',
+    } for b in yangi]})
 
 
 # --------------------------------------------------------------- dashboard
@@ -486,6 +498,9 @@ def contract_edit(request, pk):
             if ishchi_tahriri:
                 izoh += ' (kiritgandan keyingi tuzatish)'
             amal_yoz(request.user, Amal.OZGARTIRDI, f'Shartnoma №{contract.number}', izoh)
+            if not ishchi_tahriri:
+                ishchiga_xabar(contract, request.user,
+                               f'Shartnoma №{contract.number} ni boshliq tuzatdi.')
             if qayta_tasdiq:
                 messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi, '
                                           f'qayta tasdiq kutyapti.')

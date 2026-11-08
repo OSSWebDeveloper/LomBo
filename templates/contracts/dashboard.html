@@ -93,6 +93,8 @@
   </div>
 
 {% else %}
+  <button type="button" class="btn btn-secondary btn-sm hidden" id="brauzer-xabar-yoq"
+          style="margin:-6px 0 14px">🔔 Bildirishnomani yoqish</button>
   <div class="stats">
     <div class="stat accent">
       <div class="label">Jami qo‘shgan shartnomalarim</div>
@@ -158,4 +160,22 @@
   {% endif %}
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  var t = document.getElementById('brauzer-xabar-yoq');
+  if (!t || !('Notification' in window) || Notification.permission !== 'default') return;
+  t.classList.remove('hidden');
+  t.addEventListener('click', function(){
+    Notification.requestPermission().then(function(r){
+      t.classList.add('hidden');
+      if (window.bildirishnoma)
+        bildirishnoma(r === 'granted' ? 'Yoqildi.' : 'Ruxsat berilmadi.',
+                      r === 'granted' ? 'success' : 'info');
+    });
+  });
+})();
+</script>
 {% endblock %}

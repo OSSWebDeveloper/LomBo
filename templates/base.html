@@ -167,6 +167,31 @@
 })();
 </script>
 <script src="{% statik 'js/pul.js' %}"></script>
+{% if user.is_authenticated and user.is_ishchi %}
+<script>
+/* Ishchiga xabar: shartnomasi tasdiqlandi yoki boshliq tuzatdi (v1.3.14) */
+(function(){
+  var URL_X = '{% url "bildirishnomalar" %}';
+  function tekshir(){
+    fetch(URL_X, {credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if (!d) return;
+        d.xabarlar.forEach(function(x){
+          if (window.bildirishnoma) bildirishnoma(x.matn, 'success');
+          if ('Notification' in window && Notification.permission === 'granted'){
+            var n = new Notification(x.matn, {tag: 'xabar-' + x.id});
+            if (x.url) n.onclick = function(){ window.focus(); location.href = x.url; };
+          }
+        });
+      })
+      .catch(function(){});
+  }
+  tekshir();
+  setInterval(tekshir, 30000);
+})();
+</script>
+{% endif %}
 {% if user.is_authenticated and user.is_boshliq %}
 <script>
 /* Boshliqqa bildirishnoma (v1.3.9): ishchi yangi shartnoma qo'shsa — menyudagi

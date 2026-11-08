@@ -1720,3 +1720,49 @@ class ImtiyozliDavrTest(TestCase):
             'payment_start_date': '2026-10-07', 'end_date': '2027-09-06'})
         self.assertContains(javob, '4 786 851,16')
         self.assertContains(javob, 'imtiyoz 3 oy')
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class IshchiXabarlariTest(TestCase):
+    """Ishchiga xabar: tasdiqlandi / boshliq tuzatdi (v1.3.14)."""
+
+    def setUp(self):
+        from accounts.models import User
+        self.boshliq = User.objects.create_user(
+            username='boshliq1', password='x', role=User.ROLE_BOSHLIQ, can_full_edit=True)
+        self.ishchi = User.objects.create_user(
+            username='ishchi1', password='x', role=User.ROLE_ISHCHI, added_by=self.boshliq)
+        self.client.force_login(self.ishchi)
+        self.client.post('/shartnoma/yangi/', FormaSahifasiTest._malumot(self))
+        self.c = Contract.objects.get()
+
+    def _xabarlar(self):
+        self.client.force_login(self.ishchi)
+        return [x['matn'] for x in self.client.get('/xabarlar/').json()['xabarlar']]
+
+    def test_tasdiqlansa_xabar(self):
+        self.client.force_login(self.boshliq)
+        self.client.post(f'/tasdiq/{self.c.pk}/')
+        self.assertEqual(self._xabarlar(), [f'Shartnoma №{self.c.number} tasdiqlandi.'])
+        self.assertEqual(self._xabarlar(), [])          # ikkinchi marta chiqmaydi
+
+    def test_boshliq_tuzatsa_xabar(self):
+        from django.urls import reverse
+        self.client.force_login(self.boshliq)
+        malumot = FormaSahifasiTest._malumot(self)
+        malumot['amount'] = '9 000 000'
+        malumot['rasmlar-TOTAL_FORMS'] = '0'
+        malumot['rasmlar-INITIAL_FORMS'] = '0'
+        self.client.post(reverse('contract_edit', args=[self.c.pk]), malumot)
+        self.c.refresh_from_db()
+        self.assertEqual(self.c.amount, 9_000_000)
+        self.assertEqual(self._xabarlar(), [f'Shartnoma №{self.c.number} ni boshliq tuzatdi.'])
+
+    def test_boshqaning_xabari_korinmaydi(self):
+        from accounts.models import User
+        self.client.force_login(self.boshliq)
+        self.client.post(f'/tasdiq/{self.c.pk}/')
+        boshqa = User.objects.create_user(username='i2', password='x', role=User.ROLE_ISHCHI)
+        self.client.force_login(boshqa)
+        self.assertEqual(self.client.get('/xabarlar/').json()['xabarlar'], [])
+        self.assertEqual(len(self._xabarlar()), 1)

@@ -587,6 +587,36 @@ def tasdiq_kutayotganlar(boshliq):
     return qs
 
 
+class Bildirishnoma(models.Model):
+    """Ishchiga xabar (v1.3.14): boshliq shartnomasini tasdiqladi yoki tuzatdi.
+
+    Ishchining ochiq sahifasi o'qilmaganlarini so'rab oladi, ko'rsatadi va
+    o'qilgan deb belgilaydi.
+    """
+    kimga = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                              related_name='bildirishnomalar', verbose_name='Kimga')
+    shartnoma = models.ForeignKey(Contract, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='+', verbose_name='Shartnoma')
+    matn = models.CharField('Matn', max_length=200)
+    vaqt = models.DateTimeField('Vaqt', auto_now_add=True)
+    oqildi = models.BooleanField("O'qildi", default=False, db_index=True)
+
+    class Meta:
+        verbose_name = 'Bildirishnoma'
+        verbose_name_plural = 'Bildirishnomalar'
+        ordering = ['vaqt']
+
+    def __str__(self):
+        return self.matn
+
+
+def ishchiga_xabar(contract, boshliq, matn):
+    """Shartnoma egasi ishchi bo'lsa (va boshliqning o'zi bo'lmasa) xabar yozadi."""
+    egasi = contract.created_by
+    if egasi and egasi.pk != boshliq.pk and getattr(egasi, 'is_ishchi', False):
+        Bildirishnoma.objects.create(kimga=egasi, shartnoma=contract, matn=matn)
+
+
 class DeleteRequest(models.Model):
     """Ishchi shartnomani o'chirishni so'raydi — uni qo'shgan boshliq tasdiqlaydi."""
     STATUS_PENDING = 'pending'
