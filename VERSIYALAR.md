@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.11 — 2026-11-08
+
+Shartnoma formasida «Grafik boshlanish sanasi» «Tugash sanasi»dan oldin turadi.
+
 ## 1.3.10 — 2026-11-08
 
 «Zamonaviy» uslubda yon menyu past ekranlarda (1366×768) sahifa ustiga toshib chiqmaydi: bitta ustunda qoladi, ixchamlashadi, kerak bo'lsa o'zi aylantiriladi.
