@@ -505,8 +505,32 @@
         if (inp.type === 'checkbox') inp.checked = false;
         else if (inp.name && inp.name.indexOf('proba') === -1) inp.value = '';
       });
+      // Oxirgi katak: eski qatorning «o'chirish» belgisi o'rniga olib tashlash tugmasi
+      var oxirgi = clone.lastElementChild;
+      oxirgi.innerHTML = '<button type="button" class="qator-ochir" ' +
+        'title="Qatorni olib tashlash" aria-label="Qatorni olib tashlash">&times;</button>';
+      clone.classList.add('yangi-qator');
       table.appendChild(clone);
       total.value = idx + 1;
+    });
+
+    // Yangi qo'shilgan qatorni olib tashlash. Django formseti indekslar uzluksiz
+    // bo'lishini kutadi — qolgan qatorlar joyiga qarab qayta raqamlanadi
+    // (bazadagi qatorlar doim tepada va olib tashlanmaydi, ularning raqami o'zgarmaydi).
+    document.getElementById('jewelry-table').addEventListener('click', function(e){
+      var tugma = e.target.closest('.qator-ochir');
+      if (!tugma) return;
+      var table = this;
+      tugma.closest('tr').remove();
+      var rows = table.querySelectorAll('.jewelry-row');
+      rows.forEach(function(row, i){
+        row.querySelectorAll('input, select').forEach(function(inp){
+          if (inp.name) inp.name = inp.name.replace(/-\d+-/, '-' + i + '-');
+          if (inp.id)   inp.id   = inp.id.replace(/-\d+-/, '-' + i + '-');
+        });
+      });
+      document.getElementById('id_jewelry-TOTAL_FORMS').value = rows.length;
+      sumJewelry();
     });
   }
 

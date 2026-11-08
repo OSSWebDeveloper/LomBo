@@ -721,3 +721,15 @@ td.actions .btn:hover{filter:none;border-color:currentColor}
 /* Faqat ko'rish rejimi (ngrok nusxasi): o'chiq havolalar */
 .faqat-korish-ochiq{opacity:.45;pointer-events:none;cursor:not-allowed}
 button:disabled{cursor:not-allowed;opacity:.55}
+
+/* Zargarlik jadvali: yangi qo'shilgan qatorni olib tashlash tugmasi */
+.qator-ochir {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--danger); border-radius: 8px;
+  background: var(--danger-soft); color: var(--danger);
+  font-size: 22px; line-height: 1; font-weight: 600; cursor: pointer;
+}
+.qator-ochir:hover, .qator-ochir:focus-visible {
+  background: var(--danger); color: #fff; outline: none;
+}
