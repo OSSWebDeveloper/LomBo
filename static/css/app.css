@@ -221,15 +221,28 @@ h3{font-size:1rem;margin:18px 0 10px;font-weight:600}
   [data-style="zamonaviy"] .shell.with-nav{
     display:grid;grid-template-columns:246px 1fr;align-items:start;
   }
+  /* Panel hech qachon ikkinchi ustunga bo'linmaydi (nowrap). Havolalar
+     ekran balandligiga sig'masa panelning o'zi aylantiriladi — v1.3.9 da
+     menyu uzaygach 768 px ekranda havolalar sahifa ustiga toshib chiqqan edi. */
   [data-style="zamonaviy"] .nav{
-    flex-direction:column;align-items:stretch;gap:6px;
-    height:100vh;position:sticky;top:0;
-    padding:22px 16px;border-right:1px solid var(--line);border-bottom:none;
+    flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:6px;
+    height:100vh;position:sticky;top:0;overflow-y:auto;overscroll-behavior:contain;
+    padding:20px 16px;border-right:1px solid var(--line);border-bottom:none;
     box-shadow:none;
   }
-  [data-style="zamonaviy"] .brand{margin-bottom:16px;padding:0 10px}
-  [data-style="zamonaviy"] .nav-links{flex-direction:column;flex:1;gap:3px}
-  [data-style="zamonaviy"] .nav-links a{padding:9px 12px}
+  [data-style="zamonaviy"] .brand{margin-bottom:12px;padding:0 10px;white-space:normal}
+  [data-style="zamonaviy"] .nav-links{flex-direction:column;flex-wrap:nowrap;flex:1 0 auto;gap:2px}
+  [data-style="zamonaviy"] .nav-links a{padding:8px 12px;display:flex;align-items:center}
+  /* Past ekranlarda (noutbuk 1366×768) hammasi aylantirmasdan sig'sin */
+  @media (max-height:800px){
+    [data-style="zamonaviy"] .nav{padding:14px 14px;gap:4px}
+    [data-style="zamonaviy"] .brand{margin-bottom:6px;font-size:16px}
+    [data-style="zamonaviy"] .nav-links{gap:0}
+    [data-style="zamonaviy"] .nav-links a{padding:6px 12px;font-size:14px}
+    [data-style="zamonaviy"] .nav-tools{padding-top:10px;gap:6px}
+  }
+  [data-style="zamonaviy"] .nav-son{margin-left:auto}
+  [data-style="zamonaviy"] .nav-tools{flex:0 0 auto}
   [data-style="zamonaviy"] .nav-tools{
     flex-direction:column;align-items:stretch;
     border-top:1px solid var(--line);padding-top:14px;
