@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.9 — 2026-11-08
+
+Ishchi kiritgan shartnoma boshliq tasdiqlaguncha yuklab olinmaydi/chop etilmaydi; boshliqqa bildirishnoma (menyudagi son, sahifadagi xabar, brauzer bildirishnomasi) va «Tasdiqlash» bo'limi; ishchi tuzatsa qayta tasdiq kerak. Xodim qo'shishda ixtiyoriy pasport seriya-raqami va telefon. Migratsiya: accounts 0004, contracts 0024.
+
 ## 1.3.8 — 2026-11-08
 
 Kalkulyatorda «Imtiyozli davr»: belgi qo'yilsa oy soni kiritiladi; shu oylarda mijoz faqat foiz to'laydi, asosiy qarz qolgan oylarga teng bo'linadi (uchala usulda).
