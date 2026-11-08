@@ -43,6 +43,7 @@
     <a href="{% url 'grafik' %}" {% if request.resolver_match.url_name == 'grafik' %}class="on"{% endif %}>Grafik</a>
     <a href="{% url 'kalkulyator' %}" {% if request.resolver_match.url_name == 'kalkulyator' %}class="on"{% endif %}>Kalkulyator</a>
     {% if user.is_boshliq %}
+      <a href="{% url 'tasdiq_royxati' %}" {% if request.resolver_match.url_name == 'tasdiq_royxati' %}class="on"{% endif %}>Tasdiqlash<span class="nav-son{% if not tasdiq_soni %} hidden{% endif %}" id="tasdiq-soni">{{ tasdiq_soni|default:0 }}</span></a>
       <a href="{% url 'mijoz_list' %}" {% if request.resolver_match.url_name == 'mijoz_list' or request.resolver_match.url_name == 'mijoz_detail' %}class="on"{% endif %}>Mijozlar</a>
       <a href="{% url 'worker_list' %}" {% if request.resolver_match.url_name == 'worker_list' %}class="on"{% endif %}>Ishchilar</a>
       <a href="{% url 'delete_requests' %}" {% if request.resolver_match.url_name == 'delete_requests' %}class="on"{% endif %}>So‘rovlar</a>
@@ -166,6 +167,48 @@
 })();
 </script>
 <script src="{% statik 'js/pul.js' %}"></script>
+{% if user.is_authenticated and user.is_boshliq %}
+<script>
+/* Boshliqqa bildirishnoma (v1.3.9): ishchi yangi shartnoma qo'shsa — menyudagi
+   son yangilanadi, sahifada xabar chiqadi, ruxsat berilgan bo'lsa Windows
+   bildirishnomasi ham. Sayt har 30 soniyada so'raydi. Qaysi shartnomalar
+   haqida xabar berilgani sessionStorage'da — sahifa almashganda takrorlanmaydi. */
+(function(){
+  var URL_HOLAT = '{% url "tasdiq_holati" %}', URL_ROYXAT = '{% url "tasdiq_royxati" %}';
+  var son = document.getElementById('tasdiq-soni');
+  var KALIT = 'tasdiq-korilgan';
+  function korilgan(){
+    try { return JSON.parse(sessionStorage.getItem(KALIT) || 'null'); } catch (e){ return null; }
+  }
+  function saqla(idlar){ try { sessionStorage.setItem(KALIT, JSON.stringify(idlar)); } catch (e){} }
+
+  function tekshir(){
+    fetch(URL_HOLAT, {credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if (!d) return;
+        if (son){ son.textContent = d.soni; son.classList.toggle('hidden', !d.soni); }
+        var eski = korilgan(), idlar = d.oxirgilar.map(function(x){ return x.id; });
+        saqla(idlar);
+        if (eski === null) return;          // birinchi yuklash — eskilari haqida xabar shart emas
+        d.oxirgilar.filter(function(x){ return eski.indexOf(x.id) === -1; })
+          .reverse().forEach(function(x){
+            var matn = 'Yangi shartnoma №' + x.raqam + ' (' + x.fio + ') — ' + x.ishchi +
+                       ' kiritdi. Tasdiqlashingiz kutilmoqda.';
+            if (window.bildirishnoma) bildirishnoma(matn, 'info');
+            if ('Notification' in window && Notification.permission === 'granted'){
+              var n = new Notification('Tasdiqlash kerak: №' + x.raqam, {body: matn, tag: 'tasdiq-' + x.id});
+              n.onclick = function(){ window.focus(); location.href = URL_ROYXAT; };
+            }
+          });
+      })
+      .catch(function(){});
+  }
+  tekshir();
+  setInterval(tekshir, 30000);
+})();
+</script>
+{% endif %}
 {% block scripts %}{% endblock %}
 {% if faqat_korish %}
 <script>

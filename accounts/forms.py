@@ -23,11 +23,18 @@ class WorkerCreateForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name']
+        fields = ['username', 'first_name', 'last_name', 'passport_seriya', 'telefon']
         labels = {
             'username': 'Login',
             'first_name': 'Ismi',
             'last_name': 'Familiyasi',
+            'passport_seriya': 'Pasport seriya-raqami (ixtiyoriy)',
+            'telefon': 'Telefon raqami (ixtiyoriy)',
+        }
+        widgets = {
+            'passport_seriya': forms.TextInput(attrs={'placeholder': 'AA 1234567'}),
+            'telefon': forms.TextInput(attrs={'placeholder': '+998 90 123 45 67',
+                                              'inputmode': 'tel'}),
         }
 
     def __init__(self, *args, boss=None, **kwargs):
@@ -50,10 +57,12 @@ class WorkerCreateForm(UserCreationForm):
 class WorkerEditForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'is_active']
+        fields = ['first_name', 'last_name', 'passport_seriya', 'telefon', 'is_active']
         labels = {
             'first_name': 'Ismi',
             'last_name': 'Familiyasi',
+            'passport_seriya': 'Pasport seriya-raqami (ixtiyoriy)',
+            'telefon': 'Telefon raqami (ixtiyoriy)',
             'is_active': 'Faol (belgini olib tashlasangiz — kirolmaydi)',
         }
 

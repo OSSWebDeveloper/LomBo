@@ -25,6 +25,7 @@ from .shablondan import SHABLONLAR, garovi_bormi
 from .forms import (GarovRasmFormSet, ContractForm, ContractSearchForm, DeleteRequestForm,
                     GrafikFormasi, GuarantorForm, JewelryFormSet, VehicleForm)
 from .formatlash import pasport_kalit
+from .models import tasdiq_kutayotganlar
 from .models import Amal, Contract, DeleteRequest, Mijoz, amal_yoz
 
 
@@ -80,6 +81,73 @@ def _garov_bahosini_yangila(contract):
         contract.save(update_fields=['garov_value'])
 
 
+def _tasdiq_holatini_qoy(contract, user):
+    """Boshliq kiritgan/o'zgartirgan shartnoma — tasdiqlangan, ishchiniki — kutadi."""
+    if user.is_boshliq:
+        contract.tasdiq_holati = Contract.TASDIQ_TASDIQLANGAN
+        contract.tasdiqlagan = user
+        contract.tasdiqlangan_vaqt = timezone.now()
+    else:
+        contract.tasdiq_holati = Contract.TASDIQ_KUTILMOQDA
+        contract.tasdiqlagan = None
+        contract.tasdiqlangan_vaqt = None
+
+
+def _tasdiq_kutilmoqda(request, contract):
+    messages.error(request, f'Shartnoma №{contract.number} hali boshliq tomonidan '
+                            f'tasdiqlanmagan. Hujjatlarni tasdiqlangandan keyin '
+                            f'yuklab olishingiz mumkin.')
+    return redirect('contract_detail', pk=contract.pk)
+
+
+# --------------------------------------------------------------- tasdiqlash
+
+@login_required
+def tasdiq_royxati(request):
+    """Boshliq: ishchilar kiritgan, tasdiq kutayotgan shartnomalar."""
+    _boss_required(request.user)
+    navbat = (tasdiq_kutayotganlar(request.user)
+              .select_related('created_by').order_by('created_at'))
+    return render(request, 'contracts/tasdiq_royxati.html', {'navbat': navbat})
+
+
+@login_required
+def tasdiqlash(request, pk):
+    """Boshliq shartnomani tasdiqlaydi — ishchiga hujjat yuklab olish ochiladi."""
+    _boss_required(request.user)
+    if request.method != 'POST':
+        return redirect('tasdiq_royxati')
+    contract = get_object_or_404(tasdiq_kutayotganlar(request.user), pk=pk)
+    _tasdiq_holatini_qoy(contract, request.user)
+    contract.save(update_fields=['tasdiq_holati', 'tasdiqlagan', 'tasdiqlangan_vaqt'])
+    amal_yoz(request.user, Amal.TASDIQLADI, f'Shartnoma №{contract.number}',
+             f'{contract.created_by or "—"} kiritgan')
+    messages.success(request, f'Shartnoma №{contract.number} tasdiqlandi — '
+                              f'endi ishchi hujjatlarni yuklab ola oladi.')
+    if request.POST.get('keyingi') == 'detail':
+        return redirect('contract_detail', pk=contract.pk)
+    return redirect('tasdiq_royxati')
+
+
+@login_required
+def tasdiq_holati(request):
+    """Bildirishnoma uchun: kutayotganlar soni va eng yangilari (JSON).
+
+    Boshliqning ochiq sahifasi buni har 30 soniyada so'raydi; yangi
+    shartnoma paydo bo'lsa xabar chiqaradi.
+    """
+    if not request.user.is_boshliq:
+        return JsonResponse({'soni': 0, 'oxirgilar': []})
+    navbat = tasdiq_kutayotganlar(request.user).select_related('created_by')
+    oxirgilar = [{
+        'id': c.pk, 'raqam': c.number,
+        'ishchi': ((c.created_by.get_full_name() or c.created_by.username)
+                   if c.created_by else '—'),
+        'fio': c.borrower_fio,
+    } for c in navbat.order_by('-created_at')[:5]]
+    return JsonResponse({'soni': navbat.count(), 'oxirgilar': oxirgilar})
+
+
 # --------------------------------------------------------------- dashboard
 
 @login_required
@@ -99,6 +167,8 @@ def dashboard(request):
             'contracts_count': contracts.count(),
             'total_amount': contracts.aggregate(s=Sum('amount'))['s'] or 0,
             'pending_count': pending.count(),
+            'tasdiq_navbati': tasdiq_kutayotganlar(user).select_related(
+                'created_by').order_by('created_at')[:10],
             'pending_requests': pending.select_related('requested_by')[:5],
             'recent': contracts.select_related('created_by')[:10],
             'top_workers': workers.annotate(
@@ -298,6 +368,8 @@ def contract_create(request):
             contract = form.save(commit=False)
             contract.end_date = form.cleaned_data['end_date']
             contract.created_by = request.user
+            # Ishchi kiritgani boshliq tasdiqlaguncha kutadi; boshliqniki — darhol
+            _tasdiq_holatini_qoy(contract, request.user)
             contract.save()
 
             if tur == Contract.TYPE_ZARGARLIK:
@@ -325,7 +397,12 @@ def contract_create(request):
                 contracts_added=F('contracts_added') + 1)
             amal_yoz(request.user, Amal.YARATDI, f'Shartnoma №{contract.number}',
                      f'{contract.get_collateral_type_display()}, {contract.borrower_fio}')
-            messages.success(request, f'Shartnoma №{contract.number} qo\'shildi.')
+            if contract.tasdiqlanganmi:
+                messages.success(request, f'Shartnoma №{contract.number} qo\'shildi.')
+            else:
+                messages.success(request, f'Shartnoma №{contract.number} qo\'shildi va '
+                                          f'boshliqqa tasdiqlash uchun yuborildi. Hujjatlarni '
+                                          f'tasdiqlangandan keyin yuklab olasiz.')
             return redirect('contract_detail', pk=contract.pk)
         messages.error(request, 'Formada xatolar bor, tekshirib chiqing.')
 
@@ -368,6 +445,11 @@ def contract_edit(request, pk):
         if ok and extra_ok and rasm_ok:
             contract = form.save(commit=False)
             contract.end_date = form.cleaned_data['end_date']
+            # Ishchi tasdiqdan keyin tuzatsa — boshliq qayta ko'rishi kerak, aks
+            # holda tasdiqlangan shartnomani o'zgartirib chop etish mumkin bo'lardi
+            qayta_tasdiq = ishchi_tahriri and contract.tasdiqlanganmi
+            if ishchi_tahriri:
+                _tasdiq_holatini_qoy(contract, request.user)
             contract.save()
 
             # Ta'minot turi o'zgargan bo'lsa, eskisining ma'lumotlarini tozalash
@@ -408,7 +490,11 @@ def contract_edit(request, pk):
             if ishchi_tahriri:
                 izoh += ' (kiritgandan keyingi tuzatish)'
             amal_yoz(request.user, Amal.OZGARTIRDI, f'Shartnoma №{contract.number}', izoh)
-            messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi.')
+            if qayta_tasdiq:
+                messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi va '
+                                          f'boshliqqa qayta tasdiqlash uchun yuborildi.')
+            else:
+                messages.success(request, f'Shartnoma №{contract.number} o\'zgartirildi.')
             return redirect('contract_detail', pk=contract.pk)
         messages.error(request, 'Formada xatolar bor.')
 
@@ -442,6 +528,9 @@ def contract_detail(request, pk):
         'pending_request': pending,
         'pdf_bor': pdf_imkoni_bor(),
         'garov_bor': garovi_bormi(contract),
+        'hujjat_ruxsat': contract.hujjat_olsa_boladimi(request.user),
+        'tasdiqlay_oladi': (not contract.tasdiqlanganmi and
+                            tasdiq_kutayotganlar(request.user).filter(pk=contract.pk).exists()),
     })
 
 
@@ -451,6 +540,8 @@ def contract_download_pdf(request, pk):
     contract = get_object_or_404(Contract, pk=pk)
     if not _can_view_contract(request.user, contract):
         raise PermissionDenied('Bu shartnoma sizga tegishli emas.')
+    if not contract.hujjat_olsa_boladimi(request.user):
+        return _tasdiq_kutilmoqda(request, contract)
     try:
         data = docx_dan_pdf(build_contract_docx(contract))
     except PdfImkoniYoq as xato:
@@ -466,6 +557,8 @@ def contract_download(request, pk):
     contract = get_object_or_404(Contract, pk=pk)
     if not _can_view_contract(request.user, contract):
         raise PermissionDenied('Bu shartnoma sizga tegishli emas.')
+    if not contract.hujjat_olsa_boladimi(request.user):
+        return _tasdiq_kutilmoqda(request, contract)
     data = build_contract_docx(contract)
     resp = HttpResponse(
         data, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
@@ -1015,6 +1108,8 @@ def _garov_hujjati(request, pk, pdf=False):
     contract = get_object_or_404(Contract, pk=pk)
     if not _can_view_contract(request.user, contract):
         raise PermissionDenied('Bu shartnoma sizga tegishli emas.')
+    if not contract.hujjat_olsa_boladimi(request.user):
+        return _tasdiq_kutilmoqda(request, contract)
     if not garovi_bormi(contract):
         messages.info(request, 'Bu shartnomada garov hujjati tuzilmaydi '
                                '(ish haqi kafilligi).')

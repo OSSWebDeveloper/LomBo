@@ -43,6 +43,9 @@ class User(AbstractUser):
         'Shablonni o‘zgartirish vakolati', default=False,
         help_text='Belgilansa, bu boshliq Word shablonlarini almashtira oladi.',
     )
+    # Xodimning shaxsiy ma'lumoti — ikkalasi ham ixtiyoriy (v1.3.9)
+    passport_seriya = models.CharField('Pasport seriya-raqami', max_length=30, blank=True)
+    telefon = models.CharField('Telefon raqami', max_length=25, blank=True)
     # Ishchi qo'shgan shartnomalar soni — shartnoma o'chirilsa ham kamaymaydi.
     contracts_added = models.PositiveIntegerField("Qo'shgan shartnomalari (jami)", default=0)
 

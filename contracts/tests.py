@@ -1553,3 +1553,98 @@ class ToplamTartibiTest(TestCase):
         doc, _ = self._xatboshilar()
         qator = next(p.text for p in doc.paragraphs if p.text.startswith('Илованинг бир'))
         self.assertEqual(qator, 'Илованинг бир нусхасини олдим ____________________')
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class BoshliqTasdigiTest(TestCase):
+    """Ishchi kiritgan shartnoma boshliq tasdiqlaguncha chop etilmaydi (v1.3.9)."""
+
+    def setUp(self):
+        from accounts.models import User
+        self.boshliq = User.objects.create_user(
+            username='boshliq1', password='x', role=User.ROLE_BOSHLIQ)
+        self.boshqa_boshliq = User.objects.create_user(
+            username='boshliq2', password='x', role=User.ROLE_BOSHLIQ)
+        self.ishchi = User.objects.create_user(
+            username='ishchi1', password='ishchi123', role=User.ROLE_ISHCHI,
+            added_by=self.boshliq)
+        self.client.force_login(self.ishchi)
+        self.client.post('/shartnoma/yangi/', FormaSahifasiTest._malumot(self))
+        self.c = Contract.objects.get()
+
+    def test_ishchi_kiritgani_kutadi(self):
+        self.assertEqual(self.c.tasdiq_holati, Contract.TASDIQ_KUTILMOQDA)
+        self.assertIsNone(self.c.tasdiqlagan)
+
+    def test_ishchi_tasdiqsiz_yuklay_olmaydi(self):
+        from django.urls import reverse
+        for nom in ('contract_download', 'contract_download_pdf', 'contract_download_garov'):
+            with self.subTest(nom=nom):
+                javob = self.client.get(reverse(nom, args=[self.c.pk]))
+                self.assertRedirects(javob, reverse('contract_detail', args=[self.c.pk]),
+                                     fetch_redirect_response=False)
+        sahifa = self.client.get(f'/shartnoma/{self.c.pk}/').content.decode()
+        self.assertNotIn(reverse('contract_download', args=[self.c.pk]), sahifa)
+        self.assertIn('tasdiqlash uchun yuborilgan', sahifa)
+
+    def test_boshliqqa_korinadi_va_tasdiqlaydi(self):
+        from django.urls import reverse
+        self.client.force_login(self.boshliq)
+        self.assertContains(self.client.get('/tasdiq/'), f'<b>{self.c.number}</b>')
+        holat = self.client.get('/tasdiq/holat/').json()
+        self.assertEqual(holat['soni'], 1)
+        self.assertEqual(holat['oxirgilar'][0]['raqam'], self.c.number)
+        self.client.post(reverse('tasdiqlash', args=[self.c.pk]))
+        self.c.refresh_from_db()
+        self.assertEqual(self.c.tasdiq_holati, Contract.TASDIQ_TASDIQLANGAN)
+        self.assertEqual(self.c.tasdiqlagan, self.boshliq)
+        self.assertEqual(self.client.get('/tasdiq/holat/').json()['soni'], 0)
+        # Endi ishchi yuklab oladi
+        self.client.force_login(self.ishchi)
+        javob = self.client.get(reverse('contract_download', args=[self.c.pk]))
+        self.assertEqual(javob.status_code, 200)
+        self.assertIn('wordprocessingml', javob['Content-Type'])
+
+    def test_boshqa_boshliq_tasdiqlay_olmaydi(self):
+        from django.urls import reverse
+        self.client.force_login(self.boshqa_boshliq)
+        self.assertEqual(self.client.get('/tasdiq/holat/').json()['soni'], 0)
+        javob = self.client.post(reverse('tasdiqlash', args=[self.c.pk]))
+        self.assertEqual(javob.status_code, 404)
+        self.c.refresh_from_db()
+        self.assertEqual(self.c.tasdiq_holati, Contract.TASDIQ_KUTILMOQDA)
+
+    def test_ishchi_tasdiqlay_olmaydi(self):
+        from django.urls import reverse
+        javob = self.client.post(reverse('tasdiqlash', args=[self.c.pk]))
+        self.assertEqual(javob.status_code, 403)
+        self.assertEqual(self.client.get('/tasdiq/holat/').json()['soni'], 0)
+
+    def test_boshliq_kiritgani_darhol_tasdiqlangan(self):
+        Contract.objects.all().delete()
+        self.client.force_login(self.boshliq)
+        self.client.post('/shartnoma/yangi/', FormaSahifasiTest._malumot(self))
+        c = Contract.objects.get()
+        self.assertEqual(c.tasdiq_holati, Contract.TASDIQ_TASDIQLANGAN)
+        self.assertEqual(c.tasdiqlagan, self.boshliq)
+
+    def test_ishchi_tuzatsa_qayta_tasdiq_kerak(self):
+        from django.urls import reverse
+        self.client.force_login(self.boshliq)
+        self.client.post(reverse('tasdiqlash', args=[self.c.pk]))
+        self.client.force_login(self.ishchi)
+        malumot = FormaSahifasiTest._malumot(self)
+        malumot['amount'] = '9 000 000'
+        malumot['rasmlar-TOTAL_FORMS'] = '0'
+        malumot['rasmlar-INITIAL_FORMS'] = '0'
+        self.c.refresh_from_db()
+        self.client.post(reverse('contract_edit', args=[self.c.pk]), malumot)
+        self.c.refresh_from_db()
+        self.assertEqual(self.c.amount, 9_000_000)
+        self.assertEqual(self.c.tasdiq_holati, Contract.TASDIQ_KUTILMOQDA)
+        self.assertIsNone(self.c.tasdiqlagan)
+
+    def test_eski_shartnomalar_tasdiqlangan(self):
+        """Migratsiyadan oldingi shartnomalar standart bo'yicha tasdiqlangan."""
+        f = Contract._meta.get_field('tasdiq_holati')
+        self.assertEqual(f.default, Contract.TASDIQ_TASDIQLANGAN)

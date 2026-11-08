@@ -51,6 +51,10 @@ urlpatterns = [
 
     # O'chirish so'rovlari
     path('sorovlar/', con.delete_requests, name='delete_requests'),
+    # Boshliq tasdig'i (v1.3.9): ishchi kiritgan shartnoma tasdiqdan keyin chop etiladi
+    path('tasdiq/', con.tasdiq_royxati, name='tasdiq_royxati'),
+    path('tasdiq/holat/', con.tasdiq_holati, name='tasdiq_holati'),
+    path('tasdiq/<int:pk>/', con.tasdiqlash, name='tasdiqlash'),
     path('sorov/<int:pk>/<str:action>/', con.delete_request_decide,
          name='delete_request_decide'),
 

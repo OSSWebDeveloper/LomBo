@@ -24,6 +24,29 @@
     </div>
   </div>
 
+  {% if tasdiq_navbati %}
+  <div class="card">
+    <div class="section-title">
+      <h2 style="margin:0">🔔 Tasdiq kutayotgan shartnomalar</h2>
+      <a class="btn btn-secondary btn-sm" href="{% url 'tasdiq_royxati' %}">Hammasi</a>
+    </div>
+    <table>
+      <tr><th>№</th><th>Mijoz</th><th class="num">Summa</th><th>Kiritgan</th><th>Vaqt</th><th></th></tr>
+      {% for c in tasdiq_navbati %}
+      <tr>
+        <td><b>{{ c.number }}</b></td>
+        <td>{{ c.borrower_fio }}</td>
+        <td class="num">{{ c.amount|pul }}</td>
+        <td>{{ c.created_by|default:'—' }}</td>
+        <td class="muted">{{ c.created_at|date:'d.m.Y H:i' }}</td>
+        <td class="right"><a class="btn btn-primary btn-sm"
+             href="{% url 'contract_detail' c.pk %}">Ko‘rish</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
   {% if pending_requests %}
   <div class="card">
     <div class="section-title">

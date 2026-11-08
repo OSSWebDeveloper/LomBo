@@ -752,3 +752,14 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .kalk-imtiyoz-qator td{background:var(--surface-2)}
 .kalk-imtiyoz-belgi{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:6px;
   background:var(--accent-soft);color:var(--accent);margin-left:4px}
+
+/* ---------- boshliq tasdig'i (v1.3.9) ---------- */
+.nav-son{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:19px;height:19px;padding:0 5px;margin-left:7px;border-radius:10px;
+  background:var(--danger);color:#fff;font-size:11.5px;font-weight:700;line-height:1;
+  vertical-align:1px;
+}
+.nav-son.hidden{display:none}
+.tasdiq-panel{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.tasdiq-panel form{margin:0}

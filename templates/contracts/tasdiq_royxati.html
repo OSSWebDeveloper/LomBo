@@ -1,0 +1,69 @@
+{% extends 'base.html' %}{% load pul %}
+{% block title %}Tasdiqlash — Lombard{% endblock %}
+{% block content %}
+
+<div class="section-title">
+  <h1 style="margin:0">Tasdiqlash
+    {% if navbat %}<span class="pill pill-pending">{{ navbat|length }} ta kutilmoqda</span>{% endif %}
+  </h1>
+  <button type="button" class="btn btn-secondary btn-sm hidden" id="brauzer-xabar-yoq">
+    🔔 Brauzer bildirishnomalarini yoqish</button>
+</div>
+<p class="muted" style="margin-top:-8px">
+  Ishchilar kiritgan shartnomalar. Tasdiqlamaguningizcha ishchi hujjatlarni
+  yuklab ololmaydi va chop etolmaydi. Avval «Ko‘rish» orqali tekshirib chiqing.</p>
+
+<div class="card">
+{% if navbat %}
+<div class="table-wrap">
+<table>
+  <tr><th>№</th><th>Mijoz</th><th>Ta’minot</th><th class="num">Summa</th>
+      <th>Kiritgan ishchi</th><th>Kiritilgan</th><th></th></tr>
+  {% for c in navbat %}
+  <tr>
+    <td><b>{{ c.number }}</b></td>
+    <td>{{ c.borrower_fio }}</td>
+    <td class="muted">{{ c.get_collateral_type_display }}</td>
+    <td class="num">{{ c.amount|pul }}</td>
+    <td>{{ c.created_by|default:'—' }}</td>
+    <td class="muted">{{ c.created_at|date:'d.m.Y H:i' }}</td>
+    <td class="right">
+      <div class="actions" style="margin:0;justify-content:flex-end">
+        <a class="btn btn-secondary btn-sm" href="{% url 'contract_detail' c.pk %}">Ko‘rish</a>
+        <form method="post" action="{% url 'tasdiqlash' c.pk %}" class="inline">
+          {% csrf_token %}
+          <button class="btn btn-primary btn-sm" type="submit">✓ Tasdiqlash</button>
+        </form>
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+  <div class="empty"><span class="icon">✅</span>Tasdiq kutayotgan shartnoma yo‘q.</div>
+{% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* Brauzer (Windows) bildirishnomasi — boshliq bir marta ruxsat beradi,
+   keyin sayt boshqa oynada ochiq tursa ham xabar chiqadi. */
+(function(){
+  var t = document.getElementById('brauzer-xabar-yoq');
+  if (!('Notification' in window) || Notification.permission !== 'default') return;
+  t.classList.remove('hidden');
+  t.addEventListener('click', function(){
+    Notification.requestPermission().then(function(r){
+      t.classList.add('hidden');
+      if (window.bildirishnoma)
+        bildirishnoma(r === 'granted' ? 'Brauzer bildirishnomalari yoqildi.'
+                                      : 'Brauzer ruxsat bermadi — xabarlar faqat saytda chiqadi.',
+                      r === 'granted' ? 'success' : 'info');
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -47,14 +47,18 @@
     <td>
       {% if c.status == 'pending_delete' %}
         <span class="pill pill-pending">o‘chirish so‘ralgan</span>
+      {% elif c.tasdiq_holati == 'kutilmoqda' %}
+        <span class="pill pill-pending">tasdiq kutilmoqda</span>
       {% else %}
         <span class="pill pill-active">faol</span>
       {% endif %}
     </td>
     <td class="right actions">
       <a class="btn btn-secondary btn-sm" href="{% url 'contract_detail' c.pk %}">Ochish</a>
+      {% if user.is_boshliq or c.tasdiq_holati != 'kutilmoqda' %}
       <a class="btn btn-primary btn-sm" href="{% url 'contract_download' c.pk %}"
          title="Mikroqarz shartnomasi (Word)">Shartnoma</a>
+      {% endif %}
       {% if user.is_boshliq %}
         {% comment %}O'chirish faqat boshliqda. Havola tasdiqlash sahifasiga
         olib boradi — bir bosishda o'chib ketmaydi.{% endcomment %}

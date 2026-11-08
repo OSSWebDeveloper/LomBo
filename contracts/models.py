@@ -302,6 +302,24 @@ class Contract(models.Model):
     pledgor_address = models.CharField('Manzil (kirillda)', max_length=300, blank=True)
 
     status = models.CharField('Holat', max_length=15, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
+
+    # Boshliq tasdig'i (v1.3.9): ishchi kiritgan shartnoma boshliq tasdiqlamaguncha
+    # «kutilmoqda» turadi va ishchi hujjatni yuklab ololmaydi. Boshliq kiritgani
+    # darhol tasdiqlangan. Standart «tasdiqlangan» — eski shartnomalar uchun.
+    TASDIQ_KUTILMOQDA = 'kutilmoqda'
+    TASDIQ_TASDIQLANGAN = 'tasdiqlangan'
+    TASDIQ_CHOICES = [
+        (TASDIQ_KUTILMOQDA, 'Tasdiq kutilmoqda'),
+        (TASDIQ_TASDIQLANGAN, 'Tasdiqlangan'),
+    ]
+    tasdiq_holati = models.CharField("Boshliq tasdig'i", max_length=12,
+                                     choices=TASDIQ_CHOICES, default=TASDIQ_TASDIQLANGAN,
+                                     db_index=True)
+    tasdiqlagan = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='Tasdiqlagan',
+                                    on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='tasdiqlagan_shartnomalar')
+    tasdiqlangan_vaqt = models.DateTimeField('Tasdiqlangan vaqt', null=True, blank=True)
+
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='Kim kiritgan',
                                    on_delete=models.SET_NULL, null=True, related_name='contracts')
     created_at = models.DateTimeField('Kiritilgan vaqt', auto_now_add=True)
@@ -314,6 +332,14 @@ class Contract(models.Model):
 
     def __str__(self):
         return f'№{self.number} — {self.borrower_fio}'
+
+    @property
+    def tasdiqlanganmi(self):
+        return self.tasdiq_holati == self.TASDIQ_TASDIQLANGAN
+
+    def hujjat_olsa_boladimi(self, user):
+        """Hujjatni (Word/PDF) yuklab olish: boshliq — doim, ishchi — tasdiqdan keyin."""
+        return user.is_boshliq or self.tasdiqlanganmi
 
     @property
     def tahrir_muddati(self):
@@ -540,6 +566,22 @@ class GuarantorInfo(models.Model):
         return self.fio
 
 
+def tasdiq_kutayotganlar(boshliq):
+    """Shu boshliq tasdiqlashi kerak bo'lgan shartnomalar.
+
+    Ishchini qo'shgan boshliq (`added_by`) — o'chirish so'rovlaridagidek.
+    Superuser-boshliq hammasini ko'radi. Ishchining boshlig'i yo'q bo'lsa
+    (o'chirilgan) — shartnoma hamma boshliqqa ko'rinadi, egasiz qolmasin.
+    """
+    qs = Contract.objects.filter(tasdiq_holati=Contract.TASDIQ_KUTILMOQDA)
+    if not getattr(boshliq, 'is_boshliq', False):
+        return qs.none()
+    if not boshliq.is_superuser:
+        qs = qs.filter(models.Q(created_by__added_by=boshliq)
+                       | models.Q(created_by__added_by__isnull=True))
+    return qs
+
+
 class DeleteRequest(models.Model):
     """Ishchi shartnomani o'chirishni so'raydi — uni qo'shgan boshliq tasdiqlaydi."""
     STATUS_PENDING = 'pending'
@@ -593,6 +635,7 @@ class Amal(models.Model):
     PAROL_OZGARTIRDI = 'parol_ozgartirdi'
     SHABLON_OZGARTIRDI = 'shablon_ozgartirdi'
     HUJJAT_OLDI = 'hujjat_oldi'
+    TASDIQLADI = 'shartnoma_tasdiqladi'
 
     AMAL_CHOICES = [
         (YARATDI, 'Shartnoma yaratdi'),
@@ -607,6 +650,7 @@ class Amal(models.Model):
         (PAROL_OZGARTIRDI, 'Parolni o‘zgartirdi'),
         (SHABLON_OZGARTIRDI, 'Shablonni o‘zgartirdi'),
         (HUJJAT_OLDI, 'Hujjatni yuklab oldi'),
+        (TASDIQLADI, 'Shartnomani tasdiqladi'),
     ]
 
     vaqt = models.DateTimeField('Vaqt', auto_now_add=True, db_index=True)

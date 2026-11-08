@@ -7,6 +7,9 @@
     {% if contract.status == 'pending_delete' %}
       <span class="pill pill-pending">o‘chirish so‘ralgan</span>
     {% endif %}
+    {% if contract.tasdiq_holati == 'kutilmoqda' %}
+      <span class="pill pill-pending">tasdiq kutilmoqda</span>
+    {% endif %}
   </h1>
   {% if can_edit or can_delete %}
   <div class="actions">
@@ -28,14 +31,36 @@
 </div>
 {% endif %}
 
+{% if tasdiqlay_oladi %}
+<div class="alert alert-warning tasdiq-panel">
+  <div>⏳ Bu shartnomani <b>{{ contract.created_by|default:'ishchi' }}</b> kiritgan
+    ({{ contract.updated_at|date:'d.m.Y H:i' }}). Ma’lumotlarni tekshirib, tasdiqlang —
+    shundan keyin ishchi hujjatlarni yuklab olib chop eta oladi.</div>
+  <form method="post" action="{% url 'tasdiqlash' contract.pk %}" class="inline">
+    {% csrf_token %}<input type="hidden" name="keyingi" value="detail">
+    <button class="btn btn-primary" type="submit">✓ Tasdiqlash</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="card">
   <h2 style="margin-top:0">Hujjatlar</h2>
+  {% if hujjat_ruxsat %}
   <div class="actions">
     <a class="btn btn-primary" href="{% url 'contract_download' contract.pk %}">📄 Word</a>
     {% if pdf_bor %}
       <a class="btn btn-secondary" href="{% url 'contract_download_pdf' contract.pk %}">📕 PDF</a>
     {% endif %}
   </div>
+  {% if contract.tasdiqlagan and contract.tasdiqlagan != contract.created_by %}
+    <div class="muted" style="margin-top:8px">✓ Tasdiqlagan: {{ contract.tasdiqlagan }},
+      {{ contract.tasdiqlangan_vaqt|date:'d.m.Y H:i' }}</div>
+  {% endif %}
+  {% else %}
+  <div class="empty" style="padding:18px 12px"><span class="icon">⏳</span>
+    Shartnoma boshliqqa tasdiqlash uchun yuborilgan. Tasdiqlangach shu yerda
+    Word va PDF tugmalari paydo bo‘ladi.</div>
+  {% endif %}
 </div>
 
 {% if pending_request %}

@@ -8,6 +8,15 @@ bo'ladi, o'rnatuvchi ham xuddi shu raqamni solishtiradi.
 from django.conf import settings
 
 
+def tasdiq(request):
+    """Boshliq menyusidagi «Tasdiqlash» yonidagi son."""
+    user = getattr(request, 'user', None)
+    if not (user and user.is_authenticated and getattr(user, 'is_boshliq', False)):
+        return {}
+    from contracts.models import tasdiq_kutayotganlar
+    return {'tasdiq_soni': tasdiq_kutayotganlar(user).count()}
+
+
 def versiya(request):
     return {'versiya': getattr(settings, 'VERSIYA', ''),
             # ngrok nusxasi: sahifa tepasida «faqat ko'rish uchun» yozuvi

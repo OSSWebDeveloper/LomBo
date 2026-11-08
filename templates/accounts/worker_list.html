@@ -10,12 +10,13 @@
 <div class="card">
 {% if workers %}
 <table>
-  <tr><th>Ishchi</th><th>Login</th><th class="num">Jami qo‘shgan</th>
+  <tr><th>Ishchi</th><th>Login</th><th>Telefon</th><th class="num">Jami qo‘shgan</th>
       <th class="num">Hozirgi</th><th class="num">Summa</th><th>Holat</th><th></th></tr>
   {% for w in workers %}
   <tr>
     <td><a href="{% url 'worker_detail' w.pk %}">{{ w.get_full_name|default:w.username }}</a></td>
     <td class="muted">{{ w.username }}</td>
+    <td class="muted">{{ w.telefon|default:'—' }}</td>
     <td class="num"><b>{{ w.contracts_added }}</b></td>
     <td class="num">{{ w.live_count }}</td>
     <td class="num">{{ w.live_amount|default:0|pul }}</td>

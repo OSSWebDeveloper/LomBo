@@ -30,6 +30,11 @@
     <div class="label">Login</div>
     <div class="value sm">{{ worker.username }}</div>
   </div>
+  <div class="stat">
+    <div class="label">Pasport / telefon</div>
+    <div class="value sm">{{ worker.passport_seriya|default:'—' }}</div>
+    <div class="muted">{{ worker.telefon|default:'telefon kiritilmagan' }}</div>
+  </div>
 </div>
 
 <div class="card">
