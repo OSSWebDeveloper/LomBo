@@ -18,6 +18,7 @@
       {% include 'contracts/_field.html' with field=form.interest_rate %}
       {% include 'contracts/_field.html' with field=form.date %}
       {% include 'contracts/_field.html' with field=form.term_months %}
+      {% include 'contracts/_field.html' with field=form.imtiyoz_oylar %}
     </div>
 
     <details class="grafik-qoshimcha" {% if form.payment_start_date.errors or form.end_date.errors %}open{% endif %}>
@@ -51,7 +52,7 @@
 
   <div class="muted grafik-shart">
     {{ natija.contract.amount|pul }} so‘m ·
-    {{ natija.contract.term_months }} oy ·
+    {{ natija.contract.term_months }} oy{% if natija.contract.imtiyoz_oylar %} (imtiyoz {{ natija.contract.imtiyoz_oylar }} oy){% endif %} ·
     yillik {{ natija.contract.interest_rate }}% ·
     shartnoma {{ natija.contract.date|date:'d.m.Y' }} ·
     1-to‘lov {{ natija.contract.payment_start_date|date:'d.m.Y' }} ·

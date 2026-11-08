@@ -610,7 +610,8 @@ def kalkulyator(request):
 
     Hisob butunlay brauzerda (shablondagi JS) — maydon o'zgarishi bilan natija
     yangilanadi. «Lombard usuli» `payment_schedule` bilan bir xil qoidada
-    hisoblanadi; annuitet va differensial — oylik stavka (yillik/12) bilan.
+    hisoblanadi; annuitet — oylik stavka (yillik/12) bilan, differensial —
+    haqiqiy kunlar / 365 bilan (finlit.uz / kredit-kalkulator.uz dagidek).
     """
     return render(request, 'contracts/kalkulyator.html')
 

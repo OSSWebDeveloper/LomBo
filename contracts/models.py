@@ -269,6 +269,11 @@ class Contract(models.Model):
     # Bo'sh qolsa shartnoma sanasidan bir oy keyin olinadi.
     payment_start_date = models.DateField('Grafik boshlanish sanasi',
                                           null=True, blank=True)
+    # Imtiyozli davr (v1.3.12): birinchi shuncha oyda asosiy qarz 0,00 — mijoz
+    # faqat foiz to'laydi; asosiy qarz qolgan (muddat − imtiyoz) oyga bo'linadi.
+    imtiyoz_oylar = models.PositiveSmallIntegerField(
+        'Imtiyozli davr (oy)', default=0,
+        help_text="Shu oylarda faqat foiz to'lanadi.")
 
     # Garov umumiy
     # ESKIRGAN: bir muddat garov shartnomasi o'z raqamida yuritilgan edi.

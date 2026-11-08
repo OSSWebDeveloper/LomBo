@@ -1648,3 +1648,75 @@ class BoshliqTasdigiTest(TestCase):
         """Migratsiyadan oldingi shartnomalar standart bo'yicha tasdiqlangan."""
         f = Contract._meta.get_field('tasdiq_holati')
         self.assertEqual(f.default, Contract.TASDIQ_TASDIQLANGAN)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class ImtiyozliDavrTest(TestCase):
+    """Imtiyozli davr — xaridor namunasi (2026-09-12) bilan tiyingacha (v1.3.12)."""
+
+    def _namuna(self, imtiyoz=3):
+        from decimal import Decimal
+        return Contract(
+            number=1, date=date(2026, 9, 7), amount=Decimal('12000000'),
+            term_months=12, interest_rate=60, imtiyoz_oylar=imtiyoz,
+            payment_start_date=date(2026, 10, 7), end_date=date(2027, 9, 6),
+            collateral_type=Contract.TYPE_ZARGARLIK)
+
+    def test_namuna_jadvali(self):
+        from decimal import Decimal
+        from .docgen import payment_schedule
+        q = payment_schedule(self._namuna())
+        self.assertEqual([r[3] for r in q[:3]], [Decimal('0')] * 3)
+        self.assertEqual(q[3][3], Decimal('1333333'))
+        self.assertEqual(q[-1][3], Decimal('1333336'))
+        self.assertEqual(q[-1][1], date(2027, 9, 6))
+        self.assertEqual(q[4][4], Decimal('543561.75'))        # namunadagi xato tuzatilgan
+        self.assertEqual(sum(r[4] for r in q), Decimal('4786851.16'))
+        self.assertEqual(sum(r[2] for r in q), Decimal('16786851.16'))
+        self.assertEqual(sum(r[3] for r in q), Decimal('12000000'))
+
+    def test_imtiyozsiz_ozgarmaydi(self):
+        from decimal import Decimal
+        from .docgen import payment_schedule
+        q = payment_schedule(self._namuna(imtiyoz=0))
+        self.assertTrue(all(r[3] > 0 for r in q))
+        self.assertEqual(q[0][3], Decimal('1000000'))
+
+    def test_shartnoma_formasi_orqali(self):
+        from accounts.models import User
+        from .docgen import payment_schedule
+        ishchi = User.objects.create_user(username='i1', password='x', role=User.ROLE_ISHCHI)
+        self.client.force_login(ishchi)
+        malumot = FormaSahifasiTest._malumot(self)
+        malumot['imtiyoz_oylar'] = '3'
+        self.client.post('/shartnoma/yangi/', malumot)
+        c = Contract.objects.get()
+        self.assertEqual(c.imtiyoz_oylar, 3)
+        q = payment_schedule(c)
+        self.assertEqual(sum(1 for r in q if r[3] == 0), 3)
+
+    def test_imtiyoz_muddatdan_kam_bolishi_kerak(self):
+        malumot = FormaSahifasiTest._malumot(self)
+        malumot['imtiyoz_oylar'] = malumot.get('term_months', '12')
+        forma = ContractForm(malumot)
+        self.assertFalse(forma.is_valid())
+        self.assertIn('imtiyoz_oylar', forma.errors)
+
+    def test_imtiyozsiz_yuborilsa_0(self):
+        malumot = FormaSahifasiTest._malumot(self)
+        malumot.pop('imtiyoz_oylar', None)
+        forma = ContractForm(malumot)
+        forma.is_valid()
+        self.assertNotIn('imtiyoz_oylar', forma.errors)
+        self.assertEqual(forma.cleaned_data.get('imtiyoz_oylar'), 0)
+
+    def test_grafik_bolimi(self):
+        from accounts.models import User
+        u = User.objects.create_user(username='i2', password='x', role=User.ROLE_ISHCHI)
+        self.client.force_login(u)
+        javob = self.client.get('/grafik/', {
+            'amount': '12000000', 'interest_rate': '60', 'date': '2026-09-07',
+            'term_months': '12', 'imtiyoz_oylar': '3',
+            'payment_start_date': '2026-10-07', 'end_date': '2027-09-06'})
+        self.assertContains(javob, '4 786 851,16')
+        self.assertContains(javob, 'imtiyoz 3 oy')

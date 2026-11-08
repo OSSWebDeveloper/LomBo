@@ -119,7 +119,18 @@
       {% include 'contracts/_field.html' with field=form.payment_start_date %}
       {% include 'contracts/_field.html' with field=form.end_date %}
     </div>
-    <div class="help">Tugash sanasini bo‘sh qoldirsangiz avtomatik hisoblanadi.</div>
+
+    {# Imtiyozli davr: belgi qo'yilsa oy maydoni ochiladi. Belgi olinsa 0 yuboriladi. #}
+    <div class="imtiyoz-blok">
+      <label class="imtiyoz-belgi">
+        <input type="checkbox" id="imtiyoz-bor"
+               {% if form.imtiyoz_oylar.value and form.imtiyoz_oylar.value|stringformat:"s" != "0" %}checked{% endif %}>
+        Imtiyozli davr
+      </label>
+      <div id="imtiyoz-maydon" class="hidden">
+        {% include 'contracts/_field.html' with field=form.imtiyoz_oylar %}
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -583,6 +594,28 @@
     termF.addEventListener('change', calcEnd);
     termF.addEventListener('input', calcEnd);
     calcEnd();
+  }
+
+  // ---- Imtiyozli davr: belgi qo'yilsa oy maydoni chiqadi ----
+  var imtiyozBor = document.getElementById('imtiyoz-bor'),
+      imtiyozF = document.getElementById('id_imtiyoz_oylar');
+  function imtiyozHolati(){
+    if (!imtiyozBor || !imtiyozF) return;
+    var bor = imtiyozBor.checked;
+    document.getElementById('imtiyoz-maydon').classList.toggle('hidden', !bor);
+    imtiyozF.required = bor;
+    imtiyozF.min = bor ? 1 : 0;
+    if (!bor) imtiyozF.value = 0;
+    else if (!+imtiyozF.value) { imtiyozF.value = 3; }
+    if (termF && termF.value) imtiyozF.max = Math.max(parseInt(termF.value, 10) - 1, 0);
+  }
+  if (imtiyozBor){
+    imtiyozBor.addEventListener('change', function(){
+      imtiyozHolati();
+      if (imtiyozBor.checked) imtiyozF.focus();
+    });
+    if (termF) termF.addEventListener('input', imtiyozHolati);
+    imtiyozHolati();
   }
 
   // ---- Zargarlikda birinchi qator to'ldirilishi shart ----

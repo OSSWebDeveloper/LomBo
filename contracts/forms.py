@@ -106,7 +106,7 @@ class ContractForm(forms.ModelForm):
             'borrower_phone', 'borrower_phone2', 'borrower_phone3',
             'borrower_workplace', 'monthly_income',
             'amount', 'term_months', 'interest_rate', 'end_date',
-            'payment_start_date',
+            'payment_start_date', 'imtiyoz_oylar',
             'garov_value',
             'pledgor_other', 'pledgor_fio', 'pledgor_passport_type',
             'pledgor_passport_region', 'pledgor_passport_org',
@@ -132,6 +132,9 @@ class ContractForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Imtiyoz ixtiyoriy: belgi qo'yilmasa 0 (yoki umuman yuborilmaydi)
+        self.fields['imtiyoz_oylar'].required = False
+        self.fields['imtiyoz_oylar'].widget.attrs.update({'min': 0, 'inputmode': 'numeric'})
         for name, field in self.fields.items():
             css = 'form-check-input' if isinstance(field.widget, forms.CheckboxInput) else 'form-control'
             field.widget.attrs.setdefault('class', css)
@@ -313,6 +316,15 @@ class ContractForm(forms.ModelForm):
 
         self._hujjat_organini_tekshir(data, 'passport_type', 'passport_org',
                                       'passport_district')
+
+        # Imtiyozli davr muddatdan qisqa bo'lishi shart — asosiy qarz
+        # kamida bitta oyga bo'linsin
+        imtiyoz = data.get('imtiyoz_oylar') or 0
+        data['imtiyoz_oylar'] = imtiyoz
+        if data.get('term_months') and imtiyoz >= data['term_months']:
+            self.add_error('imtiyoz_oylar',
+                           f"Imtiyozli davr muddatdan kam bo'lishi kerak "
+                           f"(ko'pi bilan {data['term_months'] - 1} oy).")
 
         # Tugash sanasi har doim sana va muddatdan qayta hisoblanadi
         if data.get('date') and data.get('term_months'):
@@ -564,6 +576,11 @@ class GrafikFormasi(forms.Form):
     term_months = forms.IntegerField(
         label='Muddat (oy)', min_value=1, max_value=MUDDAT_CHEGARASI, initial=12)
 
+    imtiyoz_oylar = forms.IntegerField(
+        label='Imtiyozli davr (oy)', required=False, min_value=0,
+        max_value=MUDDAT_CHEGARASI - 1, initial=0,
+        help_text="Shu oylarda faqat foiz to'lanadi. Imtiyoz bo'lmasa — 0.")
+
     # ---- quyidagilari ixtiyoriy: bo'sh qolsa shartnomadagidek hisoblanadi
     payment_start_date = forms.DateField(
         label="Birinchi to'lov sanasi", required=False, widget=DateInput(),
@@ -591,6 +608,13 @@ class GrafikFormasi(forms.Form):
         oylar = data.get('term_months')
         if not sana or not oylar:
             return data               # majburiy maydon xatosi allaqachon aytilgan
+
+        imtiyoz = data.get('imtiyoz_oylar') or 0
+        data['imtiyoz_oylar'] = imtiyoz
+        if imtiyoz >= oylar:
+            self.add_error('imtiyoz_oylar',
+                           f"Imtiyozli davr muddatdan kam bo'lishi kerak "
+                           f"(ko'pi bilan {oylar - 1} oy).")
 
         # Bo'sh qoldirilgan sanalar shartnomadagi qoidalar bo'yicha to'ldiriladi
         boshlanish = data.get('payment_start_date') or grafik_boshlanishi(sana)
@@ -627,4 +651,5 @@ class GrafikFormasi(forms.Form):
             amount=d['amount'],
             term_months=d['term_months'],
             interest_rate=d['interest_rate'],
+            imtiyoz_oylar=d.get('imtiyoz_oylar') or 0,
         )

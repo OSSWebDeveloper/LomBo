@@ -757,6 +757,12 @@ def payment_schedule(contract):
     summa = Decimal(contract.amount)
     oylar = contract.term_months
     yillik = Decimal(contract.interest_rate) / 100
+    # Imtiyozli davr (v1.3.12, xaridor namunasi 2026-09-12): birinchi `imtiyoz`
+    # oyda asosiy qarz 0, faqat foiz; asosiy qarz qolgan oylarga bo'linadi.
+    # Qolgan hamma qoida (yaxlitlash, kunlik foiz, oxirgi sana) o'zgarmaydi.
+    imtiyoz = getattr(contract, 'imtiyoz_oylar', 0) or 0
+    if not 0 <= imtiyoz < oylar:
+        imtiyoz = 0
 
     # Asosiy qarz BUTUN so'mga yaxlitlanadi (eng yaqiniga, yarmi yuqoriga),
     # bo'linishdan qolgani oxirgi to'lovga qo'shiladi. Bir kun tiyinli
@@ -769,7 +775,7 @@ def payment_schedule(contract):
     # Avval pastga (int) yaxlitlanardi — №169 da bu farq bermagan
     # (,33 baribir pastga tushadi), ammo №170 da butun jadvalni surib
     # yuborgan edi. Tekshiruv: `TolovJadvaliTest`.
-    asosiy_ulush = (summa / oylar).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+    asosiy_ulush = (summa / (oylar - imtiyoz)).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
     qatorlar = []
     qoldiq = summa
     oldingi_sana = contract.date
@@ -784,7 +790,10 @@ def payment_schedule(contract):
         kunlar = (sana - oldingi_sana).days
         # Oxirgi to'lovda qoldiq to'liq yopiladi — bo'linishdan qolgan tiyinlar
         # ham shu yerga qo'shiladi
-        asosiy = asosiy_ulush if n < oylar else qoldiq
+        if n <= imtiyoz:
+            asosiy = Decimal('0')
+        else:
+            asosiy = asosiy_ulush if n < oylar else qoldiq
         yildagi = 366 if calendar.isleap(sana.year) else 365
         # «Кредит қолдиги» — davr BOSHIDAGI qoldiq (to'lovdan oldin). Foiz ham
         # shu qoldiqqa hisoblanadi. Namunada 1-qatorda to'liq summa, oxirgi

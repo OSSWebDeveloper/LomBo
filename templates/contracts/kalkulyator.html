@@ -215,15 +215,22 @@
     return q;
   }
 
-  // Differensial: asosiy qarz teng (butun so'm), foiz qoldiqqa oylik stavka bilan
+  // Differensial — finlit.uz / kredit-kalkulator.uz bilan bir xil (v1.3.12):
+  // asosiy qarz teng ulush (S / oylar, tiyinli), foiz qoldiqqa HAQIQIY KUNLAR
+  // bilan: qoldiq × stavka × kunlar / 365. To'lov sanalari — berilgan sana + k oy.
+  // Hisob to'liq aniqlikda yuritiladi, faqat ko'rsatishda tiyingacha yaxlitlanadi
+  // (finlit ham shunday) — shu sabab jami summalar tiyingacha mos keladi.
   function differensialJadvali(S, n, foiz, sana, g){
-    var r = foiz / 1200, ulush = Math.round(S / (n - g)) * 100, qoldiq = S * 100, q = [];
+    var stavka = foiz / 100, ulush = S * 100 / (n - g), qoldiq = S * 100, q = [];
+    var oldingi = sana;
     for (var k = 1; k <= n; k++){
-      var foizT = Math.round(qoldiq * r);
+      var d = oyQosh(sana, k);
+      var foizT = qoldiq * stavka * kunFarqi(oldingi, d) / 365;
       var asosiy = (k <= g) ? 0 : (k < n) ? ulush : qoldiq;
-      q.push({n: k, t: k, sana: oyQosh(sana, k), qoldiq: qoldiq, asosiy: asosiy,
+      // `t` berilmaydi: KTQ ham foiz kabi haqiqiy kunlar bilan hisoblanadi
+      q.push({n: k, sana: d, qoldiq: qoldiq, asosiy: asosiy,
               foiz: foizT, jami: asosiy + foizT, imtiyoz: k <= g});
-      qoldiq -= asosiy;
+      qoldiq -= asosiy; oldingi = d;
     }
     return q;
   }
