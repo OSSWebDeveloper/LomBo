@@ -745,3 +745,10 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .stat .muted{margin-top:6px}
 .kalk-som{font-size:.55em;font-weight:600;color:var(--muted)}
 #k-natija .stat .value{white-space:nowrap}
+.kalk-imtiyoz{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 24px;margin:2px 0 8px}
+.kalk-belgi{display:inline-flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;margin:6px 0}
+.kalk-belgi input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.kalk-imtiyoz .field{flex:0 1 260px;margin:0}
+.kalk-imtiyoz-qator td{background:var(--surface-2)}
+.kalk-imtiyoz-belgi{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:6px;
+  background:var(--accent-soft);color:var(--accent);margin-left:4px}

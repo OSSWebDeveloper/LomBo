@@ -34,6 +34,19 @@
     </div>
   </div>
 
+  {# Imtiyozli davr: shu oylarda faqat foiz to'lanadi, asosiy qarz qolgan oylarga bo'linadi #}
+  <div class="kalk-imtiyoz">
+    <label class="kalk-belgi">
+      <input type="checkbox" id="k-imtiyoz-bor"> Imtiyozli davr
+    </label>
+    <div class="field hidden" id="k-imtiyoz-maydon">
+      <label for="k-imtiyoz">Imtiyozli davr (oy)</label>
+      <input type="number" id="k-imtiyoz" min="1" max="119" value="3">
+      <div class="help">Shu oylarda mijoz faqat foizni to‘laydi. Asosiy qarz
+        qolgan oylarga teng bo‘linadi.</div>
+    </div>
+  </div>
+
   <p class="ajratgich-nom" style="margin-top:6px">Qaytarish usuli</p>
   <div class="almashtirgich kalk-usul" id="k-usul">
     <label>
@@ -160,14 +173,16 @@
   }
 
   // ---------------------------------------------------------------- jadvallar
-  // Har biri [{n, sana, qoldiq, asosiy, foiz, jami}] qaytaradi (tiyinda).
+  // Har biri [{n, sana, qoldiq, asosiy, foiz, jami, imtiyoz}] qaytaradi (tiyinda).
+  // `g` — imtiyozli oylar: ularda asosiy qarz 0, faqat foiz to'lanadi; asosiy
+  // qarz qolgan (n − g) oyga bo'linadi. Qolgan hamma hisob odatdagidek.
 
   // Shartnomadagidek (docgen.payment_schedule): asosiy qarz butun so'mga teng
   // bo'linadi, foiz davr boshidagi qoldiqqa kunlab: yaxlit(qoldiq×foiz/kunlar_yilda)
   // × kunlar. 1-to'lov keyingi oyning 10-sanasi, oxirgisi sana + muddat − 1 kun.
-  function lombardJadvali(S, n, foiz, sana){
-    var ulush = Math.round(S / n);             // so'm
-    var bosh = oyQosh(sana, 1); bosh.setDate(10);
+  function lombardJadvali(S, n, foiz, sana, g, bosh){
+    var ulush = Math.round(S / (n - g));       // so'm
+    if (!bosh){ bosh = oyQosh(sana, 1); bosh.setDate(10); }
     var tugash = oyQosh(sana, n); tugash.setDate(tugash.getDate() - 1);
     var qoldiq = S, oldingi = sana, q = [];
     for (var k = 1; k <= n; k++){
@@ -176,37 +191,38 @@
       var yilda = kabisa(d.getFullYear()) ? 366 : 365;
       var kunlik = Math.round(qoldiq * foiz / yilda + 1e-9);   // tiyin (= so'm×%/kun ×100/100)
       var foizT = kunlik * kunlar;
-      var asosiy = (k < n) ? ulush : qoldiq;
+      var asosiy = (k <= g) ? 0 : (k < n) ? ulush : qoldiq;
       q.push({n: k, sana: d, qoldiq: qoldiq * 100, asosiy: asosiy * 100,
-              foiz: foizT, jami: asosiy * 100 + foizT});
+              foiz: foizT, jami: asosiy * 100 + foizT, imtiyoz: k <= g});
       qoldiq -= asosiy; oldingi = d;
     }
     return q;
   }
 
   // Annuitet: oylik stavka = yillik/12, har oy teng to'lov; oxirgisi qoldiqni yopadi
-  function annuitetJadvali(S, n, foiz, sana){
-    var r = foiz / 1200, qoldiq = S * 100, q = [];
-    var tolov = r === 0 ? qoldiq / n : qoldiq * r / (1 - Math.pow(1 + r, -n));
+  // Imtiyozda faqat foiz, keyin annuitet qolgan (n − g) oyga hisoblanadi.
+  function annuitetJadvali(S, n, foiz, sana, g){
+    var r = foiz / 1200, qoldiq = S * 100, q = [], m = n - g;
+    var tolov = r === 0 ? qoldiq / m : qoldiq * r / (1 - Math.pow(1 + r, -m));
     tolov = Math.round(tolov);
     for (var k = 1; k <= n; k++){
       var foizT = Math.round(qoldiq * r);
-      var asosiy = (k < n) ? Math.min(tolov - foizT, qoldiq) : qoldiq;
+      var asosiy = (k <= g) ? 0 : (k < n) ? Math.min(tolov - foizT, qoldiq) : qoldiq;
       q.push({n: k, t: k, sana: oyQosh(sana, k), qoldiq: qoldiq, asosiy: asosiy,
-              foiz: foizT, jami: asosiy + foizT});
+              foiz: foizT, jami: asosiy + foizT, imtiyoz: k <= g});
       qoldiq -= asosiy;
     }
     return q;
   }
 
   // Differensial: asosiy qarz teng (butun so'm), foiz qoldiqqa oylik stavka bilan
-  function differensialJadvali(S, n, foiz, sana){
-    var r = foiz / 1200, ulush = Math.round(S / n) * 100, qoldiq = S * 100, q = [];
+  function differensialJadvali(S, n, foiz, sana, g){
+    var r = foiz / 1200, ulush = Math.round(S / (n - g)) * 100, qoldiq = S * 100, q = [];
     for (var k = 1; k <= n; k++){
       var foizT = Math.round(qoldiq * r);
-      var asosiy = (k < n) ? ulush : qoldiq;
+      var asosiy = (k <= g) ? 0 : (k < n) ? ulush : qoldiq;
       q.push({n: k, t: k, sana: oyQosh(sana, k), qoldiq: qoldiq, asosiy: asosiy,
-              foiz: foizT, jami: asosiy + foizT});
+              foiz: foizT, jami: asosiy + foizT, imtiyoz: k <= g});
       qoldiq -= asosiy;
     }
     return q;
@@ -238,6 +254,7 @@
 
   var JADVAL = {lombard: lombardJadvali, annuitet: annuitetJadvali,
                 differensial: differensialJadvali};
+  window.kalkJadval = JADVAL;      // konsoldan tekshirish uchun
 
   function yigindi(q, k){ return q.reduce(function(a, r){ return a + r[k]; }, 0); }
 
@@ -247,6 +264,9 @@
     var n = parseInt($('k-muddat').value, 10);
     var foiz = parseFloat(String($('k-foiz').value).replace(',', '.'));
     var sana = $('k-sana').value ? new Date($('k-sana').value + 'T00:00:00') : null;
+    var imtiyozBor = $('k-imtiyoz-bor').checked;
+    $('k-imtiyoz-maydon').classList.toggle('hidden', !imtiyozBor);
+    var g = imtiyozBor ? parseInt($('k-imtiyoz').value, 10) : 0;
     var xarajat = 0;
     document.querySelectorAll('.k-xarajat').forEach(function(i){ xarajat += pul.son(i.value) * 100; });
 
@@ -255,6 +275,8 @@
     else if (!(n >= 1 && n <= 120)) xato = 'Muddat 1 dan 120 oygacha bo‘lishi kerak.';
     else if (!(foiz >= 0 && foiz <= 300)) xato = 'Foiz stavkasi 0–300% oralig‘ida bo‘lishi kerak.';
     else if (!sana || isNaN(sana)) xato = 'Kredit berilgan sanani kiriting.';
+    else if (imtiyozBor && !(g >= 1 && g < n))
+      xato = 'Imtiyozli davr 1 dan ' + (n - 1) + ' oygacha bo‘lishi kerak (muddatdan kam).';
     $('k-xato').textContent = xato;
     $('k-xato').classList.toggle('hidden', !xato);
     $('k-natija').classList.toggle('kalk-xira', !!xato);
@@ -263,7 +285,7 @@
     var usul = document.querySelector('input[name="k-usul"]:checked').value;
     var natijalar = {};
     Object.keys(JADVAL).forEach(function(u){
-      var q = JADVAL[u](S, n, foiz, sana);
+      var q = JADVAL[u](S, n, foiz, sana, g);
       natijalar[u] = {q: q, foiz: yigindi(q, 'foiz'), jami: yigindi(q, 'jami'),
                       ktq: ktq(S, xarajat, q, sana)};
     });
@@ -271,7 +293,13 @@
 
     // Kartochkalar
     var birinchi = q[0].jami, oxirgi = q[q.length - 1].jami;
-    if (usul === 'annuitet'){
+    if (g > 0){
+      // Imtiyozda: asosiy raqam — imtiyozdan keyingi birinchi to'lov
+      $('k-oylik-nom').textContent = 'Imtiyozdan keyingi to‘lov';
+      $('k-oylik').innerHTML = somQisqa(q[g].jami, true);
+      $('k-oylik-izoh').textContent = 'imtiyoz davrida (' + g + ' oy) faqat foiz: ' +
+        somQisqa(birinchi) + ' · oxirgi to‘lov: ' + somQisqa(oxirgi);
+    } else if (usul === 'annuitet'){
       $('k-oylik-nom').textContent = 'Oylik to‘lov';
       $('k-oylik').innerHTML = somQisqa(birinchi, true);
       $('k-oylik-izoh').textContent = n > 1 ? 'oxirgi oy: ' + somQisqa(oxirgi) : '';
@@ -301,10 +329,13 @@
 
     // To'lov jadvali
     $('k-shart').textContent = USULLAR[usul] + ' · ' + pul.format(String(S)) + ' so‘m · ' +
-      n + ' oy · yillik ' + String(foiz).replace('.', ',') + '% · berilgan sana ' + sanaMatn(sana);
+      n + ' oy' + (g ? ' (imtiyoz ' + g + ' oy)' : '') + ' · yillik ' +
+      String(foiz).replace('.', ',') + '% · berilgan sana ' + sanaMatn(sana);
     var tb = $('k-jadval').tBodies[0], html = '';
     q.forEach(function(r){
-      html += '<tr><td>' + r.n + '</td><td>' + sanaMatn(r.sana) + '</td>' +
+      html += '<tr' + (r.imtiyoz ? ' class="kalk-imtiyoz-qator" title="Imtiyozli oy — faqat foiz"' : '') +
+        '><td>' + r.n + '</td><td>' + sanaMatn(r.sana) +
+        (r.imtiyoz ? ' <span class="kalk-imtiyoz-belgi">imtiyoz</span>' : '') + '</td>' +
         '<td class="num">' + somMatn(r.qoldiq) + '</td>' +
         '<td class="num">' + somMatn(r.asosiy) + '</td>' +
         '<td class="num">' + somMatn(r.foiz) + '</td>' +
