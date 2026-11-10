@@ -134,7 +134,8 @@ class ContractForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Imtiyoz ixtiyoriy: belgi qo'yilmasa 0 (yoki umuman yuborilmaydi)
         self.fields['imtiyoz_oylar'].required = False
-        self.fields['imtiyoz_oylar'].widget.attrs.update({'min': 0, 'inputmode': 'numeric'})
+        self.fields['imtiyoz_oylar'].widget.attrs.update({'min': 0, 'inputmode': 'numeric',
+                                                         'aria-label': 'Imtiyozli davr (oy)'})
         for name, field in self.fields.items():
             css = 'form-check-input' if isinstance(field.widget, forms.CheckboxInput) else 'form-control'
             field.widget.attrs.setdefault('class', css)

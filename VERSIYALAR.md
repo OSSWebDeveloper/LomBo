@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.16 — 2026-11-10
+
+Dizayn: shartnoma formasida «Imtiyozli davr» boshqa maydonlar bilan bir to'rga o'tdi — belgi sarlavha o'rnida, oy maydoni qo'shni inputlar bilan bir chiziqda.
+
 ## 1.3.15 — 2026-11-10
 
 Tuzatish: zargarlik shartnomasini tahrirlashda «Imtiyozli davr» belgisi ishlamas edi — pul.js sahifa skriptidan keyin ulangani uchun skript yiqilardi. pul.js endi <head> da.

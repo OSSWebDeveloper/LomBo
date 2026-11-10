@@ -116,19 +116,22 @@
       {# Avval boshlanish, keyin tugash sanasi (xaridor talabi, 2026-11-08) #}
       {% include 'contracts/_field.html' with field=form.payment_start_date %}
       {% include 'contracts/_field.html' with field=form.end_date %}
-    </div>
-
-    {# Imtiyozli davr: belgi qo'yilsa oy maydoni ochiladi. Belgi olinsa 0 yuboriladi. #}
-    <div class="imtiyoz-blok">
-      <label class="imtiyoz-belgi">
-        <input type="checkbox" id="imtiyoz-bor"
-               {% if form.imtiyoz_oylar.value and form.imtiyoz_oylar.value|stringformat:"s" != "0" %}checked{% endif %}>
-        Imtiyozli davr
-      </label>
-      <div id="imtiyoz-maydon" class="hidden">
-        {% include 'contracts/_field.html' with field=form.imtiyoz_oylar %}
+      {# Imtiyozli davr — boshqa maydonlar bilan bir to'rda: belgi sarlavha o'rnida, oy maydoni ostida. Belgi olinsa 0 yuboriladi. #}
+      <div class="field imtiyoz-katak">
+        <label class="imtiyoz-belgi" for="imtiyoz-bor">
+          <input type="checkbox" id="imtiyoz-bor"
+                 {% if form.imtiyoz_oylar.value and form.imtiyoz_oylar.value|stringformat:"s" != "0" %}checked{% endif %}>
+          Imtiyozli davr (oy)
+        </label>
+        <div id="imtiyoz-maydon" class="hidden">
+          {{ form.imtiyoz_oylar }}
+          {% if form.imtiyoz_oylar.help_text %}<div class="help">{{ form.imtiyoz_oylar.help_text }}</div>{% endif %}
+        </div>
+        <div id="imtiyoz-yoq" class="help">Belgilansa, shu oylarda faqat foiz to‘lanadi.</div>
+        {% if form.imtiyoz_oylar.errors %}<div class="errors">{{ form.imtiyoz_oylar.errors|striptags }}</div>{% endif %}
       </div>
     </div>
+
   </div>
 
   <div class="card">
@@ -598,6 +601,7 @@
     if (!imtiyozBor || !imtiyozF) return;
     var bor = imtiyozBor.checked;
     document.getElementById('imtiyoz-maydon').classList.toggle('hidden', !bor);
+    document.getElementById('imtiyoz-yoq').classList.toggle('hidden', bor);
     imtiyozF.required = bor;
     imtiyozF.min = bor ? 1 : 0;
     if (!bor) imtiyozF.value = 0;
