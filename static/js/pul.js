@@ -39,7 +39,10 @@
   document.addEventListener('input', function(e){
     if (e.target.classList && e.target.classList.contains('pul')) maydon(e.target);
   });
-  document.querySelectorAll('.pul').forEach(maydon);
+  // Fayl <head> da ulanadi — mavjud maydonlar sahifa tayyor bo'lgach formatlanadi
+  function hammasi(){ document.querySelectorAll('.pul').forEach(maydon); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hammasi);
+  else hammasi();
 
   window.pul = {raqam: raqam, format: format, son: son, maydon: maydon};
 })();

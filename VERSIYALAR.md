@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.15 — 2026-11-10
+
+Tuzatish: zargarlik shartnomasini tahrirlashda «Imtiyozli davr» belgisi ishlamas edi — pul.js sahifa skriptidan keyin ulangani uchun skript yiqilardi. pul.js endi <head> da.
+
 ## 1.3.14 — 2026-11-08
 
 Ishchiga bildirishnoma: boshliq shartnomasini tasdiqlasa yoki tuzatsa, sahifada xabar (va ruxsat bo'lsa Windows bildirishnomasi) chiqadi. Migratsiya: contracts 0026.

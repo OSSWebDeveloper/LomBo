@@ -16,6 +16,10 @@
 })();
 </script>
 <link rel="stylesheet" href="{% statik 'css/app.css' %}">
+{% comment %}pul.js <head> da: sahifa skriptlari (shartnoma formasi) yuklanishdayoq `pul` ni
+   ishlatadi. Oxirida ulanganda zargarlik shartnomasi tahririda skript yiqilib,
+   imtiyoz belgisi ishlamay qolgan edi (v1.3.15).{% endcomment %}
+<script src="{% statik 'js/pul.js' %}"></script>
 </head>
 <body>
 
@@ -166,7 +170,6 @@
   };
 })();
 </script>
-<script src="{% statik 'js/pul.js' %}"></script>
 {% if user.is_authenticated and user.is_ishchi %}
 <script>
 /* Ishchiga xabar: shartnomasi tasdiqlandi yoki boshliq tuzatdi (v1.3.14) */
