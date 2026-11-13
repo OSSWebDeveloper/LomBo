@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.3.17 — 2026-11-13
+
+Kalkulyator: «Jadvalni chop etish» endi faqat to'lov jadvalini chop etadi — sarlavha, forma, kartochkalar va usullar solishtiruvi qog'ozga tushmaydi; jadval chegarali, ko'p sahifada sarlavha qatori takrorlanadi.
+
 ## 1.3.16 — 2026-11-10
 
 Dizayn: shartnoma formasida «Imtiyozli davr» boshqa maydonlar bilan bir to'rga o'tdi — belgi sarlavha o'rnida, oy maydoni qo'shni inputlar bilan bir chiziqda.
