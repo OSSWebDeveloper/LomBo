@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.4.1 — 2026-11-19
+
+Ichki panel: «stats --tarix» — kuzatuv yoqilishidan oldingi kirishlar server access log'laridan (taxminiy): turli qurilmalar, haftalik grafik, har qurilmaning birinchi/oxirgi kuni. Avast brauzeri endi alohida, Google Read-Aloud bot sifatida sanaladi.
+
 ## 1.4.0 — 2026-11-19
 
 Ichki panel: saytga kirayotgan qurilmalar kuzatiladi — «stats» buyrug'i jami/onlayn/bugun/7/30 kunlik faol qurilmalar, tur, tizim, brauzer taqsimoti, kunlik grafik va hisoblar bo'yicha statistika ko'rsatadi; «stats --list» qurilmalar ro'yxati. Migratsiya: panel 0001.
