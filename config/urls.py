@@ -5,7 +5,6 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from accounts import views as acc
-from accounts.forms import SaytKirishFormasi
 from contracts import views as con
 
 admin.site.site_header = 'Lombard — boshqaruv paneli'
@@ -19,10 +18,7 @@ urlpatterns = [
     # LOMBARD_PANEL_PATH muhit o'zgaruvchisidan olinadi).
     path(f'{settings.PANEL_PATH}/', include('panel.urls')),
 
-    path('kirish/', auth_views.LoginView.as_view(
-        template_name='registration/login.html',
-        authentication_form=SaytKirishFormasi,
-        redirect_authenticated_user=False), name='login'),
+    path('kirish/', acc.KirishView.as_view(), name='login'),
     path('chiqish/', auth_views.LogoutView.as_view(), name='logout'),
 
     path('', con.dashboard, name='dashboard'),

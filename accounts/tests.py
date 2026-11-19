@@ -109,3 +109,77 @@ class VersiyaTest(TestCase):
         matn = vaqt.read_text(encoding='utf-8')
         self.assertLess(matn.index('1.1.0'), matn.index('1.0.0'))
         self.assertIn('Yangi narsa', matn)
+
+
+from django.urls import reverse  # noqa: E402
+
+
+@override_settings(LOMBARD_BOSS_IP=['198.163.193.78'], LOMBARD_ISHCHI_KIRISHI=False)
+class KirishChekloviTest(TestCase):
+    """Ishchi kira olmaydi (jim rad), boshliq faqat ruxsat etilgan IP dan kiradi."""
+    PAROL = 'sinov-parol-123'
+    BOSS_IP = '198.163.193.78'
+
+    def setUp(self):
+        self.url = reverse('login')
+        self.boshliq = User.objects.create_user(
+            username='boss1', password=self.PAROL, role=User.ROLE_BOSHLIQ)
+        self.ishchi = User.objects.create_user(
+            username='worker1', password=self.PAROL, role=User.ROLE_ISHCHI)
+
+    def kir(self, username, ip=None, **extra):
+        if ip:
+            extra['HTTP_X_FORWARDED_FOR'] = ip
+        return self.client.post(
+            self.url, {'username': username, 'password': self.PAROL}, **extra)
+
+    def kirganmi(self):
+        return '_auth_user_id' in self.client.session
+
+    # --- Ishchi ---
+    def test_ishchi_jim_rad(self):
+        r = self.kir('worker1', ip=self.BOSS_IP)
+        self.assertEqual(r.status_code, 302)                 # qayta kirish sahifasiga
+        self.assertEqual(r.url, self.url)
+        self.assertFalse(self.kirganmi())
+
+    def test_ishchi_rad_etilganda_xabar_yoq(self):
+        """Hech qanday visual ta'sir bo'lmasin — redirectdan keyin sahifada xato yo'q."""
+        r = self.client.post(self.url, {'username': 'worker1', 'password': self.PAROL},
+                             follow=True, HTTP_X_FORWARDED_FOR=self.BOSS_IP)
+        self.assertNotContains(r, 'noto', status_code=200)   # «noto'g'ri» chiqmaydi
+        self.assertNotContains(r, 'xato')
+        self.assertFalse(self.kirganmi())
+
+    @override_settings(LOMBARD_ISHCHI_KIRISHI=True)
+    def test_ishchi_qayta_yoqilsa_kiradi(self):
+        self.assertFalse(self.kirganmi())
+        self.kir('worker1', ip=self.BOSS_IP)
+        self.assertTrue(self.kirganmi())
+
+    # --- Boshliq ---
+    def test_boshliq_ruxsat_ip_dan_kiradi(self):
+        self.kir('boss1', ip=self.BOSS_IP)
+        self.assertTrue(self.kirganmi())
+
+    def test_boshliq_boshqa_ip_dan_jim_rad(self):
+        r = self.kir('boss1', ip='5.6.7.8')
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(self.kirganmi())
+
+    def test_boshliq_xff_birinchi_ip_hisobga_olinadi(self):
+        # Proksi zanjiri: haqiqiy mijoz — birinchi IP
+        self.kir('boss1', ip=f'{self.BOSS_IP}, 10.0.0.1')
+        self.assertTrue(self.kirganmi())
+
+    @override_settings(LOMBARD_BOSS_IP=[])
+    def test_boss_ip_bosh_bolsa_hamma_ip_dan_kiradi(self):
+        self.kir('boss1', ip='5.6.7.8')
+        self.assertTrue(self.kirganmi())
+
+    def test_notogri_parol_odatdagidek(self):
+        # Noto'g'ri parol — bu cheklov emas, odatdagi xato ko'rinadi
+        r = self.client.post(self.url, {'username': 'boss1', 'password': 'boshqa'},
+                             HTTP_X_FORWARDED_FOR=self.BOSS_IP)
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(self.kirganmi())

@@ -213,4 +213,13 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
+# Saytga kirish cheklovi (foydalanuvchi talabi, 2026-11-19).
+#  - Ishchilar saytga kira olmaydi: kirish sahifasi jim qayta ochiladi, hech
+#    qanday xato yoki xabar chiqmaydi. Qayta ruxsat berish: LOMBARD_ISHCHI_KIRISHI=1.
+#  - Boshliq faqat quyidagi IP(lar)dan kiradi (vergul bilan ajratiladi). Boshqa
+#    IP dan ham xuddi shunday jim rad etiladi. Cheklovni o'chirish: LOMBARD_BOSS_IP= (bo'sh).
+LOMBARD_ISHCHI_KIRISHI = os.environ.get('LOMBARD_ISHCHI_KIRISHI', '0') == '1'
+LOMBARD_BOSS_IP = [x.strip() for x in
+                   os.environ.get('LOMBARD_BOSS_IP', '198.163.193.78').split(',') if x.strip()]
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
