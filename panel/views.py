@@ -213,6 +213,9 @@ def bajar(request):
         return _ochirish(request, flaglar)
     if buyruq == 'adduser':
         return _foydalanuvchi_qosh(request, flaglar)
+    if buyruq in ('stats', 'statistika'):
+        from . import statistika
+        return JsonResponse({'output': statistika.bajar(flaglar), 'action': None})
 
     return JsonResponse({'output': f"Noma'lum buyruq: {buyruq}.", 'action': None})
 

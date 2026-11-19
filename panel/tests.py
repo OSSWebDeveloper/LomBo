@@ -389,3 +389,71 @@ class BazaniOlTest(TestCase):
                                      '--nishon', str(self.papka)])
         self.assertEqual(natija, 1)
         self.assertEqual((self.papka / 'db.sqlite3').read_bytes(), b'eski baza')
+
+
+# ------------------------------------------------------------ qurilma kuzatuvi
+
+from panel.kuzatuv import ua_tahlil          # noqa: E402
+from panel.models import Qurilma, QurilmaKun  # noqa: E402
+
+UA_PK = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+         '(KHTML, like Gecko) Chrome/130.0 Safari/537.36')
+UA_TEL = ('Mozilla/5.0 (Linux; Android 14; SM-A515F) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36')
+
+
+class UaTahlilTest(TestCase):
+    def test_turlar(self):
+        self.assertEqual(ua_tahlil(UA_PK), ('kompyuter', 'Windows', 'Chrome'))
+        self.assertEqual(ua_tahlil(UA_TEL), ('telefon', 'Android 14', 'Chrome'))
+        self.assertEqual(ua_tahlil('Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) '
+                                   'AppleWebKit/605 Version/17 Mobile Safari/604')[:2],
+                         ('telefon', 'iOS 17'))
+        self.assertEqual(ua_tahlil('Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X)')[0], 'planshet')
+        self.assertEqual(ua_tahlil('curl/8.0')[0], 'bot')
+        self.assertEqual(ua_tahlil('')[0], 'bot')
+
+
+class QurilmaKuzatuvTest(PanelBaza):
+    def ochish(self, client, ua=UA_PK, **sarlavha):
+        return client.get(reverse('login'), HTTP_USER_AGENT=ua, **sarlavha)
+
+    def test_bir_qurilma_bir_marta_sanaladi(self):
+        self.ochish(self.client)
+        self.ochish(self.client)
+        self.assertEqual(Qurilma.objects.count(), 1)
+        q = Qurilma.objects.get()
+        self.assertEqual(q.sorov_soni, 2)
+        self.assertEqual(QurilmaKun.objects.get().sorov_soni, 2)
+
+    def test_ikki_qurilma(self):
+        from django.test import Client
+        self.ochish(self.client)
+        self.ochish(Client(), ua=UA_TEL)
+        self.assertEqual(Qurilma.objects.count(), 2)
+        self.assertEqual(set(Qurilma.objects.values_list('turi', flat=True)),
+                         {'kompyuter', 'telefon'})
+
+    def test_bot_cookiesiz_ham_bitta(self):
+        from django.test import Client
+        for _ in range(3):
+            self.ochish(Client(), ua='curl/8.0')
+        self.assertEqual(Qurilma.objects.filter(turi='bot').count(), 1)
+
+    def test_fetch_va_panel_sanalmaydi(self):
+        self.ochish(self.client, HTTP_SEC_FETCH_DEST='empty')
+        self.client.get(self.url_index, HTTP_USER_AGENT=UA_PK)
+        self.run_cmd('whoami')
+        self.assertEqual(Qurilma.objects.count(), 0)
+
+    def test_stats_buyrugi(self):
+        self.assertIn('Avval login', self.run_cmd('stats').json()['output'])
+        self.ochish(self.client)
+        self.login_ega()
+        chiqish = self.run_cmd('stats').json()['output']
+        self.assertIn('QURILMALAR STATISTIKASI', chiqish)
+        self.assertIn('Kompyuter', chiqish)
+        self.assertIn('◄ bugun', chiqish)
+        self.assertIn('Windows', self.run_cmd('stats --list').json()['output'])
+        self.assertIn('oxirgi 30 kun', self.run_cmd('stats --days 30').json()['output'])
+        self.assertIn('QURILMALAR', self.run_cmd('stats --days abc').json()['output'])
