@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.4.0 — 2026-11-19
+
+Ichki panel: saytga kirayotgan qurilmalar kuzatiladi — «stats» buyrug'i jami/onlayn/bugun/7/30 kunlik faol qurilmalar, tur, tizim, brauzer taqsimoti, kunlik grafik va hisoblar bo'yicha statistika ko'rsatadi; «stats --list» qurilmalar ro'yxati. Migratsiya: panel 0001.
+
 ## 1.3.17 — 2026-11-13
 
 Kalkulyator: «Jadvalni chop etish» endi faqat to'lov jadvalini chop etadi — sarlavha, forma, kartochkalar va usullar solishtiruvi qog'ozga tushmaydi; jadval chegarali, ko'p sahifada sarlavha qatori takrorlanadi.
