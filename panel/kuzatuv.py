@@ -22,7 +22,7 @@ COOKIE = 'lq'
 COOKIE_MUDDAT = 2 * 365 * 24 * 3600          # 2 yil
 
 _BOT = re.compile(r'bot|crawl|spider|slurp|curl|wget|python|httpx|go-http|java/|'
-                  r'headless|preview|facebookexternalhit|scan|monitor|uptime', re.I)
+                  r'headless|preview|facebookexternalhit|scan|monitor|uptime|read-aloud', re.I)
 
 
 def ua_tahlil(ua):
@@ -53,7 +53,7 @@ def ua_tahlil(ua):
     else:
         tizim = 'Boshqa'
 
-    for belgi, nom in (('YaBrowser', 'Yandex'), ('Edg', 'Edge'), ('OPR/', 'Opera'),
+    for belgi, nom in (('Avast', 'Avast'), ('YaBrowser', 'Yandex'), ('Edg', 'Edge'), ('OPR/', 'Opera'),
                        ('Opera', 'Opera'), ('SamsungBrowser', 'Samsung'),
                        ('Firefox', 'Firefox'), ('FxiOS', 'Firefox'),
                        ('CriOS', 'Chrome'), ('Chrome', 'Chrome'), ('Safari', 'Safari')):

@@ -457,3 +457,52 @@ class QurilmaKuzatuvTest(PanelBaza):
         self.assertIn('Windows', self.run_cmd('stats --list').json()['output'])
         self.assertIn('oxirgi 30 kun', self.run_cmd('stats --days 30').json()['output'])
         self.assertIn('QURILMALAR', self.run_cmd('stats --days abc').json()['output'])
+
+
+class TarixTest(PanelBaza):
+    QATORLAR = [
+        '1.1.1.1 - - [24/Aug/2026:05:00:00 +0000] "GET / HTTP/1.1" 200 10 "-" "Mozilla/5.0 '
+        '(Windows NT 10.0; Win64; x64) Chrome/154.0 Safari/537.36 Avast/154.0" "1.1.1.1"',
+        '1.1.1.2 - - [25/Aug/2026:05:00:00 +0000] "GET /shartnomalar/ HTTP/1.1" 200 10 "-" '
+        '"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/155.0 Safari/537.36 Avast/155.0" "x"',
+        '1.1.1.2 - - [25/Aug/2026:05:00:01 +0000] "GET /tasdiq/holat/ HTTP/1.1" 200 10 "-" '
+        '"Mozilla/5.0 (Windows NT 10.0) Chrome/155.0 Avast/155.0" "x"',
+        '1.1.1.2 - - [25/Aug/2026:05:00:02 +0000] "GET /static/css/app.css HTTP/1.1" 200 10 "-" '
+        '"Mozilla/5.0 (Windows NT 10.0) Chrome/155.0 Avast/155.0" "x"',
+        '2.2.2.2 - - [26/Aug/2026:05:00:00 +0000] "GET / HTTP/1.1" 200 10 "-" "Mozilla/5.0 '
+        '(Linux; Android 10; K) Chrome/156.0 Mobile Safari/537.36" "x"',
+        '3.3.3.3 - - [26/Aug/2026:05:00:00 +0000] "GET / HTTP/1.1" 200 10 "-" "curl/8.11.0" "x"',
+        'buzuq qator',
+    ]
+
+    def setUp(self):
+        super().setUp()
+        import gzip as _gz
+        d = Path(tempfile.mkdtemp(prefix='log_test_'))
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        (d / 'sayt.access.log').write_text('\n'.join(self.QATORLAR[:3]) + '\n', encoding='utf-8')
+        with _gz.open(d / 'sayt.access.log.2.gz', 'wt', encoding='utf-8') as f:
+            f.write('\n'.join(self.QATORLAR[3:]) + '\n')
+        ctx = override_settings(PANEL_ACCESS_LOG=str(d / 'sayt.access.log*'))
+        ctx.enable()
+        self.addCleanup(ctx.disable)
+
+    def test_avast_va_readaloud(self):
+        self.assertEqual(ua_tahlil(self.QATORLAR[0].split('"')[5])[2], 'Avast')
+        self.assertEqual(ua_tahlil('Mozilla/5.0 (Linux; Android 10; K) Chrome/138 Mobile '
+                                   'Safari/537.36 (compatible; Google-Read-Aloud)')[0], 'bot')
+
+    def test_tarix_hisoboti(self):
+        self.login_ega()
+        chiqish = self.run_cmd('stats --tarix').json()['output']
+        self.assertIn('OLDINGI KIRISHLAR', chiqish)
+        self.assertIn('Kompyuter · Windows · Avast', chiqish)
+        self.assertIn('Telefon · Android 10 · Chrome', chiqish)
+        self.assertRegex(chiqish, r'Turli qurilma/brauzer \.+\s+2 ')
+        self.assertRegex(chiqish, r'Sahifa ochilishi \.+\s+3\n')   # holat/static sanalmaydi
+        self.assertIn("hisobga olinmagan): 1", chiqish)             # curl
+
+    def test_log_yoq(self):
+        with override_settings(PANEL_ACCESS_LOG='/yoq/papka/*.log'):
+            self.login_ega()
+            self.assertIn('Access log topilmadi', self.run_cmd('stats --tarix').json()['output'])

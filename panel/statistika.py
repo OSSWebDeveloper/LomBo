@@ -74,7 +74,8 @@ def umumiy(kunlar=14):
     if botlar:
         q.append(f'  Bot/skript (hisobga olinmagan): {botlar}')
     if not jami:
-        q += ['', "Hali birorta qurilma yozilmagan — saytga kirilgach ko'rinadi."]
+        q += ['', "Hali birorta qurilma yozilmagan — saytga kirilgach ko'rinadi.",
+              "Kuzatuvdan oldingi kirishlar:  stats --tarix"]
         return '\n'.join(q)
 
     q.append('')
@@ -107,7 +108,7 @@ def umumiy(kunlar=14):
         q.append(f'  {nom:<20} {n:>3}')
     if mehmon:
         q.append(f'  {"(kirmagan)":<20} {mehmon:>3}')
-    q += ['', "Batafsil:  stats --list   ·   stats --days 30"]
+    q += ['', "Batafsil:  stats --list   ·   stats --days 30   ·   stats --tarix (oldingilar)"]
     return '\n'.join(q)
 
 
@@ -126,7 +127,7 @@ def royxat(soni=20):
 
 
 def bajar(flaglar):
-    """Panel buyrug'i: `stats`, `stats --days N`, `stats --list [--n N]`."""
+    """Panel buyrug'i: `stats`, `stats --days N`, `stats --list [--n N]` (`--tarix` — views da)."""
     def butun(nom, std, eng_kop):
         try:
             return max(1, min(int(flaglar.get(nom, std)), eng_kop))

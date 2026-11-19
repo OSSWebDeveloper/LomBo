@@ -214,8 +214,12 @@ def bajar(request):
     if buyruq == 'adduser':
         return _foydalanuvchi_qosh(request, flaglar)
     if buyruq in ('stats', 'statistika'):
-        from . import statistika
-        return JsonResponse({'output': statistika.bajar(flaglar), 'action': None})
+        from . import statistika, tarix
+        if flaglar.get('tarix'):
+            matn = tarix.hisobot(request.get_host().split(':')[0])
+        else:
+            matn = statistika.bajar(flaglar)
+        return JsonResponse({'output': matn, 'action': None})
 
     return JsonResponse({'output': f"Noma'lum buyruq: {buyruq}.", 'action': None})
 
