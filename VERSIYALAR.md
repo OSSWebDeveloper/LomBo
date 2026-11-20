@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.4.3 — 2026-11-20
+
+Ichki panel: «stats --list» da har qurilma uchun kunlik ko'rsatkich — «Kun» (necha kun faol), «Bugun» (bugungi sahifa ochishlari), «Kun/o'rt» (kunlik o'rtacha) va «Jami»; avvalgi «Sahifa» ustuni «Jami» deb aniqlashtirildi.
+
 ## 1.4.2 — 2026-11-19
 
 Kirish nazorati: ishchilar saytga kira olmaydi — login/parol to'g'ri bo'lsa ham kirish sahifasi jim qayta ochiladi (xato yoki xabar yo'q, cheksiz urinaveradi). Boshliq faqat ruxsat etilgan IP(lar)dan kiradi (LOMBARD_BOSS_IP, standart 198.163.193.78); boshqa IP ham xuddi shunday jim rad etiladi. Ishchini qayta yoqish: LOMBARD_ISHCHI_KIRISHI=1.
