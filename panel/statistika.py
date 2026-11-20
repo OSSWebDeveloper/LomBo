@@ -4,12 +4,13 @@
 Konsol monoshriftli, shuning uchun jadval va grafiklar belgilardan (█) yasaladi.
 Botlar asosiy raqamlarga qo'shilmaydi, alohida qatorda ko'rsatiladi.
 """
+from collections import defaultdict
 from datetime import datetime, time, timedelta
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Max, Q, Sum
 from django.utils import timezone
 
-from .models import Qurilma, QurilmaKun
+from .models import KirishUrinishi, Qurilma, QurilmaKun
 
 KENGLIK = 28                       # grafik ustunining eng uzun bo'lagi
 HAFTA = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
@@ -108,7 +109,90 @@ def umumiy(kunlar=14):
         q.append(f'  {nom:<20} {n:>3}')
     if mehmon:
         q.append(f'  {"(kirmagan)":<20} {mehmon:>3}')
-    q += ['', "Batafsil:  stats --list   ·   stats --days 30   ·   stats --tarix (oldingilar)"]
+    q += ['', "Batafsil:  stats --list   ·   stats --days 30   ·   stats --ishchi   "
+              "·   stats --tarix (oldingilar)"]
+    return '\n'.join(q)
+
+
+def ishchilar():
+    """`stats --ishchi` — qaysi ishchi qaysi IP dan kirgan/urinayotgani (to'liq).
+
+    Manba — `KirishUrinishi` jurnali (har kirish urinishi: ruxsat/rad). Jurnal
+    boshlanishidan oldingi IP(lar) qo'shimcha ravishda `Qurilma` kuzatuvidan
+    (oxirgi IP, taxminiy) ko'rsatiladi.
+    """
+    from accounts.models import User
+
+    endi = timezone.now()
+    ishchi = list(User.objects.filter(role=User.ROLE_ISHCHI).order_by('username'))
+    jami = KirishUrinishi.objects.count()
+    birinchi = (KirishUrinishi.objects.order_by('vaqt')
+                .values_list('vaqt', flat=True).first())
+
+    bosh = f'  Ishchi hisob: {len(ishchi)}    ·    jurnaldagi urinishlar: {jami}'
+    if birinchi:
+        bosh += f'   ({timezone.localtime(birinchi):%d.%m.%Y} dan)'
+    q = [f'ISHCHILAR — KIRISH STATISTIKASI        {timezone.localtime(endi):%d.%m.%Y %H:%M}',
+         '─' * 54, bosh]
+
+    if not ishchi:
+        q += ['', "Hali ishchi hisob yo'q."]
+        return '\n'.join(q)
+
+    loginlar = [u.username for u in ishchi]
+
+    # Urinishlar: har (login, ip) bo'yicha jami / kirgan / oxirgi vaqt
+    per = defaultdict(list)
+    for r in (KirishUrinishi.objects.filter(login__in=loginlar)
+              .values('login', 'ip')
+              .annotate(urin=Count('id'),
+                        kirdi=Count('id', filter=Q(natija=KirishUrinishi.KIRDI)),
+                        oxir=Max('vaqt'))):
+        per[r['login']].append(r)
+    for v in per.values():
+        v.sort(key=lambda r: -r['urin'])
+
+    # Jurnal boshlanishidan oldingi IP — qurilma kuzatuvidan (oxirgi IP)
+    qmap = defaultdict(list)
+    for d in Qurilma.objects.filter(foydalanuvchi__in=loginlar).exclude(turi='bot'):
+        qmap[d.foydalanuvchi].append(d)
+
+    for u in ishchi:
+        nom = u.username
+        ism = (u.get_full_name() or '').strip() or '—'
+        holat = '' if u.is_active else "  (bo'shatilgan)"
+        q += ['', f'● {nom}  ({ism}){holat}']
+        satrlar = per.get(nom)
+        if satrlar:
+            q.append(f'    {"IP":<20} {"Urin":>5} {"Kirdi":>6} {"Rad":>5}  Oxirgi')
+            for r in satrlar:
+                rad = r['urin'] - r['kirdi']
+                q.append(f'    {r["ip"][:20]:<20} {r["urin"]:>5} {r["kirdi"]:>6} '
+                         f'{rad:>5}  {timezone.localtime(r["oxir"]):%d.%m %H:%M}')
+        else:
+            q.append("    (kirish urinishi jurnalda yo'q)")
+        for d in sorted(qmap.get(nom, []), key=lambda x: -x.sorov_soni):
+            q.append(f'    · qurilma: {d.ip[:20]:<20} {d.sorov_soni} sahifa, '
+                     f'oxirgi {timezone.localtime(d.oxirgi):%d.%m %H:%M}')
+
+    # Ishchi bo'lmagan loginlardan urinishlar (xavfsizlik uchun)
+    boshqa = list(KirishUrinishi.objects.exclude(login__in=loginlar)
+                  .values('login')
+                  .annotate(urin=Count('id'),
+                            kirdi=Count('id', filter=Q(natija=KirishUrinishi.KIRDI)),
+                            oxir=Max('vaqt'))
+                  .order_by('-urin')[:15])
+    if boshqa:
+        q += ['', 'Boshqa loginlar (ishchi emas)',
+              f'    {"Login":<16} {"Urin":>5} {"Kirdi":>6}  Oxirgi']
+        for r in boshqa:
+            q.append(f'    {(r["login"] or "—")[:16]:<16} {r["urin"]:>5} '
+                     f'{r["kirdi"]:>6}  {timezone.localtime(r["oxir"]):%d.%m %H:%M}')
+
+    q += ['', "«Kirdi» — ruxsat berilgan kirish; «Rad» — ishchi/IP cheklovi yoki "
+              "login/parol xatosi.",
+          "«qurilma» — jurnaldan oldingi kuzatuv (oxirgi IP, taxminiy). Jurnal shu "
+          "buyruq joriy etilgandan beri yuritiladi."]
     return '\n'.join(q)
 
 

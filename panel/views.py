@@ -217,6 +217,8 @@ def bajar(request):
         from . import statistika, tarix
         if flaglar.get('tarix'):
             matn = tarix.hisobot(request.get_host().split(':')[0])
+        elif flaglar.get('ishchi'):
+            matn = statistika.ishchilar()
         else:
             matn = statistika.bajar(flaglar)
         return JsonResponse({'output': matn, 'action': None})

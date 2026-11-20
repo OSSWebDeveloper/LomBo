@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.4.5 — 2026-11-20
+
+Ichki panel: stats --ishchi — qaysi ishchi qaysi IP dan kirgan/urinayotgani to'liq statistikasi; har kirish urinishi (ruxsat/rad/login-parol xato) KirishUrinishi jurnaliga yoziladi
+
 ## 1.4.4 — 2026-11-20
 
 Ishchi/boshliq kirish cheklovi endi har so'rovda tekshiriladi: cheklovdan oldin kirgan ochiq sessiyali hisob ham jimgina chiqariladi (middleware)

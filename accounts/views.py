@@ -24,9 +24,23 @@ class KirishView(auth_views.LoginView):
     redirect_authenticated_user = False
 
     def form_valid(self, form):
-        if not kirish_ruxsati(form.get_user(), self.request):
-            return redirect('login')
-        return super().form_valid(form)
+        # Login/parol to'g'ri. Ruxsat bo'lsa — kiradi, bo'lmasa jim rad + yoziladi.
+        from panel.models import KirishUrinishi
+        user = form.get_user()
+        if kirish_ruxsati(user, self.request):
+            KirishUrinishi.yoz(self.request, user.get_username(), KirishUrinishi.KIRDI)
+            return super().form_valid(form)
+        natija = KirishUrinishi.ISHCHI if getattr(user, 'is_ishchi', False) else KirishUrinishi.IP
+        KirishUrinishi.yoz(self.request, user.get_username(), natija)
+        return redirect('login')
+
+    def form_invalid(self, form):
+        # Login yoki parol noto'g'ri (yoki admin hisobi) — urinishni yozib qo'yamiz.
+        from panel.models import KirishUrinishi
+        login = (self.request.POST.get('username') or '').strip()
+        if login:
+            KirishUrinishi.yoz(self.request, login, KirishUrinishi.PAROL)
+        return super().form_invalid(form)
 
 
 def _boss_required(user):

@@ -5,6 +5,8 @@ Qurilma brauzerdagi uzoq muddatli cookie (`lq`) bilan taniladi: bir kompyuter
 yoki telefon — bitta yozuv, kim kirganidan qat'i nazar. Cookie tozalansa yoki
 boshqa brauzer ochilsa — yangi qurilma bo'lib sanaladi.
 """
+import logging
+
 from django.db import models
 
 
@@ -43,3 +45,48 @@ class QurilmaKun(models.Model):
 
     class Meta:
         unique_together = [('qurilma', 'sana')]
+
+
+class KirishUrinishi(models.Model):
+    """Saytga kirish urinishi — kim, qaysi IP, natija (`stats --ishchi` uchun).
+
+    Qurilma jadvali faqat qurilmaning OXIRGI IP sini saqlaydi va ishchi
+    bloklangach «mehmon»ga aylanadi — shuning uchun «qaysi ishchi qaysi IP dan
+    kirgan/urinayotgan»ini to'liq bermaydi. Bu jurnal esa HAR kirish urinishini
+    (ruxsat berilgan yoki rad etilgan) alohida saqlaydi.
+    """
+    KIRDI = 'kirdi'
+    ISHCHI = 'ishchi'
+    IP = 'ip'
+    PAROL = 'parol'
+    NATIJALAR = [
+        (KIRDI, 'Kirdi'),
+        (ISHCHI, 'Ishchi — rad etildi'),
+        (IP, 'Boshliq IP — rad etildi'),
+        (PAROL, "Login/parol noto'g'ri"),
+    ]
+
+    vaqt = models.DateTimeField(auto_now_add=True, db_index=True)
+    login = models.CharField(max_length=150, blank=True, db_index=True,
+                             help_text='Kiritilgan login (hisob)')
+    ip = models.CharField(max_length=45, blank=True)
+    natija = models.CharField(max_length=10, choices=NATIJALAR)
+    user_agent = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ['-vaqt']
+        indexes = [models.Index(fields=['login', 'ip'])]
+
+    def __str__(self):
+        return f'{self.login}@{self.ip} — {self.natija}'
+
+    @classmethod
+    def yoz(cls, request, login, natija):
+        """Urinishni yozadi. Hech qachon kirishni buzmaydi (xato — faqat jurnalga)."""
+        from .kuzatuv import mijoz_ip
+        try:
+            cls.objects.create(
+                login=(login or '')[:150], ip=mijoz_ip(request), natija=natija,
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:300])
+        except Exception:
+            logging.getLogger('panel').exception('Kirish urinishi yozilmadi')

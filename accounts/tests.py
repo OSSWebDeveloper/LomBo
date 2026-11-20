@@ -207,3 +207,58 @@ class KirishChekloviTest(TestCase):
         r = self.client.get('/', HTTP_X_FORWARDED_FOR=self.BOSS_IP)
         self.assertEqual(r.status_code, 200)
         self.assertTrue(self.kirganmi())
+
+
+@override_settings(LOMBARD_BOSS_IP=['198.163.193.78'], LOMBARD_ISHCHI_KIRISHI=False)
+class KirishJurnaliTest(TestCase):
+    """Har kirish urinishi KirishUrinishi jurnaliga yoziladi; stats --ishchi ko'rsatadi."""
+    PAROL = 'sinov-parol-123'
+    BOSS_IP = '198.163.193.78'
+
+    def setUp(self):
+        from django.urls import reverse
+        self.url = reverse('login')
+        self.boshliq = User.objects.create_user(
+            username='boss1', password=self.PAROL, role=User.ROLE_BOSHLIQ)
+        self.ishchi = User.objects.create_user(
+            username='worker1', password=self.PAROL, role=User.ROLE_ISHCHI,
+            first_name='Ali', last_name='Valiyev')
+
+    def post(self, username, password, ip):
+        return self.client.post(self.url, {'username': username, 'password': password},
+                                HTTP_X_FORWARDED_FOR=ip)
+
+    def test_ishchi_rad_urinishi_yoziladi(self):
+        from panel.models import KirishUrinishi
+        self.post('worker1', self.PAROL, '77.88.99.11')
+        u = KirishUrinishi.objects.get()
+        self.assertEqual(u.login, 'worker1')
+        self.assertEqual(u.natija, KirishUrinishi.ISHCHI)
+        self.assertEqual(u.ip, '77.88.99.11')
+
+    def test_boshliq_kirdi_yoziladi(self):
+        from panel.models import KirishUrinishi
+        self.post('boss1', self.PAROL, self.BOSS_IP)
+        u = KirishUrinishi.objects.get()
+        self.assertEqual(u.natija, KirishUrinishi.KIRDI)
+
+    def test_boshliq_notogri_ip_rad_yoziladi(self):
+        from panel.models import KirishUrinishi
+        self.post('boss1', self.PAROL, '5.6.7.8')
+        self.assertEqual(KirishUrinishi.objects.get().natija, KirishUrinishi.IP)
+
+    def test_notogri_parol_yoziladi(self):
+        from panel.models import KirishUrinishi
+        self.post('worker1', 'boshqa-parol', '1.2.3.4')
+        u = KirishUrinishi.objects.get()
+        self.assertEqual(u.login, 'worker1')
+        self.assertEqual(u.natija, KirishUrinishi.PAROL)
+
+    def test_stats_ishchi_ip_ni_korsatadi(self):
+        from panel.statistika import ishchilar
+        self.post('worker1', self.PAROL, '77.88.99.11')   # rad
+        self.post('worker1', self.PAROL, '77.88.99.11')   # yana rad
+        matn = ishchilar()
+        self.assertIn('worker1', matn)
+        self.assertIn('Ali Valiyev', matn)
+        self.assertIn('77.88.99.11', matn)
