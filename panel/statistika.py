@@ -113,16 +113,27 @@ def umumiy(kunlar=14):
 
 
 def royxat(soni=20):
-    qs = Qurilma.objects.all()[:soni]
+    qs = list(Qurilma.objects.annotate(kun_soni=Count('kunlar'))[:soni])
     if not qs:
         return "Hali birorta qurilma yozilmagan."
+    bugun = timezone.localdate()
+    ids = [d.pk for d in qs]
+    bugun_map = dict(QurilmaKun.objects.filter(sana=bugun, qurilma_id__in=ids)
+                     .values_list('qurilma_id', 'sorov_soni'))
+    ort_sarlavha = "Kun/o'rt"
     q = [f'Oxirgi faol {len(qs)} qurilma (jami {Qurilma.objects.count()})',
-         f'  {"#":>4}  {"Qurilma":<30}  {"Hisob":<12}  {"Oxirgi":<11}  {"Sahifa":>6}  IP',
-         '  ' + '─' * 72]
+         f'  {"#":>4}  {"Qurilma":<28}  {"Hisob":<10}  {"Oxirgi":<11}  {"Kun":>3}  '
+         f'{"Bugun":>5}  {ort_sarlavha:>7}  {"Jami":>5}  IP',
+         '  ' + '─' * 90]
     for d in qs:
         nom = ' · '.join(x for x in (TUR_NOMI.get(d.turi, d.turi), d.tizim, d.brauzer) if x)
-        q.append(f'  {d.pk:>4}  {nom[:30]:<30}  {(d.foydalanuvchi or "—")[:12]:<12}  '
-                 f'{timezone.localtime(d.oxirgi):%d.%m %H:%M}  {d.sorov_soni:>6}  {d.ip}')
+        kun = d.kun_soni or 0
+        ort = round(d.sorov_soni / kun) if kun else d.sorov_soni
+        q.append(f'  {d.pk:>4}  {nom[:28]:<28}  {(d.foydalanuvchi or "—")[:10]:<10}  '
+                 f'{timezone.localtime(d.oxirgi):%d.%m %H:%M}  {kun:>3}  '
+                 f'{bugun_map.get(d.pk, 0):>5}  {ort:>7}  {d.sorov_soni:>5}  {d.ip}')
+    q += ['', "Kun — necha kun faol.  Bugun / Kun-o'rt / Jami — sahifa ochishlari "
+              "(bugun, kunlik o'rtacha, jami)."]
     return '\n'.join(q)
 
 

@@ -454,7 +454,10 @@ class QurilmaKuzatuvTest(PanelBaza):
         self.assertIn('QURILMALAR STATISTIKASI', chiqish)
         self.assertIn('Kompyuter', chiqish)
         self.assertIn('◄ bugun', chiqish)
-        self.assertIn('Windows', self.run_cmd('stats --list').json()['output'])
+        chiql = self.run_cmd('stats --list').json()['output']
+        self.assertIn('Windows', chiql)
+        self.assertIn('Bugun', chiql)
+        self.assertIn("Kun/o'rt", chiql)
         self.assertIn('oxirgi 30 kun', self.run_cmd('stats --days 30').json()['output'])
         self.assertIn('QURILMALAR', self.run_cmd('stats --days abc').json()['output'])
 
