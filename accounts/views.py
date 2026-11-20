@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
@@ -7,32 +6,12 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
-from panel.kuzatuv import mijoz_ip
-
 from .forms import (SaytKirishFormasi, SetPasswordSimpleForm, WorkerCreateForm,
                     WorkerEditForm)
+from .kirish import kirish_ruxsati
 from contracts.models import Amal, amal_yoz
 
 from .models import User
-
-
-def kirish_ruxsati(user, request):
-    """Saytga kirishga ruxsatmi. False bo'lsa — kirish JIM rad etiladi
-    (xato/xabar ko'rsatilmaydi, bo'sh kirish sahifasi qaytadi).
-
-    Foydalanuvchi talabi (2026-11-19):
-      - Ishchilar kira olmaydi (LOMBARD_ISHCHI_KIRISHI=1 bo'lmaguncha).
-      - Boshliq faqat settings.LOMBARD_BOSS_IP ro'yxatidagi IP(lar)dan kiradi
-        (ro'yxat bo'sh bo'lsa — IP cheklovi yo'q).
-    IP haqiqiy manzildan olinadi (proksi orqali X-Forwarded-For) — kuzatuv bilan bir xil.
-    """
-    if getattr(user, 'is_ishchi', False) and not getattr(settings, 'LOMBARD_ISHCHI_KIRISHI', False):
-        return False
-    if getattr(user, 'is_boshliq', False):
-        ruxsat = getattr(settings, 'LOMBARD_BOSS_IP', []) or []
-        if ruxsat and mijoz_ip(request) not in ruxsat:
-            return False
-    return True
 
 
 class KirishView(auth_views.LoginView):

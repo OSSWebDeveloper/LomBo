@@ -1,5 +1,9 @@
 # Versiyalar tarixi
 
+## 1.4.4 — 2026-11-20
+
+Ishchi/boshliq kirish cheklovi endi har so'rovda tekshiriladi: cheklovdan oldin kirgan ochiq sessiyali hisob ham jimgina chiqariladi (middleware)
+
 ## 1.4.3 — 2026-11-20
 
 Ichki panel: «stats --list» da har qurilma uchun kunlik ko'rsatkich — «Kun» (necha kun faol), «Bugun» (bugungi sahifa ochishlari), «Kun/o'rt» (kunlik o'rtacha) va «Jami»; avvalgi «Sahifa» ustuni «Jami» deb aniqlashtirildi.

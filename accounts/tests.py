@@ -183,3 +183,27 @@ class KirishChekloviTest(TestCase):
                              HTTP_X_FORWARDED_FOR=self.BOSS_IP)
         self.assertEqual(r.status_code, 200)
         self.assertFalse(self.kirganmi())
+
+    # --- Ochiq sessiya: cheklov qo'yilguncha kirgan hisob (middleware) ---
+    # form_valid faqat yangi login paytida ishlaydi; cheklovdan OLDIN kirgan
+    # hisobning sessiyasi esa amal qilaverardi. Shu teshikni middleware yopadi:
+    # har so'rovda tekshirib, ruxsatsiz hisobni jimgina chiqaradi.
+    def test_ochiq_sessiyali_ishchi_chiqariladi(self):
+        self.client.force_login(self.ishchi)      # login view'ni chetlab sessiya ochish
+        self.assertTrue(self.kirganmi())
+        r = self.client.get('/', HTTP_X_FORWARDED_FOR=self.BOSS_IP)
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r.url, self.url)
+        self.assertFalse(self.kirganmi())          # sessiya uzildi — kira olmaydi
+
+    def test_ochiq_sessiyali_boshliq_notogri_ip_chiqariladi(self):
+        self.client.force_login(self.boshliq)
+        r = self.client.get('/', HTTP_X_FORWARDED_FOR='5.6.7.8')
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(self.kirganmi())
+
+    def test_ochiq_sessiyali_boshliq_togri_ip_qoladi(self):
+        self.client.force_login(self.boshliq)
+        r = self.client.get('/', HTTP_X_FORWARDED_FOR=self.BOSS_IP)
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(self.kirganmi())
